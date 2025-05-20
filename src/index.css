@@ -1,0 +1,66 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --text-xxs: 0.6125rem;
+  --text-xxs--line-height: calc(1 / 0.6125);
+
+  --animate-gradient: gradient 10s ease-in-out infinite;
+
+  @keyframes gradient {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  --blur-xs: 2px;
+  --blur-sm: 3px;
+  --blur-md: 4px;
+  --blur-lg: 5px;
+
+  /* ----------------------------- Theme Dependent ---------------------------- */
+  --color-content: white;
+  --color-content-fg: var(--color-neutral-800);
+
+  --color-neutral: var(--color-neutral-200);
+  --color-neutral-100: var(--color-neutral-300);
+
+  --color-success: var(--color-green-600);
+  --color-info: var(--color-sky-500);
+  --color-warning: var(--color-yellow-500);
+  --color-error: var(--color-red-500);
+
+  --color-muted: var(--color-neutral-700);
+}
+
+@layer themes {
+  .dark {
+    --color-content: var(--color-neutral-800);
+    --color-content-fg: white;
+
+    --color-neutral: var(--color-neutral-700);
+    --color-neutral-100: var(--color-neutral-600);
+
+    --color-success: var(--color-green-600);
+    --color-info: var(--color-sky-500);
+    --color-warning: var(--color-yellow-500);
+    --color-error: var(--color-red-500);
+
+    --color-muted: var(--color-neutral-400);
+  }
+}
+
+/* #region Orbit Cursor */
+
+html,
+body {
+  overscroll-behavior: none;
+}

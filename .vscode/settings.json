@@ -1,0 +1,10 @@
+{
+  "git.inputValidation": true,
+  "git.inputValidationSubjectLength": 50,
+  "git.inputValidationLength": 72,
+  "[rust]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "jinxdash.prettier-rust"
+  },
+  "rust-analyzer.check.command": "clippy"
+}

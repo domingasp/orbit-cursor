@@ -1,0 +1,6 @@
+/* Undo global styles to keep preview clean. */
+html,
+body {
+  background-color: transparent;
+  border-radius: 0;
+}

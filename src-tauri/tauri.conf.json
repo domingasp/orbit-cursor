@@ -1,0 +1,60 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "orbit-cursor",
+  "version": "0.1.0",
+  "identifier": "com.orbit-cursor.app",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "title": "Start Recording Dock",
+        "label": "start_recording_dock",
+        "url": "/start-recording-dock",
+        "width": 408,
+        "height": 180,
+        "decorations": false,
+        "resizable": false,
+        "shadow": true,
+        "transparent": true,
+        "windowEffects": {
+          "effects": ["underWindowBackground"],
+          "radius": 10,
+          "state": "active"
+        }
+      },
+      {
+        "title": "Standalone ListBox",
+        "label": "standalone_listbox",
+        "url": "/standalone-listbox",
+        "decorations": false,
+        "resizable": false,
+        "fullscreen": false,
+        "transparent": true,
+        "acceptFirstMouse": true
+      }
+    ],
+    "security": {
+      "csp": null
+    },
+    "trayIcon": {
+      "id": "tray_icon",
+      "iconPath": "icons/32x32.png",
+      "iconAsTemplate": true
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": ["icons/32x32.png"],
+    "macOS": {
+      "entitlements": "entitlements.plist"
+    }
+  },
+  "plugins": {}
+}
