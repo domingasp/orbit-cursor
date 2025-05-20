@@ -1,15 +1,14 @@
-import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
 
+import { showStandaloneListBox } from "../../../api/windows";
 import ListBoxItem from "../../../components/listbox-item/listbox-item";
 import Select from "../../../components/select/select";
 import {
   SelectedItem,
   useStandaloneListBoxStore,
 } from "../../../stores/standalone-listbox.store";
-import { Commands } from "../../../types/api";
 
 import AudioMeter from "./audio-meter";
 
@@ -41,6 +40,7 @@ const AudioSelect = ({
 
   const triggerRef = useRef<HTMLButtonElement>(null);
 
+  const PADDING = 4;
   const openStandaloneListBox = async () => {
     if (!triggerRef.current) return;
 
@@ -50,11 +50,10 @@ const AudioSelect = ({
 
     const { x, y } = await currentWindow.outerPosition();
 
-    await invoke(Commands.ShowStandaloneListBox, {
-      height: 100,
-      width: width,
+    await showStandaloneListBox({
+      width,
       x: x + left * window.devicePixelRatio,
-      y: y + (top + height + 4) * window.devicePixelRatio,
+      y: y + (top + height + PADDING) * window.devicePixelRatio,
     });
 
     openListBox(id);

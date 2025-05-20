@@ -1,6 +1,6 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 
-import { Commands } from "../types/api";
+import { Commands } from "../../../types/api";
 
 export enum AudioStream {
   System = "system",

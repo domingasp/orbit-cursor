@@ -4,12 +4,6 @@ import { Mic, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import {
-  AudioStream,
-  AudioStreamChannel,
-  startAudioListener,
-  stopAudioListener,
-} from "../../../api/audio-listeners";
 import Separator from "../../../components/separator/separator";
 import {
   PermissionType,
@@ -25,6 +19,12 @@ import {
   Window,
 } from "../../../stores/window-open-state.store";
 import { Events } from "../../../types/events";
+import {
+  AudioStream,
+  AudioStreamChannel,
+  startAudioListener,
+  stopAudioListener,
+} from "../api/audio-listeners";
 
 import AudioSelect from "./audio-select";
 import AudioToggle from "./audio-toggle";
