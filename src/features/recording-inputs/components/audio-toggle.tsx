@@ -1,6 +1,6 @@
-import { AudioStream } from "../../../api/audio-listeners";
 import Switch from "../../../components/switch/switch";
 import { cn } from "../../../lib/styling";
+import { AudioStream } from "../api/audio-listeners";
 
 import AudioMeter from "./audio-meter";
 

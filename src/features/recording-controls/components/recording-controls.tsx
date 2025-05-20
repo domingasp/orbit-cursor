@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import {
   AppWindowMac,
   Circle,
@@ -8,7 +7,7 @@ import {
 } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
-import { stopAllAudioListeners } from "../../../api/audio-listeners";
+import { hideStartRecordingDock } from "../../../api/windows";
 import Button from "../../../components/button/button";
 import Keyboard from "../../../components/keyboard/keyboard";
 import RadioGroup from "../../../components/radio-group/radio-group";
@@ -17,7 +16,7 @@ import {
   useWindowReopenStore,
   Window,
 } from "../../../stores/window-open-state.store";
-import { Commands } from "../../../types/api";
+import { stopAllAudioListeners } from "../../recording-inputs/api/audio-listeners";
 
 import IconRadio from "./icon-radio";
 
@@ -29,7 +28,7 @@ const RecordingControls = () => {
   const onCancel = () => {
     stopAllAudioListeners();
     setWindowOpenState(Window.StartRecordingDock, false);
-    void invoke(Commands.HideStartRecordingDock);
+    hideStartRecordingDock();
   };
 
   return (
