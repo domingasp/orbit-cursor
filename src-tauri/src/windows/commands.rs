@@ -1,11 +1,10 @@
 use std::sync::Once;
 
-use tauri::{ AppHandle, Emitter };
+use tauri::{AppHandle, Emitter};
 use tauri_nspanel::ManagerExt;
 
 use super::service::{
-  position_and_size_standalone_listbox_panel,
-  setup_standalone_listbox_listeners,
+  position_and_size_standalone_listbox_panel, setup_standalone_listbox_listeners,
   swizzle_to_standalone_listbox_panel,
 };
 
@@ -33,7 +32,9 @@ pub fn show_standalone_listbox(app_handle: AppHandle, x: f64, y: f64, width: f64
 
 #[tauri::command]
 pub fn show_start_recording_dock(app_handle: &AppHandle) {
-  let panel = app_handle.get_webview_panel("start_recording_dock").unwrap();
+  let panel = app_handle
+    .get_webview_panel("start_recording_dock")
+    .unwrap();
   panel.order_front_regardless();
 
   // Showing/hiding doesn't remount component, instead we emit event to UI
@@ -44,6 +45,8 @@ pub fn show_start_recording_dock(app_handle: &AppHandle) {
 
 #[tauri::command]
 pub fn hide_start_recording_dock(app_handle: AppHandle) {
-  let panel = app_handle.get_webview_panel("start_recording_dock").unwrap();
+  let panel = app_handle
+    .get_webview_panel("start_recording_dock")
+    .unwrap();
   panel.order_out(None);
 }

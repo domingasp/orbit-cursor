@@ -1,37 +1,37 @@
+mod audio;
 mod global_inputs;
 #[cfg(target_os = "macos")]
 mod permissions;
+mod store;
 mod system_tray;
 mod windows;
-mod store;
-mod audio;
 
-use std::{ collections::HashMap, sync::{ Arc, Mutex, OnceLock } };
+use std::{
+  collections::HashMap,
+  sync::{Arc, Mutex, OnceLock},
+};
 
 use audio::{
-  commands::{ start_audio_listener, stop_all_audio_listeners, stop_audio_listener },
+  commands::{start_audio_listener, stop_all_audio_listeners, stop_audio_listener},
   models::AudioStream,
 };
 use cpal::Stream;
 use permissions::{
-  commands::{ check_permissions, open_system_settings, request_permission },
-  service::{ ensure_permissions, monitor_permissions },
+  commands::{check_permissions, open_system_settings, request_permission},
+  service::{ensure_permissions, monitor_permissions},
 };
 use rdev::listen;
-use serde_json::{ json, Value };
-use store::constants::{ FIRST_RUN, NATIVE_REQUESTABLE_PERMISSIONS, STORE_NAME };
+use serde_json::{json, Value};
+use store::constants::{FIRST_RUN, NATIVE_REQUESTABLE_PERMISSIONS, STORE_NAME};
 use system_tray::service::create_system_tray;
-use tauri::{ App, AppHandle, Manager, Wry };
-use tauri_plugin_store::{ Store, StoreExt };
+use tauri::{App, AppHandle, Manager, Wry};
+use tauri_plugin_store::{Store, StoreExt};
 use windows::{
   commands::{
-    hide_start_recording_dock,
-    init_standalone_listbox,
-    quit_app,
-    show_standalone_listbox,
+    hide_start_recording_dock, init_standalone_listbox, quit_app, show_standalone_listbox,
     show_start_recording_dock,
   },
-  service::{ init_start_recording_panel, open_permissions },
+  service::{init_start_recording_panel, open_permissions},
 };
 
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
@@ -56,7 +56,7 @@ async fn setup_store(app: &App) -> Arc<Store<Wry>> {
         "screen": true,
         "microphone": true,
         "camera": true
-      })
+      }),
     );
   }
 
@@ -67,27 +67,22 @@ async fn setup_store(app: &App) -> Arc<Store<Wry>> {
 pub fn run() {
   let context = tauri::generate_context!();
 
-  let app = tauri::Builder
-    ::default()
-    .invoke_handler(
-      tauri::generate_handler![
-        check_permissions,
-        request_permission,
-        open_system_settings,
-        quit_app,
-        init_standalone_listbox,
-        show_standalone_listbox,
-        hide_start_recording_dock,
-        start_audio_listener,
-        stop_audio_listener,
-        stop_all_audio_listeners
-      ]
-    )
-    .manage(
-      Mutex::new(AppState {
-        audio_streams: HashMap::new(),
-      })
-    )
+  let app = tauri::Builder::default()
+    .invoke_handler(tauri::generate_handler![
+      check_permissions,
+      request_permission,
+      open_system_settings,
+      quit_app,
+      init_standalone_listbox,
+      show_standalone_listbox,
+      hide_start_recording_dock,
+      start_audio_listener,
+      stop_audio_listener,
+      stop_all_audio_listeners
+    ])
+    .manage(Mutex::new(AppState {
+      audio_streams: HashMap::new(),
+    }))
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_macos_permissions::init())
     .plugin(tauri_nspanel::init())

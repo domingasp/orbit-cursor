@@ -4,7 +4,7 @@
   "git.inputValidationLength": 72,
   "[rust]": {
     "editor.formatOnSave": true,
-    "editor.defaultFormatter": "jinxdash.prettier-rust"
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
   },
   "rust-analyzer.check.command": "clippy"
 }

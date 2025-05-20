@@ -1,22 +1,18 @@
 use std::ffi::CString;
 
 use border::WebviewWindowExt as BorderWebviewWindowExt;
-use cocoa::{ appkit::{ NSMainMenuWindowLevel, NSWindowCollectionBehavior }, base::{ id, nil } };
-use objc::{ class, msg_send, sel, sel_impl };
+use cocoa::{
+  appkit::{NSMainMenuWindowLevel, NSWindowCollectionBehavior},
+  base::{id, nil},
+};
+use objc::{class, msg_send, sel, sel_impl};
 use tauri::{
   utils::config::WindowEffectsConfig,
-  window::{ Effect, EffectState },
-  AppHandle,
-  Emitter,
-  Listener,
-  LogicalSize,
-  Manager,
-  PhysicalPosition,
-  Size,
-  WebviewWindow,
+  window::{Effect, EffectState},
+  AppHandle, Emitter, Listener, LogicalSize, Manager, PhysicalPosition, Size, WebviewWindow,
   WebviewWindowBuilder,
 };
-use tauri_nspanel::{ block::ConcreteBlock, panel_delegate, ManagerExt, WebviewWindowExt };
+use tauri_nspanel::{block::ConcreteBlock, panel_delegate, ManagerExt, WebviewWindowExt};
 
 #[allow(non_upper_case_globals)]
 const NSWindowStyleMaskNonActivatingPanel: i32 = 1 << 7;
@@ -31,7 +27,10 @@ pub fn handle_record_dock_positioning(window: &WebviewWindow) -> tauri::Result<(
 
     if label == "start_recording_dock" {
       let x = (monitor_size.width / 2).saturating_sub(window_size.width / 2);
-      let y = monitor_size.height.saturating_sub(window_size.height).saturating_sub(200);
+      let y = monitor_size
+        .height
+        .saturating_sub(window_size.height)
+        .saturating_sub(200);
       window.set_position(PhysicalPosition { x, y })?;
     }
   }
@@ -52,23 +51,23 @@ pub async fn open_permissions(app_handle: &AppHandle) {
   let window = WebviewWindowBuilder::new(
     app_handle,
     "request_permissions",
-    tauri::WebviewUrl::App("/request-permissions".into())
+    tauri::WebviewUrl::App("/request-permissions".into()),
   )
-    .title("Request Permissions")
-    .inner_size(540.0, 432.0)
-    .decorations(false)
-    .resizable(false)
-    .shadow(true)
-    .transparent(true)
-    .closable(false)
-    .effects(WindowEffectsConfig {
-      effects: vec![Effect::UnderWindowBackground],
-      state: Some(EffectState::Active),
-      radius: Some(10.0),
-      color: None,
-    })
-    .build()
-    .unwrap();
+  .title("Request Permissions")
+  .inner_size(540.0, 432.0)
+  .decorations(false)
+  .resizable(false)
+  .shadow(true)
+  .transparent(true)
+  .closable(false)
+  .effects(WindowEffectsConfig {
+    effects: vec![Effect::UnderWindowBackground],
+    state: Some(EffectState::Active),
+    radius: Some(10.0),
+    color: None,
+  })
+  .build()
+  .unwrap();
 
   add_border(&window).ok();
 
@@ -76,7 +75,9 @@ pub async fn open_permissions(app_handle: &AppHandle) {
 }
 
 pub fn init_start_recording_panel(app_handle: &AppHandle) {
-  let window = app_handle.get_webview_window("start_recording_dock").unwrap();
+  let window = app_handle
+    .get_webview_window("start_recording_dock")
+    .unwrap();
   handle_record_dock_positioning(&window).ok();
   add_border(&window).ok();
 
@@ -85,14 +86,16 @@ pub fn init_start_recording_panel(app_handle: &AppHandle) {
   panel.set_level(NSMainMenuWindowLevel + 1);
 
   panel.set_collection_behaviour(
-    NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary |
-      NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces |
-      NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary
+    NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary
+      | NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
+      | NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary,
   );
 
   panel.set_style_mask(NSWindowStyleMaskNonActivatingPanel);
 
-  let window = app_handle.get_webview_window("start_recording_dock").unwrap();
+  let window = app_handle
+    .get_webview_window("start_recording_dock")
+    .unwrap();
   unsafe {
     let ns_window: id = window.ns_window().unwrap() as id;
     // Available enum values: https://github.com/phracker/MacOSX-SDKs/blob/master/MacOSX10.9.sdk/System/Library/Frameworks/AppKit.framework/Versions/C/Headers/NSWindow.h?#L131
@@ -112,20 +115,18 @@ pub fn swizzle_to_standalone_listbox_panel(app_handle: &AppHandle) {
 
   let handle = app_handle.clone();
 
-  panel_delegate.set_listener(
-    Box::new(move |delegate_name: String| {
-      if delegate_name.as_str() == "window_did_resign_key" {
-        let _ = handle.emit("standalone_listbox_did_resign_key", ());
-      }
-    })
-  );
+  panel_delegate.set_listener(Box::new(move |delegate_name: String| {
+    if delegate_name.as_str() == "window_did_resign_key" {
+      let _ = handle.emit("standalone_listbox_did_resign_key", ());
+    }
+  }));
 
   panel.set_level(NSMainMenuWindowLevel + 2);
 
   panel.set_collection_behaviour(
-    NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary |
-      NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces |
-      NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary
+    NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary
+      | NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
+      | NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary,
   );
 
   panel.set_delegate(panel_delegate);
@@ -160,7 +161,7 @@ pub fn setup_standalone_listbox_listeners(app_handle: &AppHandle) {
 
   register_workspace_listener(
     "NSWorkspaceDidActivateApplicationNotification".into(),
-    callback.clone()
+    callback.clone(),
   );
 }
 
@@ -169,11 +170,13 @@ pub fn position_and_size_standalone_listbox_panel(
   x: f64,
   y: f64,
   width: f64,
-  height: f64
+  height: f64,
 ) {
   let window = app_handle.get_webview_window("standalone_listbox").unwrap();
   window.set_position(PhysicalPosition { x, y }).ok();
-  window.set_size(Size::Logical(LogicalSize { width, height })).ok();
+  window
+    .set_size(Size::Logical(LogicalSize { width, height }))
+    .ok();
 }
 
 fn register_workspace_listener(name: String, callback: Box<dyn Fn()>) {
@@ -183,16 +186,14 @@ fn register_workspace_listener(name: String, callback: Box<dyn Fn()>) {
 
   let block = ConcreteBlock::new(move |_notification: id| callback());
 
-  let name: id = unsafe {
-    msg_send![class!(NSString), stringWithCString: CString::new(name).unwrap()]
-  };
+  let name: id =
+    unsafe { msg_send![class!(NSString), stringWithCString: CString::new(name).unwrap()] };
 
   unsafe {
-    let _: () =
-      msg_send![
-          notification_center,
-          addObserverForName: name object: nil queue: nil usingBlock: block
-        ];
+    let _: () = msg_send![
+      notification_center,
+      addObserverForName: name object: nil queue: nil usingBlock: block
+    ];
   }
 }
 
