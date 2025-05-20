@@ -10,8 +10,11 @@ use tauri_plugin_store::{Store, StoreExt};
 use tokio::time::interval;
 
 use crate::{
+  constants::{
+    events::MONITOR_PERMISSIONS,
+    store::{NATIVE_REQUESTABLE_PERMISSIONS, STORE_NAME},
+  },
   permissions::models::NativeRequestablePermissions,
-  store::constants::{NATIVE_REQUESTABLE_PERMISSIONS, STORE_NAME},
 };
 
 use super::models::{CheckPermissionsResponse, PermissionStatus, PermissionType};
@@ -95,8 +98,8 @@ pub async fn monitor_permissions(app_handle: Arc<AppHandle>) -> Result<(), Strin
     let all_granted = response.permissions.values().all(|p| p.has_access);
 
     app_handle
-      .emit("monitor-permissions", response.permissions)
-      .map_err(|e| format!("Failed to emit monitor-permissions event: {}", e))?;
+      .emit(MONITOR_PERMISSIONS, response.permissions)
+      .map_err(|e| format!("Failed to emit {} event: {}", MONITOR_PERMISSIONS, e))?;
 
     if all_granted {
       break;

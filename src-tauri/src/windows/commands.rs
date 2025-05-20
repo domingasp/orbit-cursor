@@ -3,6 +3,8 @@ use std::sync::Once;
 use tauri::{AppHandle, Emitter};
 use tauri_nspanel::ManagerExt;
 
+use crate::constants::events::START_RECORDING_DOCK_OPENED;
+
 use super::service::{
   position_and_size_standalone_listbox_panel, setup_standalone_listbox_listeners,
   swizzle_to_standalone_listbox_panel,
@@ -39,8 +41,13 @@ pub fn show_start_recording_dock(app_handle: &AppHandle) {
 
   // Showing/hiding doesn't remount component, instead we emit event to UI
   let _ = app_handle
-    .emit("start-recording-dock-opened", ())
-    .map_err(|e| format!("Failed to emit show-start-recording-dock event: {}", e));
+    .emit(START_RECORDING_DOCK_OPENED, ())
+    .map_err(|e| {
+      format!(
+        "Failed to emit {} event: {}",
+        START_RECORDING_DOCK_OPENED, e
+      )
+    });
 }
 
 #[tauri::command]
