@@ -1,10 +1,13 @@
-use tauri::{ AppHandle };
+use tauri::AppHandle;
 use tauri_plugin_shell::ShellExt;
 use tauri_plugin_store::StoreExt;
 
 use crate::STORE_NAME;
 
-use super::{ models::{ CheckPermissionsResponse, PermissionType }, service };
+use super::{
+  models::{CheckPermissionsResponse, PermissionType},
+  service,
+};
 
 /// Check status of permission.
 ///
@@ -18,7 +21,7 @@ pub async fn check_permissions(app_handle: AppHandle) -> CheckPermissionsRespons
 #[tauri::command]
 pub async fn request_permission(
   app_handle: AppHandle,
-  permission: PermissionType
+  permission: PermissionType,
 ) -> Result<(), String> {
   match service::request_permission(app_handle.store(STORE_NAME).unwrap(), permission).await {
     Ok(()) => Ok(()),

@@ -1,4 +1,4 @@
-use rdev::{ Button, Event, EventType };
+use rdev::{Button, Event, EventType};
 use tauri::Emitter;
 
 use crate::APP_HANDLE;

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use serde::{ Deserialize, Serialize };
+use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Display, PartialEq, Eq, Hash)]
