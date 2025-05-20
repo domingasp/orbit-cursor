@@ -6,7 +6,7 @@ use cpal::{
 };
 use tauri::{ipc::Channel, Emitter};
 
-use crate::APP_HANDLE;
+use crate::{constants::events::SYSTEM_AUDIO_STREAM_ERROR, APP_HANDLE};
 
 use super::commands::AudioStreamChannel;
 
@@ -72,7 +72,7 @@ pub fn create_system_audio_stream(channel: Channel<AudioStreamChannel>) -> Strea
         let _ = APP_HANDLE
           .get()
           .unwrap()
-          .emit("system_audio_stream_error", ());
+          .emit(SYSTEM_AUDIO_STREAM_ERROR, ());
       },
       None,
     )

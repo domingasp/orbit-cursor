@@ -1,8 +1,8 @@
 mod audio;
+mod constants;
 mod global_inputs;
 #[cfg(target_os = "macos")]
 mod permissions;
-mod store;
 mod system_tray;
 mod windows;
 
@@ -15,6 +15,7 @@ use audio::{
   commands::{start_audio_listener, stop_all_audio_listeners, stop_audio_listener},
   models::AudioStream,
 };
+use constants::store::{FIRST_RUN, NATIVE_REQUESTABLE_PERMISSIONS, STORE_NAME};
 use cpal::Stream;
 use permissions::{
   commands::{check_permissions, open_system_settings, request_permission},
@@ -22,7 +23,6 @@ use permissions::{
 };
 use rdev::listen;
 use serde_json::{json, Value};
-use store::constants::{FIRST_RUN, NATIVE_REQUESTABLE_PERMISSIONS, STORE_NAME};
 use system_tray::service::create_system_tray;
 use tauri::{App, AppHandle, Manager, Wry};
 use tauri_plugin_store::{Store, StoreExt};
