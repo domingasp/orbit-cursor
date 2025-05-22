@@ -50,3 +50,14 @@ export const Compact: Story = {
 };
 
 export const Empty: Story = {};
+
+export const LongValue: Story = {
+  args: {
+    "aria-label": "Long value",
+    children: (
+      <ListBoxItem>
+        This is a really long label which should overflow
+      </ListBoxItem>
+    ),
+  },
+};

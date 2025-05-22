@@ -12,6 +12,7 @@ import { elementFocus, focusStyles } from "../../lib/styling";
 const listBoxItemVariants = tv({
   base: [
     "rounded-md cursor-default transition-colors inline-flex gap-2 items-center justify-between bg-content text-content-fg",
+    "truncate",
     "data-[hovered]:bg-neutral",
     "data-[selected]:[&_svg]:text-success",
     focusStyles,
@@ -42,7 +43,7 @@ const listBoxItemVariants = tv({
 });
 
 type ListBoxItemProps = AriaListBoxItemProps &
-  VariantProps<typeof listBoxItemVariants>;
+  VariantProps<typeof listBoxItemVariants> & { children?: React.ReactNode };
 
 const ListBoxItem = ({
   children,
@@ -57,7 +58,7 @@ const ListBoxItem = ({
     >
       {({ isSelected }) => (
         <>
-          {children}
+          <div className="truncate">{children}</div>
           <AnimatePresence>
             {isSelected && (
               <motion.div
