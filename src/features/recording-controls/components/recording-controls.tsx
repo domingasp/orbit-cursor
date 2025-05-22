@@ -13,10 +13,9 @@ import Keyboard from "../../../components/keyboard/keyboard";
 import RadioGroup from "../../../components/radio-group/radio-group";
 import Separator from "../../../components/separator/separator";
 import {
+  AppWindow,
   useWindowReopenStore,
-  Window,
 } from "../../../stores/window-open-state.store";
-import { stopAllAudioListeners } from "../../recording-inputs/api/audio-listeners";
 
 import IconRadio from "./icon-radio";
 
@@ -26,8 +25,7 @@ const RecordingControls = () => {
   );
 
   const onCancel = () => {
-    stopAllAudioListeners();
-    setWindowOpenState(Window.StartRecordingDock, false);
+    setWindowOpenState(AppWindow.StartRecordingDock, false);
     hideStartRecordingDock();
   };
 
