@@ -8,5 +8,6 @@ export enum Commands {
   HideStartRecordingDock = "hide_start_recording_dock",
   StartAudioListener = "start_audio_listener",
   StopAudioListener = "stop_audio_listener",
-  StopAllAudioListeners = "stop_all_audio_listeners",
+  ListAudioInputs = "list_audio_inputs",
+  IsStartRecordingDockOpen = "is_start_recording_dock_open",
 }

@@ -23,3 +23,7 @@ export const showStandaloneListBox = async ({
     y,
   });
 };
+
+export const isStartRecordingDockOpen = async (): Promise<boolean> => {
+  return await invoke(Commands.IsStartRecordingDockOpen);
+};

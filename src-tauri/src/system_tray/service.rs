@@ -1,6 +1,6 @@
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconEvent};
-use tauri::App;
+use tauri::{App, Manager};
 
 use crate::windows::commands::show_start_recording_dock;
 
@@ -26,7 +26,7 @@ pub fn create_system_tray(app: &App) -> tauri::Result<()> {
     } = event
     {
       let app_handle = tray.app_handle();
-      show_start_recording_dock(app_handle);
+      show_start_recording_dock(app_handle, app_handle.state());
     }
   });
 

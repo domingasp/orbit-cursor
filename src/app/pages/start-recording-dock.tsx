@@ -4,13 +4,14 @@ import { Lock } from "lucide-react";
 import { useEffect } from "react";
 import { useShallow } from "zustand/react/shallow";
 
+import { isStartRecordingDockOpen } from "../../api/windows";
 import Overlay from "../../components/overlay/overlay";
 import RecordingControls from "../../features/recording-controls/components/recording-controls";
 import RecordingInputs from "../../features/recording-inputs/components/recording-inputs";
 import { usePermissionsStore } from "../../stores/permissions.store";
 import {
+  AppWindow,
   useWindowReopenStore,
-  Window,
 } from "../../stores/window-open-state.store";
 import { Events } from "../../types/events";
 
@@ -27,10 +28,13 @@ const StartRecordingDock = () => {
     !accessibility?.hasAccess || !screen?.hasAccess || !canUnlock;
 
   useEffect(() => {
-    addWindow(Window.StartRecordingDock);
+    const addWindowToStore = async () => {
+      addWindow(AppWindow.StartRecordingDock, await isStartRecordingDockOpen());
+    };
+    void addWindowToStore();
 
     const unlisten = listen(Events.StartRecordingDockOpened, () => {
-      setWindowOpenState(Window.StartRecordingDock, true);
+      setWindowOpenState(AppWindow.StartRecordingDock, true);
     });
 
     return () => {
