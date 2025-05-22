@@ -6,7 +6,7 @@ import { useShallow } from "zustand/react/shallow";
 import ListBox from "../../components/listbox/listbox";
 import ListBoxItem from "../../components/listbox-item/listbox-item";
 import {
-  SelectedItem,
+  Item,
   updateStandaloneListBoxStore,
   useStandaloneListBoxStore,
 } from "../../stores/standalone-listbox.store";
@@ -26,23 +26,10 @@ const StandaloneListBox = () => {
     openListBoxId ? state.getListBox(openListBoxId) : undefined
   );
 
-  // TASK dynamic fetch based on listbox id
-  const items =
-    openListBoxId === "system-audio"
-      ? [
-          { id: 1, label: "hello" },
-          { id: 2, label: "world" },
-        ]
-      : [
-          { id: 1, label: "hello" },
-          { id: 2, label: "world" },
-          { id: 3, label: "!" },
-          { id: 4, label: "!" },
-          { id: 5, label: "hello" },
-        ];
+  const items = listBox?.items ?? [];
 
   const onSelectionChange = (ids: Selection) => {
-    const selectedItems: SelectedItem[] = [];
+    const selectedItems: Item[] = [];
     for (const id of ids) {
       const item = items.find((x) => x.id === id);
       if (item) selectedItems.push(item);
@@ -107,7 +94,7 @@ const StandaloneListBox = () => {
         {items.map((item) => (
           <ListBoxItem
             key={item.id}
-            id={item.id}
+            id={item.id ?? undefined}
             size="sm"
             textValue={item.label}
             compact

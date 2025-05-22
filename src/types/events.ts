@@ -3,4 +3,5 @@ export enum Events {
   ClosedStandaloneListBox = "closed_standalone_listbox",
   StartRecordingDockOpened = "start_recording_dock_opened",
   SystemAudioStreamError = "system_audio_stream_error",
+  InputAudioStreamError = "input_audio_stream_error",
 }

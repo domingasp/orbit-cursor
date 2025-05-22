@@ -1,46 +1,65 @@
+import { Channel } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import { showStandaloneListBox } from "../../../api/windows";
 import ListBoxItem from "../../../components/listbox-item/listbox-item";
 import Select from "../../../components/select/select";
 import {
-  SelectedItem,
+  Item,
   useStandaloneListBoxStore,
 } from "../../../stores/standalone-listbox.store";
+import {
+  AppWindow,
+  useWindowReopenStore,
+} from "../../../stores/window-open-state.store";
+import { Events } from "../../../types/events";
+import {
+  AudioStream,
+  AudioStreamChannel,
+  startAudioListener,
+  stopAudioListener,
+} from "../api/audio-listeners";
 
 import AudioMeter from "./audio-meter";
 
-type AudioSelectProps = {
-  decibels: number | undefined;
+type InputAudioSelectProps = {
+  fetchItems: () => Promise<string[]>;
   id: string;
   label: string;
   placeholder: string;
   icon?: React.ReactNode;
 };
-const AudioSelect = ({
-  decibels,
+const InputAudioSelect = ({
+  fetchItems,
   icon,
   id,
   label,
   placeholder,
-}: AudioSelectProps) => {
-  const [openListBoxId, openListBox, addListBox, setSelectedItems] =
+}: InputAudioSelectProps) => {
+  const channel = useRef<Channel<AudioStreamChannel>>(null);
+  const startRecordingDockOpened = useWindowReopenStore(
+    useShallow((state) => state.windows.get(AppWindow.StartRecordingDock))
+  );
+
+  const [openListBoxId, openListBox, addListBox, setSelectedItems, setItems] =
     useStandaloneListBoxStore(
       useShallow((state) => [
         state.openListBoxId,
         state.openListBox,
         state.addListBox,
         state.setSelectedItems,
+        state.setItems,
       ])
     );
 
   const listBox = useStandaloneListBoxStore((state) => state.getListBox(id));
 
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [decibels, setDecibels] = useState<number | undefined>(undefined);
 
-  const PADDING = 4;
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const openStandaloneListBox = async () => {
     if (!triggerRef.current) return;
 
@@ -50,28 +69,70 @@ const AudioSelect = ({
 
     const { x, y } = await currentWindow.outerPosition();
 
+    const PADDING = 4;
     await showStandaloneListBox({
       width,
       x: x + left * window.devicePixelRatio,
       y: y + (top + height + PADDING) * window.devicePixelRatio,
     });
 
+    const items = await fetchItems();
+    setItems(
+      id,
+      items.map((item) => ({ id: item, label: item }))
+    );
     openListBox(id);
   };
 
   // Select only supports a single selection, hence we take the first
   // selected item
-  const selectedItem = (selectedItems: SelectedItem[]) => {
+  const selectedItem = (selectedItems: Item[]) => {
     if (selectedItems.length === 0) return null;
     return selectedItems[0].id;
   };
 
+  const onChange = async () => {
+    await stopAudioListener(AudioStream.Input);
+
+    const selectedDevice = selectedItem(listBox?.selectedItems ?? []);
+    if (selectedDevice) {
+      channel.current = new Channel<AudioStreamChannel>();
+      channel.current.onmessage = (message) => {
+        setDecibels(message.data.decibels);
+      };
+      startAudioListener(
+        AudioStream.Input,
+        channel.current,
+        selectedDevice.toString()
+      );
+    } else {
+      setDecibels(undefined);
+    }
+  };
+
   useEffect(() => {
     addListBox(id, label);
+
+    const unlistenInputAudioStreamError = listen(
+      Events.InputAudioStreamError,
+      () => {
+        setSelectedItems(id, []);
+      }
+    );
+
+    return () => {
+      void unlistenInputAudioStreamError.then((f) => {
+        f();
+      });
+    };
   }, []);
 
+  useEffect(() => {
+    void onChange();
+  }, [listBox?.selectedItems, startRecordingDockOpened]);
+
   return (
-    <div className="flex flex-col gap-1 grow basis-0">
+    <div className="flex flex-col gap-1 min-w-full">
       <Select
         aria-label={label}
         className="w-full"
@@ -80,7 +141,7 @@ const AudioSelect = ({
         items={listBox?.selectedItems ?? []}
         leftSection={icon}
         placeholder={placeholder}
-        selectedKey={listBox ? selectedItem(listBox.selectedItems) : null}
+        selectedKey={selectedItem(listBox?.selectedItems ?? [])}
         size="sm"
         triggerRef={triggerRef}
         variant="ghost"
@@ -118,4 +179,4 @@ const AudioSelect = ({
   );
 };
 
-export default AudioSelect;
+export default InputAudioSelect;

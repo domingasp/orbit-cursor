@@ -86,3 +86,16 @@ export const LeftSection: Story = {
     leftSection: <Volume2 size={14} />,
   },
 };
+
+export const LongValue: Story = {
+  args: {
+    children: (
+      <>
+        <ListBoxItem>
+          This is a really long label which should overflow
+        </ListBoxItem>
+      </>
+    ),
+    leftSection: <Volume2 size={14} />,
+  },
+};

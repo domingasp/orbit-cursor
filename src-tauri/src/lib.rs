@@ -12,7 +12,7 @@ use std::{
 };
 
 use audio::{
-  commands::{start_audio_listener, stop_all_audio_listeners, stop_audio_listener},
+  commands::{list_audio_inputs, start_audio_listener, stop_audio_listener},
   models::AudioStream,
 };
 use constants::store::{FIRST_RUN, NATIVE_REQUESTABLE_PERMISSIONS, STORE_NAME};
@@ -28,8 +28,8 @@ use tauri::{App, AppHandle, Manager, Wry};
 use tauri_plugin_store::{Store, StoreExt};
 use windows::{
   commands::{
-    hide_start_recording_dock, init_standalone_listbox, quit_app, show_standalone_listbox,
-    show_start_recording_dock,
+    hide_start_recording_dock, init_standalone_listbox, is_start_recording_dock_open, quit_app,
+    show_standalone_listbox, show_start_recording_dock,
   },
   service::{init_start_recording_panel, open_permissions},
 };
@@ -37,6 +37,7 @@ use windows::{
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
 struct AppState {
+  start_recording_dock_opened: bool,
   audio_streams: HashMap<AudioStream, Stream>,
 }
 
@@ -78,9 +79,11 @@ pub fn run() {
       hide_start_recording_dock,
       start_audio_listener,
       stop_audio_listener,
-      stop_all_audio_listeners
+      list_audio_inputs,
+      is_start_recording_dock_open
     ])
     .manage(Mutex::new(AppState {
+      start_recording_dock_opened: false,
       audio_streams: HashMap::new(),
     }))
     .plugin(tauri_plugin_opener::init())
@@ -104,10 +107,10 @@ pub fn run() {
           let has_required = ensure_permissions().await;
           if !has_required {
             open_permissions(app.handle()).await;
-            show_start_recording_dock(app.handle());
+            show_start_recording_dock(app.handle(), app.state());
           } else if matches!(store.get(FIRST_RUN), Some(Value::Bool(true))) {
             store.set(FIRST_RUN, json!(false));
-            show_start_recording_dock(app.handle());
+            show_start_recording_dock(app.handle(), app.state());
           }
         });
 

@@ -4,6 +4,7 @@ import { Commands } from "../../../types/api";
 
 export enum AudioStream {
   System = "system",
+  Input = "input",
 }
 
 export type AudioStreamChannel = {
@@ -14,16 +15,20 @@ export type AudioStreamChannel = {
 };
 
 export const startAudioListener = (
-  streamName: AudioStream,
-  onEvent: Channel<AudioStreamChannel>
+  streamToStart: AudioStream,
+  onEvent: Channel<AudioStreamChannel>,
+  deviceName?: string
 ) => {
-  void invoke(Commands.StartAudioListener, { onEvent, streamName });
+  void invoke(Commands.StartAudioListener, {
+    deviceName,
+    onEvent,
+    streamToStart,
+  });
 };
 
-export const stopAudioListener = (streamName: AudioStream) => {
-  void invoke(Commands.StopAudioListener, { streamName });
+export const stopAudioListener = async (streamName: AudioStream) => {
+  await invoke(Commands.StopAudioListener, { streamName });
 };
 
-export const stopAllAudioListeners = () => {
-  void invoke(Commands.StopAllAudioListeners);
-};
+export const listAudioInputs = async (): Promise<string[]> =>
+  await invoke(Commands.ListAudioInputs);

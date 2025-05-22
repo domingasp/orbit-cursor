@@ -1,14 +1,14 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 
-export enum Window {
+export enum AppWindow {
   StartRecordingDock = "start-recording-dock",
 }
 
 type WindowOpenState = {
-  addWindow: (id: Window) => void;
-  setWindowOpenState: (id: Window, state: boolean) => void;
-  windows: Map<Window, boolean>;
+  addWindow: (id: AppWindow, initial: boolean) => void;
+  setWindowOpenState: (id: AppWindow, state: boolean) => void;
+  windows: Map<AppWindow, boolean>;
 };
 
 /**
@@ -17,15 +17,15 @@ type WindowOpenState = {
  */
 export const useWindowReopenStore = create<WindowOpenState>()(
   devtools((set, get) => ({
-    addWindow: (id) => {
+    addWindow: (id, initial) => {
       const windows = get().windows;
       if (windows.has(id)) return;
-      set({ windows: new Map(windows).set(id, false) });
+      set({ windows: new Map(windows).set(id, initial) });
     },
     setWindowOpenState: (id, state) => {
       const windows = get().windows;
       set({ windows: new Map(windows).set(id, state) });
     },
-    windows: new Map<Window, boolean>(),
+    windows: new Map<AppWindow, boolean>(),
   }))
 );

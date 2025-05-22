@@ -4,11 +4,12 @@ import { devtools, persist, StorageValue } from "zustand/middleware";
 
 const STORE_NAME = "standaloneListBoxesStore";
 
-export type SelectedItem = { id: Key | null; label: string };
+export type Item = { id: Key | null; label: string };
 
 type StandaloneListBox = {
+  items: Item[];
   label: string;
-  selectedItems: SelectedItem[];
+  selectedItems: Item[];
 };
 
 type StandaloneListBoxesState = {
@@ -19,7 +20,8 @@ type StandaloneListBoxesState = {
   openListBox: (id: string) => void;
   openListBoxId: string | null;
   removeListBox: (id: string) => void;
-  setSelectedItems: (id: string, selectedItems: SelectedItem[]) => void;
+  setItems: (id: string, items: Item[]) => void;
+  setSelectedItems: (id: string, selectedItems: Item[]) => void;
 };
 
 export const useStandaloneListBoxStore = create<StandaloneListBoxesState>()(
@@ -31,7 +33,11 @@ export const useStandaloneListBoxStore = create<StandaloneListBoxesState>()(
           if (listBoxes.has(id)) return;
 
           set({
-            listBoxes: new Map(listBoxes).set(id, { label, selectedItems: [] }),
+            listBoxes: new Map(listBoxes).set(id, {
+              items: [],
+              label,
+              selectedItems: [],
+            }),
           });
         },
         closeListBox: () => {
@@ -55,6 +61,18 @@ export const useStandaloneListBoxStore = create<StandaloneListBoxesState>()(
           const next = new Map(listBoxes);
           next.delete(id);
           set({ listBoxes: next });
+        },
+        setItems: (id, items) => {
+          const listBoxes = get().listBoxes;
+          const listBox = listBoxes.get(id);
+          if (!listBox) return;
+
+          set({
+            listBoxes: new Map(listBoxes).set(id, {
+              ...listBox,
+              items,
+            }),
+          });
         },
         setSelectedItems: (id, selectedItems) => {
           const listBoxes = get().listBoxes;

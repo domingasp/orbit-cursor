@@ -23,7 +23,7 @@
         "shadow": true,
         "transparent": true,
         "windowEffects": {
-          "effects": ["underWindowBackground"],
+          "effects": ["windowBackground"],
           "radius": 10,
           "state": "active"
         }
