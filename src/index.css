@@ -36,6 +36,7 @@
   --color-success: var(--color-green-600);
   --color-info: var(--color-sky-500);
   --color-warning: var(--color-yellow-500);
+  --color-warning-100: var(--color-orange-400);
   --color-error: var(--color-red-500);
 
   --color-muted: var(--color-neutral-700);
@@ -52,6 +53,7 @@
     --color-success: var(--color-green-600);
     --color-info: var(--color-sky-500);
     --color-warning: var(--color-yellow-500);
+    --color-warning-100: var(--color-orange-400);
     --color-error: var(--color-red-500);
 
     --color-muted: var(--color-neutral-400);
