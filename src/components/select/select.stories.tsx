@@ -27,7 +27,7 @@ const meta = {
   },
   component: Select,
   parameters: {
-    controls: { disable: true },
+    controls: { include: ["label"] },
     layout: "centered",
   },
   title: "Select",

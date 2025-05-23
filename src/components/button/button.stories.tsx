@@ -19,9 +19,8 @@ const colors: React.ComponentProps<typeof Button>["color"][] = [
   "info",
 ];
 
-const meta: Meta<typeof Button> = {
+const meta = {
   argTypes: {
-    ref: { control: { disable: true } },
     size: {
       control: "inline-radio",
       options: sizes,
@@ -38,17 +37,26 @@ const meta: Meta<typeof Button> = {
   },
   component: Button,
   parameters: {
+    controls: {
+      exclude: ["ref", "className"],
+    },
     layout: "centered",
   },
   title: "Button",
-};
+} satisfies Meta<typeof Button>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 /* --------------------------------- Stories -------------------------------- */
 export const Default: Story = {
-  args: { size: "md", variant: "solid" },
+  args: {
+    /* eslint-disable sort-keys */
+    size: "md",
+    variant: "solid",
+    shiny: false,
+    /* eslint-enable sort-keys */
+  },
 };
 
 export const Sizes: Story = {

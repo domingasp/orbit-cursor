@@ -17,10 +17,12 @@ const meta = {
     children: (
       <span className="font-bold text-3xl text-content-fg">sparkles</span>
     ),
+    fillType: "fill-only",
     icon: Sparkle,
   },
   component: Sparkles,
   parameters: {
+    controls: { include: ["fillType"] },
     layout: "centered",
   },
   title: "Sparkles",

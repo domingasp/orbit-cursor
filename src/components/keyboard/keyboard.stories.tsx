@@ -14,7 +14,6 @@ const variants: React.ComponentProps<typeof Keyboard>["variant"][] = [
 
 const meta = {
   argTypes: {
-    children: { control: { disable: true } },
     size: {
       control: "inline-radio",
       options: sizes,
@@ -32,6 +31,7 @@ const meta = {
   },
   component: Keyboard,
   parameters: {
+    controls: { exclude: ["children", "ref"] },
     layout: "centered",
   },
   title: "Keyboard",

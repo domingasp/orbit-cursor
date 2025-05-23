@@ -5,13 +5,20 @@ import ListBoxItem from "../listbox-item/listbox-item";
 import ListBox from "./listbox";
 
 const meta = {
+  argTypes: {
+    selectionMode: {
+      control: "inline-radio",
+      options: ["single", "multiple"],
+      table: { defaultValue: { summary: "solid" } },
+    },
+  },
   args: {
     className: "w-[180px]",
     selectionMode: "single",
   },
   component: ListBox,
   parameters: {
-    controls: { disable: true },
+    controls: { exclude: ["className", "children", "ref"] },
     layout: "centered",
   },
   title: "ListBox",
@@ -49,7 +56,9 @@ export const Compact: Story = {
   },
 };
 
-export const Empty: Story = {};
+export const Empty: Story = {
+  parameters: { controls: { disable: true } },
+};
 
 export const LongValue: Story = {
   args: {
@@ -60,4 +69,5 @@ export const LongValue: Story = {
       </ListBoxItem>
     ),
   },
+  parameters: { controls: { disable: true } },
 };
