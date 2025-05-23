@@ -36,6 +36,7 @@ const meta = {
   },
   component: Tooltip,
   parameters: {
+    controls: { include: ["withArrow"] },
     layout: "centered",
   },
   title: "Tooltip",

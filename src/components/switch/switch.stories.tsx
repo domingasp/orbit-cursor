@@ -16,6 +16,7 @@ const meta = {
   args: { children: "Label" },
   component: Switch,
   parameters: {
+    controls: { include: ["size"] },
     layout: "centered",
   },
   title: "Switch",

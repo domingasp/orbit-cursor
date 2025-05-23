@@ -54,6 +54,7 @@ const meta = {
     },
   ],
   parameters: {
+    controls: { exclude: ["className", "children"] },
     layout: "centered",
   },
   title: "Overlay",

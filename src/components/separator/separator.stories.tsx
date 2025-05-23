@@ -4,11 +4,15 @@ import Separator from "./separator";
 
 const meta = {
   argTypes: {
-    orientation: {},
+    orientation: {
+      control: "inline-radio",
+      options: ["horizontal", "vertical"],
+      table: { readonly: true },
+    },
   },
   component: Separator,
   parameters: {
-    controls: { disable: true },
+    controls: { exclude: ["className"] },
     layout: "centered",
   },
   title: "Separator",
@@ -19,6 +23,9 @@ type Story = StoryObj<typeof meta>;
 
 /* --------------------------------- Stories -------------------------------- */
 export const Horizontal: Story = {
+  args: {
+    orientation: "vertical",
+  },
   render: () => (
     <div className="text-content-fg text-center">
       Hello
@@ -29,9 +36,12 @@ export const Horizontal: Story = {
 };
 
 /**
- * The container will need a determined height, otherwise use a class like `h-[10px]`.
+ * The container will need a determined height, otherwise add a class like `h-[10px]`.
  */
 export const Vertical: Story = {
+  args: {
+    orientation: "vertical",
+  },
   render: () => (
     <div className="text-content-fg text-center flex">
       Hello
