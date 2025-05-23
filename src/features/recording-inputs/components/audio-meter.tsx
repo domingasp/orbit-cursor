@@ -137,12 +137,14 @@ const AudioMeter = ({
           </clipPath>
 
           <clipPath id="peakClip">
-            <rect
-              height="100%"
-              transform="translate(-1,0)"
-              width="2px"
-              x={peakPercentage.toString() + "%"}
-            />
+            {peak >= -60 && (
+              <rect
+                height="100%"
+                transform="translate(-1.5,0)"
+                width="2px"
+                x={peakPercentage.toString() + "%"}
+              />
+            )}
           </clipPath>
         </defs>
 

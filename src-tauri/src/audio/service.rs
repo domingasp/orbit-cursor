@@ -15,7 +15,6 @@ use super::commands::AudioStreamChannel;
 
 fn buffer_to_decibels(samples: &[f32]) -> f32 {
   let sum_squares: f32 = samples.iter().map(|&s| s * s).sum();
-
   let mean_square: f32 = sum_squares / (samples.len() as f32);
   let rms = mean_square.sqrt();
 

@@ -22,6 +22,7 @@ import {
   startAudioListener,
   stopAudioListener,
 } from "../api/audio-listeners";
+import { usePeak } from "../hooks/use-peak";
 
 import AudioMeter from "./audio-meter";
 
@@ -58,6 +59,7 @@ const InputAudioSelect = ({
   const listBox = useStandaloneListBoxStore((state) => state.getListBox(id));
 
   const [decibels, setDecibels] = useState<number | undefined>(undefined);
+  const peak = usePeak({ decibels: decibels ?? -Infinity });
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const openStandaloneListBox = async () => {
@@ -171,8 +173,9 @@ const InputAudioSelect = ({
 
       <AudioMeter
         decibels={decibels ?? -Infinity}
+        disabled={!selectedItem(listBox?.selectedItems ?? [])}
         height={5}
-        orientation="horizontal"
+        peak={peak}
         width="100%"
       />
     </div>
