@@ -18,6 +18,7 @@ import {
   startAudioListener,
   stopAudioListener,
 } from "../api/audio-listeners";
+import { usePeak } from "../hooks/use-peak";
 
 import AudioMeter from "./audio-meter";
 
@@ -32,6 +33,7 @@ const SystemAudioToggle = () => {
   );
 
   const [decibels, setDecibels] = useState<number | undefined>(undefined);
+  const peak = usePeak({ decibels: decibels ?? -Infinity });
 
   useEffect(() => {
     const unlistenSystemAudioStreamError = listen(
@@ -86,9 +88,8 @@ const SystemAudioToggle = () => {
       <AudioMeter
         decibels={decibels ?? -Infinity}
         disabled={!systemAudio}
-        disabledIcon={null}
         height={5}
-        orientation="horizontal"
+        peak={peak}
         width="100%"
       />
     </div>

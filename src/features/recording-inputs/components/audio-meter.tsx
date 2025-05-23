@@ -1,123 +1,174 @@
-import { VolumeOffIcon } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
-import { ReactNode } from "react";
+import { SVGAttributes, useEffect, useRef, useState } from "react";
 import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../../tailwind-merge.config";
 
-const decibelToPercentage = (decibels: number) => {
-  if (decibels <= -99) return 0;
-  if (decibels <= -30) return ((decibels + 99) / 69) * 20;
-  if (decibels <= -10) return 20 + ((decibels + 30) / 20) * 55;
-  if (decibels <= 0) return 75 + ((decibels + 10) / 10) * 25;
-  return 100;
+const decibelToPercentage = (decibel: number): number => {
+  if (decibel < -60) return 0;
+  if (decibel > 0) return 100;
+
+  const normalized = (decibel + 60) / 60;
+  const power = 1.357; // -24 dB map to ~50%
+  return Math.pow(normalized, power) * 100;
 };
 
-const decibelsToLabel = (decibels: number) => {
-  if (decibels > 0) return "0";
-  if (decibels < -99) return "-∞";
-  return decibels.toFixed(1);
-};
-
-const decibelsToColor = (decibels: number) => {
-  if (decibels < -99) return "var(--color-muted)";
-  if (decibels < -20) return "var(--color-success)";
-  if (decibels < -8) return "var(--color-warning)";
-  return "var(--color-error)";
-};
-
-const audioMeterVariants = tv({
+const tickVariants = tv({
   defaultVariants: {
-    orientation: "vertical",
+    position: "below",
   },
   slots: {
-    base: "flex items-center",
-    disabledIconContainer:
-      "text-muted absolute inset-0 flex items-center justify-center p-1",
-    label: "text-xxs font-semibold",
-    meter: "bg-content-fg rounded-sm transition-all",
-    meterContainer:
-      "flex items-end bg-neutral rounded-sm overflow-hidden relative",
+    base: "absolute flex flex-col -translate-x-[50%] text-muted items-center pointer-events-none select-none",
+    label: "relative text-[6px]/2 text-shadow-2xs transition-colors px-0.25",
+    line: "w-[1px] h-[2px] bg-muted transition-colors",
   },
   variants: {
-    disabled: {
+    clipping: {
       true: {
-        disabledIconContainer: "text-muted",
-        label: "text-muted",
+        label: "text-warning-100",
+        line: "bg-warning-100",
       },
     },
-    orientation: {
-      horizontal: {
-        base: "flex-row-reverse gap-2 w-full",
-        label: "w-[35px] text-center",
-      },
-      vertical: {
-        base: "flex-col gap-0.5",
-      },
+    position: {
+      above: { base: "flex-col-reverse", label: "mb-[1px]" },
+      below: { base: "flex-col mt-[1.5px]" },
     },
   },
 });
 
-type AudioMeterProps = VariantProps<typeof audioMeterVariants> & {
+type TickProps = VariantProps<typeof tickVariants> & {
+  tick: number;
+  display?: string;
+  excludeLine?: boolean;
+  labelClassName?: string;
+  maxTick?: number;
+};
+const Tick = ({
+  display,
+  excludeLine = false,
+  labelClassName,
+  maxTick,
+  position,
+  tick,
+}: TickProps) => {
+  const { base, label, line } = tickVariants({ clipping: tick > 0, position });
+  return (
+    <div
+      key={tick}
+      className={base()}
+      style={{
+        left:
+          decibelToPercentage(Math.min(maxTick ?? Infinity, tick)).toString() +
+          "%",
+      }}
+    >
+      {!excludeLine && <div className={line()} />}
+      <span className={label({ className: labelClassName })}>
+        {display ?? tick}
+      </span>
+    </div>
+  );
+};
+
+type AudioMeterProps = {
   decibels: number;
-  disabledIcon?: ReactNode;
-  height?: number | string;
+  disabled?: boolean;
+  height?: number;
+  hidePeakTick?: boolean;
+  hideTicks?: boolean;
+  peak?: number;
+  radius?: number;
   width?: number | string;
 };
 
 const AudioMeter = ({
-  decibels: decibelsValue,
-  disabled = false,
-  disabledIcon = <VolumeOffIcon size={20} />,
-  height = 40,
-  orientation = "vertical",
-  width = 40,
+  decibels,
+  disabled,
+  height = 10,
+  hidePeakTick,
+  hideTicks,
+  peak = -Infinity,
+  radius = 2,
+  width = 150,
 }: AudioMeterProps) => {
-  const { base, disabledIconContainer, label, meter, meterContainer } =
-    audioMeterVariants({
-      disabled,
-      orientation,
-    });
+  const percentage = decibelToPercentage(decibels);
+  const peakPercentage = decibelToPercentage(Math.min(peak, -0.5));
 
-  const decibels = disabled ? -Infinity : decibelsValue;
+  const svg = useRef<SVGSVGElement>(null);
+  const [ticks, setTicks] = useState([-48, -24]);
 
-  const color = decibelsToColor(decibels);
-  const fillPercentage = decibelToPercentage(decibels).toString() + "%";
+  const METER: SVGAttributes<SVGRectElement> = {
+    height: "100%",
+    rx: radius,
+    ry: radius,
+    width: disabled ? "0%" : "100%",
+  };
+
+  useEffect(() => {
+    const latestTicks = [-48, -24];
+    if (svg.current) {
+      if (svg.current.clientWidth > 70) latestTicks.push(-12);
+      if (svg.current.clientWidth > 5) latestTicks.push(-3);
+    }
+    setTicks(latestTicks);
+  }, [width]);
 
   return (
-    <div className={base()}>
-      <div className={meterContainer()} style={{ height, width }}>
-        <div
-          className={meter()}
-          style={{
-            background: color,
-            height: orientation === "vertical" ? fillPercentage : "100%",
-            width: orientation === "horizontal" ? fillPercentage : "100%",
-          }}
-        />
-
-        <AnimatePresence>
-          {disabled && (
-            <motion.div
-              animate={{ opacity: 1, scale: 1 }}
-              className={disabledIconContainer()}
-              exit={{ opacity: 0 }}
-              initial={{ opacity: 0, scale: 0 }}
-            >
-              {disabledIcon}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <span
-        className={label()}
-        style={{
-          color: !disabled ? color : undefined,
-        }}
+    <div className="pointer-events-none select-none">
+      {/* Using SVG due to layering divs with border-radius and linear gradient
+       * causing bleeding */}
+      <svg
+        ref={svg}
+        height={height}
+        viewBox={`0 0 ${width.toString()} ${height.toString()}`}
+        width={width}
       >
-        {decibelsToLabel(decibels)}
-      </span>
+        <defs>
+          <linearGradient id="meterFill" x1="0%" x2="100%" y1="0%" y2="0%">
+            <stop offset="0%" stopColor="var(--color-success)" />
+            <stop offset="65%" stopColor="var(--color-success)" />
+            <stop offset="85%" stopColor="var(--color-warning)" />
+            <stop offset="93%" stopColor="var(--color-warning)" />
+            <stop offset="96%" stopColor="var(--color-warning-100)" />
+            <stop offset="100%" stopColor="var(--color-warning-100)" />{" "}
+          </linearGradient>
+
+          <clipPath id="meterClip">
+            <rect height="100%" width={percentage.toString() + "%"} />
+          </clipPath>
+
+          <clipPath id="peakClip">
+            {peak >= -60 && (
+              <rect
+                height="100%"
+                transform="translate(-1.5,0)"
+                width="2px"
+                x={peakPercentage.toString() + "%"}
+              />
+            )}
+          </clipPath>
+        </defs>
+
+        <rect className="fill-muted/20" {...METER} width="100%" />
+        <rect clipPath="url(#meterClip)" fill="url(#meterFill)" {...METER} />
+        <rect clipPath="url(#peakClip)" fill="url(#meterFill)" {...METER} />
+      </svg>
+
+      {(!hideTicks || !hidePeakTick) && (
+        <div className="relative h-3">
+          {!hideTicks &&
+            [...ticks].map((tick) => <Tick key={tick} tick={tick} />)}
+
+          {!hidePeakTick && !disabled && peak >= -60 && (
+            <Tick
+              display={peak.toFixed(1)}
+              labelClassName="backdrop-blur-xs bg-content/50"
+              maxTick={-0.5}
+              position="below"
+              tick={peak}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 };
