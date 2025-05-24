@@ -10,4 +10,7 @@ export enum Commands {
   StopAudioListener = "stop_audio_listener",
   ListAudioInputs = "list_audio_inputs",
   IsStartRecordingDockOpen = "is_start_recording_dock_open",
+  ListCameras = "list_cameras",
+  StartCameraStream = "start_camera_stream",
+  StopCameraStream = "stop_camera_stream",
 }

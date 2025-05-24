@@ -1,7 +1,7 @@
 import { SVGAttributes, useEffect, useRef, useState } from "react";
 import { VariantProps } from "tailwind-variants";
 
-import { tv } from "../../../../tailwind-merge.config";
+import { tv } from "../../../../../tailwind-merge.config";
 
 const decibelToPercentage = (decibel: number): number => {
   if (decibel < -60) return 0;

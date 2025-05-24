@@ -4,21 +4,21 @@ import { Volume2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import Switch from "../../../components/switch/switch";
-import { cn } from "../../../lib/styling";
-import { useRecordingPreferencesStore } from "../../../stores/recording-preferences.store";
+import Switch from "../../../../components/switch/switch";
+import { cn } from "../../../../lib/styling";
+import { useRecordingPreferencesStore } from "../../../../stores/recording-preferences.store";
 import {
   AppWindow,
   useWindowReopenStore,
-} from "../../../stores/window-open-state.store";
-import { Events } from "../../../types/events";
+} from "../../../../stores/window-open-state.store";
+import { Events } from "../../../../types/events";
 import {
   AudioStream,
   AudioStreamChannel,
   startAudioListener,
   stopAudioListener,
-} from "../api/audio-listeners";
-import { usePeak } from "../hooks/use-peak";
+} from "../../api/audio-listeners";
+import { usePeak } from "../../hooks/use-peak";
 
 import AudioMeter from "./audio-meter";
 

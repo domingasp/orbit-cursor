@@ -132,3 +132,11 @@ export const updateStandaloneListBoxStore = (e: StorageEvent) => {
     void useStandaloneListBoxStore.persist.rehydrate();
   }
 };
+
+/**
+ * Returns id of first selected item.
+ */
+export const selectedItem = (selectedItems: Item[]) => {
+  if (selectedItems.length === 0) return null;
+  return selectedItems[0].id;
+};

@@ -16,7 +16,7 @@
         "title": "Start Recording Dock",
         "label": "start_recording_dock",
         "url": "/start-recording-dock",
-        "width": 408,
+        "width": 900,
         "height": 180,
         "decorations": false,
         "resizable": false,
