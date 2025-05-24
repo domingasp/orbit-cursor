@@ -32,6 +32,16 @@ rdev = { git = "https://github.com/rustdesk-org/rdev" }
 tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2" }
 tauri-plugin-store = "2"
 cpal = { git = "https://github.com/domingasp/cpal.git"}
+yuv = "0.8.4"
+
+[dependencies.nokhwa]
+git = "https://github.com/l1npengtul/nokhwa.git"
+branch = "0.10"
+features = ["input-native", "output-wgpu", "output-threaded"]
+
+[dependencies.image]
+version = "0.25"
+features = ["default-formats"]
 
 [target."cfg(target_os = \"macos\")".dependencies]
 tauri-plugin-macos-permissions = "2.2.0"

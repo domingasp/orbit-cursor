@@ -1,5 +1,5 @@
 import { listen } from "@tauri-apps/api/event";
-import { Mic } from "lucide-react";
+import { Camera, Mic, Volume2Icon } from "lucide-react";
 import { useEffect } from "react";
 
 import Separator from "../../../components/separator/separator";
@@ -12,15 +12,11 @@ import {
   useStandaloneListBoxStore,
 } from "../../../stores/standalone-listbox.store";
 import { Events } from "../../../types/events";
-import { listAudioInputs } from "../api/audio-listeners";
 
+import InputAudioSelect from "./audio/input-audio-select";
+import SystemAudioToggle from "./audio/system-audio-toggle";
+import CameraSelect from "./camera/camera-select";
 import GrantAccess from "./grant-access";
-import InputAudioSelect from "./input-audio-select";
-import SystemAudioToggle from "./system-audio-toggle";
-
-enum ListBoxes {
-  MicrophoneAudio = "microphone-audio",
-}
 
 const RecordingInputs = () => {
   const permissions = usePermissionsStore((state) => state.permissions);
@@ -44,11 +40,28 @@ const RecordingInputs = () => {
   }, []);
 
   return (
-    <div className="w-full px-2 grid grid-cols-[1fr_auto_1fr]">
-      {permissions.microphone?.hasAccess ? (
+    <div className="w-full px-2 grid grid-cols-[1fr_auto_1fr_auto_1fr]">
+      {permissions.screen?.hasAccess ? (
         <SystemAudioToggle />
       ) : (
         <GrantAccess
+          icon={<Volume2Icon size={12} />}
+          permission={permissions.screen}
+          type={PermissionType.Screen}
+        />
+      )}
+
+      <Separator
+        className="h-[30px] ml-6"
+        orientation="vertical"
+        spacing="md"
+      />
+
+      {permissions.microphone?.hasAccess ? (
+        <InputAudioSelect />
+      ) : (
+        <GrantAccess
+          icon={<Mic size={12} />}
           permission={permissions.microphone}
           type={PermissionType.Microphone}
         />
@@ -60,18 +73,13 @@ const RecordingInputs = () => {
         spacing="md"
       />
 
-      {permissions.microphone?.hasAccess ? (
-        <InputAudioSelect
-          fetchItems={listAudioInputs}
-          icon={<Mic size={14} />}
-          id={ListBoxes.MicrophoneAudio}
-          label="Microphone audio"
-          placeholder="No microphone"
-        />
+      {permissions.camera?.hasAccess ? (
+        <CameraSelect />
       ) : (
         <GrantAccess
-          permission={permissions.microphone}
-          type={PermissionType.Microphone}
+          icon={<Camera size={12} />}
+          permission={permissions.camera}
+          type={PermissionType.Camera}
         />
       )}
     </div>

@@ -1,4 +1,5 @@
 mod audio;
+mod camera;
 mod constants;
 mod global_inputs;
 #[cfg(target_os = "macos")]
@@ -15,8 +16,10 @@ use audio::{
   commands::{list_audio_inputs, start_audio_listener, stop_audio_listener},
   models::AudioStream,
 };
+use camera::commands::{list_cameras, start_camera_stream, stop_camera_stream};
 use constants::store::{FIRST_RUN, NATIVE_REQUESTABLE_PERMISSIONS, STORE_NAME};
 use cpal::Stream;
+use nokhwa::CallbackCamera;
 use permissions::{
   commands::{check_permissions, open_system_settings, request_permission},
   service::{ensure_permissions, monitor_permissions},
@@ -39,6 +42,7 @@ static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 struct AppState {
   start_recording_dock_opened: bool,
   audio_streams: HashMap<AudioStream, Stream>,
+  camera_stream: Option<CallbackCamera>,
 }
 
 async fn setup_store(app: &App) -> Arc<Store<Wry>> {
@@ -80,11 +84,15 @@ pub fn run() {
       start_audio_listener,
       stop_audio_listener,
       list_audio_inputs,
-      is_start_recording_dock_open
+      is_start_recording_dock_open,
+      list_cameras,
+      start_camera_stream,
+      stop_camera_stream
     ])
     .manage(Mutex::new(AppState {
       start_recording_dock_opened: false,
       audio_streams: HashMap::new(),
+      camera_stream: None,
     }))
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_macos_permissions::init())
