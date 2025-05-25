@@ -123,7 +123,7 @@ const Select = <T extends object>({
 
               <motion.div
                 aria-hidden="true"
-                className={controls({ className: "ml-3" })}
+                className={controls({ className: clearable && "ml-3" })}
                 animate={{
                   rotate: isOpen ? 180 : 0,
                   y: isOpen ? -0.5 : 0,

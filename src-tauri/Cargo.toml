@@ -33,6 +33,7 @@ tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2"
 tauri-plugin-store = "2"
 cpal = { git = "https://github.com/domingasp/cpal.git"}
 yuv = "0.8.4"
+once_cell = "1.21.3"
 
 [dependencies.nokhwa]
 git = "https://github.com/l1npengtul/nokhwa.git"

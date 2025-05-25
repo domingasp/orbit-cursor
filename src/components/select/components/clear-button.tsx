@@ -23,7 +23,6 @@ const clearButtonVariants = tv({
   },
 });
 
-// TASK rework main button component
 const MotionAriaButton = motion.create(AriaButton);
 
 type ClearButtonProps = MotionProps &

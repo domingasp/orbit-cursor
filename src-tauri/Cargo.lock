@@ -3569,6 +3569,7 @@ dependencies = [
  "image",
  "nokhwa",
  "objc",
+ "once_cell",
  "rdev",
  "serde",
  "serde_json",

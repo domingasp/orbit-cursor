@@ -2,30 +2,36 @@ import {
   openSystemSettings,
   requestPermissions,
 } from "../../../api/permissions";
-import Button from "../../../components/button/button";
 import {
   PermissionStatus,
   PermissionType,
 } from "../../../stores/permissions.store";
+import Button from "../../button/button";
+import Overlay from "../../overlay/overlay";
 
 type GrantAccessProps = {
   permission: PermissionStatus | undefined;
   type: PermissionType;
   icon?: React.ReactNode;
 };
-const GrantAccess = ({ icon, permission, type }: GrantAccessProps) => {
+const GrantAccessOverlay = ({ icon, permission, type }: GrantAccessProps) => {
   const onPressGrant = () => {
     if (permission?.canRequest) requestPermissions(type);
     else openSystemSettings();
   };
 
   return (
-    <div className="flex w-full justify-center items-center bg-neutral/15 rounded-sm py-3">
+    <Overlay
+      blur="md"
+      className="-inset-1 rounded-md bg-content/66"
+      isOpen={!permission?.hasAccess}
+      contained
+    >
       <Button onPress={onPressGrant} size="sm">
         {icon} {permission?.canRequest ? "Grant" : "System Settings"}
       </Button>
-    </div>
+    </Overlay>
   );
 };
 
-export default GrantAccess;
+export default GrantAccessOverlay;

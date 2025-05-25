@@ -1,21 +1,34 @@
 import { Channel } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { Camera, CameraOff } from "lucide-react";
-import { useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
 
-import { cn } from "../../../../lib/styling";
+import GrantAccessOverlay from "../../../components/shared/grant-access-overlay/grant-access-overlay";
+import InputSelect from "../../../components/shared/input-select/input-select";
+import { cn } from "../../../lib/styling";
+import {
+  PermissionType,
+  usePermissionsStore,
+} from "../../../stores/permissions.store";
 import {
   Item,
   selectedItem,
-} from "../../../../stores/standalone-listbox.store";
+  StandaloneListBoxes,
+  updateStandaloneListBoxStore,
+  useStandaloneListBoxStore,
+} from "../../../stores/standalone-listbox.store";
+import { Events } from "../../../types/events";
 import {
   listCameras,
   startCameraStream,
   stopCameraStream,
-} from "../../api/camera";
-import { ListBoxes } from "../../types";
-import InputSelect from "../input-select";
+} from "../api/camera";
 
 const CameraSelect = () => {
+  const permission = usePermissionsStore((state) => state.permissions.camera);
+  const { closeListBox } = useStandaloneListBoxStore((state) => state);
+
   const channel = useRef<Channel>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageDataRef = useRef<ImageData>(null);
@@ -33,7 +46,7 @@ const CameraSelect = () => {
     const ctx = canvas?.getContext("2d", { willReadFrequently: false });
     if (!canvas || !ctx) return;
 
-    // Decode width and height from bytes
+    // Decode width and height from byte header
     const view = new DataView(buffer);
     const width = view.getUint32(0, true);
     const height = view.getUint32(4, true);
@@ -69,28 +82,63 @@ const CameraSelect = () => {
     }
   };
 
+  useEffect(() => {
+    const unlistenStandaloneListBox = listen(
+      Events.ClosedStandaloneListBox,
+      () => {
+        closeListBox();
+      }
+    );
+
+    window.addEventListener("storage", updateStandaloneListBoxStore);
+    return () => {
+      window.removeEventListener("storage", updateStandaloneListBoxStore);
+      void unlistenStandaloneListBox.then((f) => {
+        f();
+      });
+    };
+  }, []);
+
   return (
-    <div className="flex flex-row min-w-full gap-2 items-center">
-      <div className="relative aspect-video w-full max-w-1/4 bg-muted/30 rounded-sm text-muted flex justify-center items-center overflow-hidden">
+    <div
+      className={cn(
+        "relative flex flex-col gap-2 items-center rounded-md",
+        !permission?.hasAccess && "bg-content"
+      )}
+    >
+      <GrantAccessOverlay
+        icon={<Camera size={12} />}
+        permission={permission}
+        type={PermissionType.Camera}
+      />
+
+      <div className="w-40 aspect-video relative bg-content-fg/10 text-muted flex justify-center items-center rounded-md overflow-hidden shadow-sm">
         <canvas
           ref={canvasRef}
           className={cn(
-            "w-full h-full object-contain transform -scale-x-100",
+            "w-full h-full object-contain transform -scale-x-100 rounded-md",
             noDevice && "opacity-0"
           )}
         />
 
-        {noDevice && (
-          <div className="absolute">
-            <CameraOff size={20} />
-          </div>
-        )}
+        <AnimatePresence>
+          {noDevice && (
+            <motion.div
+              animate={{ opacity: 1, scale: 1 }}
+              className="absolute"
+              exit={{ opacity: 0, scale: 0 }}
+              initial={{ opacity: 0, scale: 0 }}
+            >
+              <CameraOff size={20} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <InputSelect
         fetchItems={fetchItems}
         icon={<Camera size={14} />}
-        id={ListBoxes.Camera}
+        id={StandaloneListBoxes.Camera}
         label="Camera"
         onChange={onChange}
         placeholder="No camera"

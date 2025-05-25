@@ -5,7 +5,7 @@ import { tv } from "../../../tailwind-merge.config";
 import { availableVariants } from "../../lib/styling";
 
 const separatorVariants = tv({
-  base: "bg-neutral-100 rounded-xs m-auto",
+  base: "bg-content-fg/20 rounded-xs m-auto",
   compoundVariants: [
     {
       class: "my-1",

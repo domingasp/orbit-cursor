@@ -6,6 +6,10 @@ export const initStandaloneListBox = () => {
   void invoke(Commands.InitStandaloneListBox);
 };
 
+export const initRecordingInputOptions = () => {
+  void invoke(Commands.InitRecordingInputOptions);
+};
+
 export const hideStartRecordingDock = () => {
   void invoke(Commands.HideStartRecordingDock);
 };
@@ -26,4 +30,12 @@ export const showStandaloneListBox = async ({
 
 export const isStartRecordingDockOpen = async (): Promise<boolean> => {
   return await invoke(Commands.IsStartRecordingDockOpen);
+};
+
+export const showRecordingInputOptions = (x: number) => {
+  void invoke(Commands.ShowRecordingInputOptions, { x });
+};
+
+export const isRecordingInputOptionsOpen = async (): Promise<boolean> => {
+  return await invoke(Commands.IsRecordingInputOptionsOpen);
 };

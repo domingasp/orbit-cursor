@@ -7,7 +7,6 @@ import { useShallow } from "zustand/react/shallow";
 import { isStartRecordingDockOpen } from "../../api/windows";
 import Overlay from "../../components/overlay/overlay";
 import RecordingControls from "../../features/recording-controls/components/recording-controls";
-import RecordingInputs from "../../features/recording-inputs/components/recording-inputs";
 import { usePermissionsStore } from "../../stores/permissions.store";
 import {
   AppWindow,
@@ -58,7 +57,6 @@ const StartRecordingDock = () => {
       </Overlay>
 
       <RecordingControls />
-      <RecordingInputs />
     </div>
   );
 };

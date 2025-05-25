@@ -4,28 +4,28 @@ import { Volume2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import Switch from "../../../../components/switch/switch";
-import { cn } from "../../../../lib/styling";
-import { useRecordingPreferencesStore } from "../../../../stores/recording-preferences.store";
+import Switch from "../../../components/switch/switch";
+import { cn } from "../../../lib/styling";
+import { useRecordingPreferencesStore } from "../../../stores/recording-preferences.store";
 import {
   AppWindow,
   useWindowReopenStore,
-} from "../../../../stores/window-open-state.store";
-import { Events } from "../../../../types/events";
+} from "../../../stores/window-open-state.store";
+import { Events } from "../../../types/events";
 import {
   AudioStream,
   AudioStreamChannel,
   startAudioListener,
   stopAudioListener,
-} from "../../api/audio-listeners";
-import { usePeak } from "../../hooks/use-peak";
+} from "../api/audio-listeners";
+import { usePeak } from "../hooks/use-peak";
 
 import AudioMeter from "./audio-meter";
 
 const SystemAudioToggle = () => {
   const channel = useRef<Channel<AudioStreamChannel>>(null);
   const startRecordingDockOpened = useWindowReopenStore(
-    useShallow((state) => state.windows.get(AppWindow.StartRecordingDock))
+    useShallow((state) => state.windows[AppWindow.StartRecordingDock])
   );
 
   const [systemAudio, setSystemAudio] = useRecordingPreferencesStore(
@@ -65,7 +65,7 @@ const SystemAudioToggle = () => {
   }, [systemAudio, startRecordingDockOpened]);
 
   return (
-    <div className="flex flex-col gap-1 min-w-full">
+    <div className="flex flex-col gap-1 min-w-full mt-2">
       <div className="flex flex-row gap-2">
         <Switch
           className="justify-between w-full pl-2 py-1"
@@ -75,7 +75,7 @@ const SystemAudioToggle = () => {
         >
           <div
             className={cn(
-              "flex flex-row gap-2 transition-colors",
+              "flex flex-row gap-2 transition-colors text-xs",
               systemAudio ? "text-content-fg" : "text-muted/75"
             )}
           >
@@ -91,6 +91,8 @@ const SystemAudioToggle = () => {
         height={5}
         peak={peak}
         width="100%"
+        hidePeakTick
+        hideTicks
       />
     </div>
   );

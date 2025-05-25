@@ -18,7 +18,6 @@ export const listCameras = async (): Promise<CameraDetail[]> => {
 };
 
 export const startCameraStream = (deviceIndex: number, channel: Channel) => {
-  console.log(deviceIndex);
   void invoke(Commands.StartCameraStream, { channel, deviceIndex });
 };
 

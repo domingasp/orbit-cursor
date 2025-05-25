@@ -4,6 +4,11 @@ import { devtools, persist, StorageValue } from "zustand/middleware";
 
 const STORE_NAME = "standaloneListBoxesStore";
 
+export enum StandaloneListBoxes {
+  MicrophoneAudio = "microphone-audio",
+  Camera = "camera",
+}
+
 export type Item = { id: Key | null; label: string };
 
 type StandaloneListBox = {

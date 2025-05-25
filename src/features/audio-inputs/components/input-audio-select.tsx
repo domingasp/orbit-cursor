@@ -4,26 +4,36 @@ import { Mic } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
+import GrantAccessOverlay from "../../../components/shared/grant-access-overlay/grant-access-overlay";
+import InputSelect from "../../../components/shared/input-select/input-select";
+import { cn } from "../../../lib/styling";
+import {
+  PermissionType,
+  usePermissionsStore,
+} from "../../../stores/permissions.store";
 import {
   Item,
   selectedItem,
+  StandaloneListBoxes,
   useStandaloneListBoxStore,
-} from "../../../../stores/standalone-listbox.store";
-import { Events } from "../../../../types/events";
+} from "../../../stores/standalone-listbox.store";
+import { Events } from "../../../types/events";
 import {
   AudioStream,
   AudioStreamChannel,
   listAudioInputs,
   startAudioListener,
   stopAudioListener,
-} from "../../api/audio-listeners";
-import { usePeak } from "../../hooks/use-peak";
-import { ListBoxes } from "../../types";
-import InputSelect from "../input-select";
+} from "../api/audio-listeners";
+import { usePeak } from "../hooks/use-peak";
 
 import AudioMeter from "./audio-meter";
 
 const InputAudioSelect = () => {
+  const permission = usePermissionsStore(
+    (state) => state.permissions.microphone
+  );
+
   const channel = useRef<Channel<AudioStreamChannel>>(null);
 
   const [setSelectedItems] = useStandaloneListBoxStore(
@@ -41,6 +51,7 @@ const InputAudioSelect = () => {
 
   const onChange = async (selectedItems: Item[], isDockOpen: boolean) => {
     await stopAudioListener(AudioStream.Input);
+    setDecibels(undefined);
     if (!isDockOpen) return;
 
     const selectedDevice = selectedItem(selectedItems);
@@ -66,7 +77,7 @@ const InputAudioSelect = () => {
     const unlistenInputAudioStreamError = listen(
       Events.InputAudioStreamError,
       () => {
-        setSelectedItems(ListBoxes.MicrophoneAudio, []);
+        setSelectedItems(StandaloneListBoxes.MicrophoneAudio, []);
       }
     );
 
@@ -78,11 +89,22 @@ const InputAudioSelect = () => {
   }, []);
 
   return (
-    <div className="flex flex-col gap-1 min-w-full">
+    <div
+      className={cn(
+        "flex flex-col gap-1 min-w-full relative",
+        !permission?.hasAccess && "bg-content"
+      )}
+    >
+      <GrantAccessOverlay
+        icon={<Mic size={12} />}
+        permission={permission}
+        type={PermissionType.Microphone}
+      />
+
       <InputSelect
         fetchItems={fetchItems}
         icon={<Mic size={14} />}
-        id={ListBoxes.MicrophoneAudio}
+        id={StandaloneListBoxes.MicrophoneAudio}
         label="Microphone"
         onChange={onChange}
         placeholder="No microphone"
