@@ -1,4 +1,4 @@
-use std::ffi::CString;
+use std::{ffi::CString, sync::Mutex};
 
 use border::WebviewWindowExt as BorderWebviewWindowExt;
 use cocoa::{
@@ -9,10 +9,18 @@ use objc::{class, msg_send, sel, sel_impl};
 use tauri::{
   utils::config::WindowEffectsConfig,
   window::{Effect, EffectState},
-  AppHandle, Emitter, Listener, LogicalSize, Manager, PhysicalPosition, Size, WebviewWindow,
+  AppHandle, Emitter, Listener, LogicalSize, Manager, PhysicalPosition, Size, State, WebviewWindow,
   WebviewWindowBuilder,
 };
 use tauri_nspanel::{block::ConcreteBlock, panel_delegate, ManagerExt, WebviewWindowExt};
+
+use crate::{
+  constants::events::{
+    CLOSED_RECORDING_INPUT_OPTIONS, CLOSED_STANDALONE_LISTBOX,
+    RECORDING_INPUT_OPTIONS_DID_RESIGN_KEY, STANDALONE_LISTBOX_DID_RESIGN_KEY,
+  },
+  AppState,
+};
 
 #[allow(non_upper_case_globals)]
 const NSWindowStyleMaskNonActivatingPanel: i32 = 1 << 7;
@@ -38,7 +46,7 @@ pub fn handle_record_dock_positioning(window: &WebviewWindow) -> tauri::Result<(
   Ok(())
 }
 
-/// Add window transparency effect.
+/// Add window border effect.
 pub fn add_border(window: &WebviewWindow) -> tauri::Result<()> {
   window.add_border(None);
   let border = window.border().expect("window has no border");
@@ -117,11 +125,11 @@ pub fn swizzle_to_standalone_listbox_panel(app_handle: &AppHandle) {
 
   panel_delegate.set_listener(Box::new(move |delegate_name: String| {
     if delegate_name.as_str() == "window_did_resign_key" {
-      let _ = handle.emit("standalone_listbox_did_resign_key", ());
+      let _ = handle.emit(STANDALONE_LISTBOX_DID_RESIGN_KEY, ());
     }
   }));
 
-  panel.set_level(NSMainMenuWindowLevel + 2);
+  panel.set_level(NSMainMenuWindowLevel + 3);
 
   panel.set_collection_behaviour(
     NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary
@@ -143,13 +151,13 @@ pub fn setup_standalone_listbox_listeners(app_handle: &AppHandle) {
     }
 
     let panel = app_handle.get_webview_panel("standalone_listbox").unwrap();
-    let _ = app_handle.emit("closed_standalone_listbox", ());
+    let _ = app_handle.emit(CLOSED_STANDALONE_LISTBOX, ());
     panel.order_out(None);
   }
 
   let handle = app_handle.clone();
 
-  app_handle.listen_any("standalone_listbox_did_resign_key", move |_| {
+  app_handle.listen_any(STANDALONE_LISTBOX_DID_RESIGN_KEY, move |_| {
     hide_standalone_listbox_panel(&handle);
   });
 
@@ -177,6 +185,79 @@ pub fn position_and_size_standalone_listbox_panel(
   window
     .set_size(Size::Logical(LogicalSize { width, height }))
     .ok();
+}
+
+pub fn swizzle_to_recording_input_options_panel(app_handle: &AppHandle) {
+  let window = app_handle
+    .get_webview_window("recording_input_options")
+    .unwrap();
+  add_border(&window).ok();
+
+  let panel = window.to_panel().unwrap();
+
+  panel.set_level(NSMainMenuWindowLevel + 2);
+
+  panel.set_collection_behaviour(
+    NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary
+      | NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
+      | NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary,
+  );
+
+  panel.set_style_mask(NSWindowStyleMaskNonActivatingPanel);
+  panel.order_out(None);
+}
+
+pub fn position_recording_input_options_panel(app_handle: &AppHandle, x: i32) {
+  let margin_bottom = 20;
+  let dock = app_handle
+    .get_webview_window("start_recording_dock")
+    .unwrap();
+  let window = app_handle
+    .get_webview_window("recording_input_options")
+    .unwrap();
+
+  window
+    .set_position(PhysicalPosition {
+      x: x - (window.outer_size().unwrap().width as i32) / 2,
+      y: dock.outer_position().unwrap().y
+        - window.outer_size().unwrap().height as i32
+        - margin_bottom,
+    })
+    .ok();
+}
+
+pub fn setup_recording_input_options_listener(app_handle: &AppHandle) {
+  fn hide_recording_input_options(app_handle: &AppHandle) {
+    if check_orbit_cursor_frontmost() {
+      return;
+    }
+
+    let panel = app_handle
+      .get_webview_panel("recording_input_options")
+      .unwrap();
+    let _ = app_handle.emit(CLOSED_RECORDING_INPUT_OPTIONS, ());
+    panel.order_out(None);
+
+    let state: State<'_, Mutex<AppState>> = app_handle.state();
+    state.lock().unwrap().recording_input_options_opened = false;
+  }
+
+  let handle = app_handle.clone();
+
+  app_handle.listen_any(RECORDING_INPUT_OPTIONS_DID_RESIGN_KEY, move |_| {
+    hide_recording_input_options(&handle);
+  });
+
+  let handle = app_handle.clone();
+
+  let callback = Box::new(move || {
+    hide_recording_input_options(&handle);
+  });
+
+  register_workspace_listener(
+    "NSWorkspaceDidActivateApplicationNotification".into(),
+    callback.clone(),
+  );
 }
 
 fn register_workspace_listener(name: String, callback: Box<dyn Fn()>) {
@@ -212,4 +293,24 @@ fn get_frontmost_app_pid() -> i32 {
 
 pub fn check_orbit_cursor_frontmost() -> bool {
   get_frontmost_app_pid() == app_pid()
+}
+
+pub fn is_coordinate_in_window(x: f64, y: f64, window: &WebviewWindow) -> bool {
+  let Ok(size) = window.outer_size() else {
+    return false;
+  };
+
+  let Ok(position) = window.outer_position() else {
+    return false;
+  };
+
+  let Ok(scale_factor) = window.scale_factor() else {
+    return false;
+  };
+  let top = position.y as f64 / scale_factor;
+  let bottom = top + (size.height as f64 / scale_factor);
+  let left = position.x as f64 / scale_factor;
+  let right = left + (size.width as f64 / scale_factor);
+
+  y >= top && y <= bottom && x >= left && x <= right
 }

@@ -3,20 +3,33 @@ use std::sync::{Mutex, Once};
 use tauri::{AppHandle, Emitter, State};
 use tauri_nspanel::ManagerExt;
 
-use crate::{constants::events::START_RECORDING_DOCK_OPENED, AppState};
-
-use super::service::{
-  position_and_size_standalone_listbox_panel, setup_standalone_listbox_listeners,
-  swizzle_to_standalone_listbox_panel,
+use crate::{
+  constants::events::{RECORDING_INPUT_OPTIONS_OPENED, START_RECORDING_DOCK_OPENED},
+  AppState,
 };
 
-static INIT: Once = Once::new();
+use super::service::{
+  position_and_size_standalone_listbox_panel, position_recording_input_options_panel,
+  setup_recording_input_options_listener, setup_standalone_listbox_listeners,
+  swizzle_to_recording_input_options_panel, swizzle_to_standalone_listbox_panel,
+};
+
+static INIT_STANDALONE_LISTBOX: Once = Once::new();
+static INIT_RECORDING_OPTIONS_PANEL: Once = Once::new();
 
 #[tauri::command]
 pub fn init_standalone_listbox(app_handle: AppHandle) {
-  INIT.call_once(|| {
+  INIT_STANDALONE_LISTBOX.call_once(|| {
     swizzle_to_standalone_listbox_panel(&app_handle);
     setup_standalone_listbox_listeners(&app_handle);
+  });
+}
+
+#[tauri::command]
+pub fn init_recording_input_options(app_handle: AppHandle) {
+  INIT_RECORDING_OPTIONS_PANEL.call_once(|| {
+    swizzle_to_recording_input_options_panel(&app_handle);
+    setup_recording_input_options_listener(&app_handle);
   });
 }
 
@@ -30,6 +43,31 @@ pub fn show_standalone_listbox(app_handle: AppHandle, x: f64, y: f64, width: f64
   let panel = app_handle.get_webview_panel("standalone_listbox").unwrap();
   position_and_size_standalone_listbox_panel(&app_handle, x, y, width, height);
   panel.show();
+}
+
+#[tauri::command]
+pub fn show_recording_input_options(
+  app_handle: AppHandle,
+  state: State<'_, Mutex<AppState>>,
+  x: i32,
+) {
+  let mut state = state.lock().unwrap();
+  state.recording_input_options_opened = true;
+
+  let panel = app_handle
+    .get_webview_panel("recording_input_options")
+    .unwrap();
+  position_recording_input_options_panel(&app_handle, x);
+  panel.order_front_regardless();
+
+  let _ = app_handle
+    .emit(RECORDING_INPUT_OPTIONS_OPENED, ())
+    .map_err(|e| {
+      format!(
+        "Failed to emit {} event: {}",
+        RECORDING_INPUT_OPTIONS_OPENED, e
+      )
+    });
 }
 
 #[tauri::command]
@@ -69,4 +107,10 @@ pub fn hide_start_recording_dock(app_handle: AppHandle, state: State<'_, Mutex<A
 pub fn is_start_recording_dock_open(state: State<'_, Mutex<AppState>>) -> bool {
   let state = state.lock().unwrap();
   state.start_recording_dock_opened
+}
+
+#[tauri::command]
+pub fn is_recording_input_options_open(state: State<'_, Mutex<AppState>>) -> bool {
+  let state = state.lock().unwrap();
+  state.recording_input_options_opened
 }

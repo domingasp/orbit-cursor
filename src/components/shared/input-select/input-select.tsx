@@ -3,8 +3,7 @@ import { useEffect, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import { showStandaloneListBox } from "../../../api/windows";
-import ListBoxItem from "../../../components/listbox-item/listbox-item";
-import Select from "../../../components/select/select";
+import { cn } from "../../../lib/styling";
 import {
   Item,
   selectedItem,
@@ -14,6 +13,8 @@ import {
   AppWindow,
   useWindowReopenStore,
 } from "../../../stores/window-open-state.store";
+import ListBoxItem from "../../listbox-item/listbox-item";
+import Select from "../../select/select";
 
 type InputSelectProps = {
   fetchItems: () => Item[] | Promise<Item[]>;
@@ -34,8 +35,8 @@ const InputSelect = ({
   onChange,
   placeholder,
 }: InputSelectProps) => {
-  const startRecordingDockOpened = useWindowReopenStore(
-    useShallow((state) => state.windows.get(AppWindow.StartRecordingDock))
+  const recordingInputOptionsOpened = useWindowReopenStore(
+    useShallow((state) => state.windows[AppWindow.RecordingInputOptions])
   );
 
   const [openListBoxId, openListBox, addListBox, setSelectedItems, setItems] =
@@ -78,11 +79,8 @@ const InputSelect = ({
   }, []);
 
   useEffect(() => {
-    void onChange?.(
-      listBox?.selectedItems ?? [],
-      startRecordingDockOpened ?? false
-    );
-  }, [listBox?.selectedItems, startRecordingDockOpened]);
+    void onChange?.(listBox?.selectedItems ?? [], recordingInputOptionsOpened);
+  }, [listBox?.selectedItems, recordingInputOptionsOpened]);
 
   return (
     <Select
@@ -91,12 +89,23 @@ const InputSelect = ({
       clearable={listBox?.selectedItems && listBox.selectedItems.length > 0}
       isOpen={openListBoxId === id}
       items={listBox?.selectedItems ?? []}
-      leftSection={icon}
       placeholder={placeholder}
       selectedKey={selectedItem(listBox?.selectedItems ?? [])}
       size="sm"
       triggerRef={triggerRef}
       variant="ghost"
+      leftSection={
+        <div
+          className={cn(
+            "transition-colors",
+            listBox?.selectedItems &&
+              listBox.selectedItems.length === 0 &&
+              "text-muted/75"
+          )}
+        >
+          {icon}
+        </div>
+      }
       onClear={() => {
         setSelectedItems(id, []);
       }}

@@ -1,14 +1,17 @@
 import { create } from "zustand";
-import { devtools } from "zustand/middleware";
+import { devtools, persist } from "zustand/middleware";
 
 export enum AppWindow {
   StartRecordingDock = "start-recording-dock",
+  RecordingInputOptions = "recording-input-options",
 }
+
+const STORE_NAME = "windowOpenState";
 
 type WindowOpenState = {
   addWindow: (id: AppWindow, initial: boolean) => void;
   setWindowOpenState: (id: AppWindow, state: boolean) => void;
-  windows: Map<AppWindow, boolean>;
+  windows: { [window: string]: boolean };
 };
 
 /**
@@ -16,16 +19,30 @@ type WindowOpenState = {
  * a remount of components. Use this to listen to window open state.
  */
 export const useWindowReopenStore = create<WindowOpenState>()(
-  devtools((set, get) => ({
-    addWindow: (id, initial) => {
-      const windows = get().windows;
-      if (windows.has(id)) return;
-      set({ windows: new Map(windows).set(id, initial) });
-    },
-    setWindowOpenState: (id, state) => {
-      const windows = get().windows;
-      set({ windows: new Map(windows).set(id, state) });
-    },
-    windows: new Map<AppWindow, boolean>(),
-  }))
+  devtools(
+    persist(
+      (set, get) => ({
+        addWindow: (id, initial) => {
+          const windows = get().windows;
+          set({
+            windows: {
+              ...windows,
+              [id]: initial,
+            },
+          });
+        },
+        setWindowOpenState: (id, state) => {
+          const windows = get().windows;
+          set({
+            windows: {
+              ...windows,
+              [id]: state,
+            },
+          });
+        },
+        windows: {},
+      }),
+      { name: STORE_NAME }
+    )
+  )
 );

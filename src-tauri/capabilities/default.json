@@ -5,7 +5,8 @@
   "windows": [
     "start_recording_dock",
     "request_permissions",
-    "standalone_listbox"
+    "standalone_listbox",
+    "recording_input_options"
   ],
   "permissions": [
     "core:default",

@@ -16,14 +16,14 @@
         "title": "Start Recording Dock",
         "label": "start_recording_dock",
         "url": "/start-recording-dock",
-        "width": 900,
-        "height": 180,
+        "width": 500,
+        "height": 92,
         "decorations": false,
         "resizable": false,
         "shadow": true,
         "transparent": true,
         "windowEffects": {
-          "effects": ["windowBackground"],
+          "effects": ["underWindowBackground"],
           "radius": 10,
           "state": "active"
         }
@@ -37,6 +37,24 @@
         "fullscreen": false,
         "transparent": true,
         "acceptFirstMouse": true
+      },
+      {
+        "title": "Recording Input Options",
+        "label": "recording_input_options",
+        "url": "/recording-input-options",
+        "width": 192,
+        "height": 210,
+        "decorations": false,
+        "resizable": false,
+        "shadow": true,
+        "transparent": true,
+        "acceptFirstMouse": true,
+        "visible": false,
+        "windowEffects": {
+          "effects": ["underWindowBackground"],
+          "radius": 10,
+          "state": "active"
+        }
       }
     ],
     "security": {

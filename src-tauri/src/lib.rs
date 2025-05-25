@@ -31,8 +31,9 @@ use tauri::{App, AppHandle, Manager, Wry};
 use tauri_plugin_store::{Store, StoreExt};
 use windows::{
   commands::{
-    hide_start_recording_dock, init_standalone_listbox, is_start_recording_dock_open, quit_app,
-    show_standalone_listbox, show_start_recording_dock,
+    hide_start_recording_dock, init_recording_input_options, init_standalone_listbox,
+    is_recording_input_options_open, is_start_recording_dock_open, quit_app,
+    show_recording_input_options, show_standalone_listbox, show_start_recording_dock,
   },
   service::{init_start_recording_panel, open_permissions},
 };
@@ -41,6 +42,7 @@ static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
 struct AppState {
   start_recording_dock_opened: bool,
+  recording_input_options_opened: bool,
   audio_streams: HashMap<AudioStream, Stream>,
   camera_stream: Option<CallbackCamera>,
 }
@@ -80,17 +82,21 @@ pub fn run() {
       quit_app,
       init_standalone_listbox,
       show_standalone_listbox,
+      init_recording_input_options,
+      show_recording_input_options,
       hide_start_recording_dock,
       start_audio_listener,
       stop_audio_listener,
       list_audio_inputs,
       is_start_recording_dock_open,
+      is_recording_input_options_open,
       list_cameras,
       start_camera_stream,
       stop_camera_stream
     ])
     .manage(Mutex::new(AppState {
       start_recording_dock_opened: false,
+      recording_input_options_opened: false,
       audio_streams: HashMap::new(),
       camera_stream: None,
     }))
