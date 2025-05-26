@@ -18,5 +18,19 @@ export const focusStyles = "outline-none ring-content-fg ring-offset-content";
 
 export const elementFocus =
   "data-[focus-visible]:ring-offset-1 data-[focus-visible]:ring-1";
+
 export const groupFocus =
   "group-data-[focus-visible]:ring-offset-1 group-data-[focus-visible]:ring-1";
+
+/**
+ * Remove `data-hovered`, `data-focused`, and `data-focus-visible` attributes on element with data-focused.
+ */
+export const clearInteractionAttributes = () => {
+  const activeElement = document.querySelector('[data-focused="true"]');
+  if (activeElement && activeElement instanceof HTMLElement) {
+    activeElement.blur();
+    activeElement.removeAttribute("data-hovered");
+    activeElement.removeAttribute("data-focused");
+    activeElement.removeAttribute("data-focus-visible");
+  }
+};

@@ -207,8 +207,8 @@ pub fn swizzle_to_recording_input_options_panel(app_handle: &AppHandle) {
   panel.order_out(None);
 }
 
-pub fn position_recording_input_options_panel(app_handle: &AppHandle, x: i32) {
-  let margin_bottom = 20;
+pub fn position_recording_input_options_panel(app_handle: &AppHandle, x: f64) {
+  let margin_bottom = 20.0;
   let dock = app_handle
     .get_webview_window("start_recording_dock")
     .unwrap();
@@ -218,9 +218,9 @@ pub fn position_recording_input_options_panel(app_handle: &AppHandle, x: i32) {
 
   window
     .set_position(PhysicalPosition {
-      x: x - (window.outer_size().unwrap().width as i32) / 2,
-      y: dock.outer_position().unwrap().y
-        - window.outer_size().unwrap().height as i32
+      x: x - (window.outer_size().unwrap().width as f64) / 2.0,
+      y: dock.outer_position().unwrap().y as f64
+        - window.outer_size().unwrap().height as f64
         - margin_bottom,
     })
     .ok();

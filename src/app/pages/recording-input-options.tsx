@@ -5,6 +5,7 @@ import { useShallow } from "zustand/react/shallow";
 import { isRecordingInputOptionsOpen } from "../../api/windows";
 import InputAudioSelect from "../../features/audio-inputs/components/input-audio-select";
 import CameraSelect from "../../features/camera-select/components/camera-select";
+import { clearInteractionAttributes } from "../../lib/styling";
 import {
   AppWindow,
   useWindowReopenStore,
@@ -30,6 +31,7 @@ const RecordingInputOptions = () => {
     void addWindowToStore();
 
     const unlisten = listen(Events.RecordingInputOptionsOpened, () => {
+      clearInteractionAttributes();
       setWindowOpenState(AppWindow.RecordingInputOptions, true);
     });
     const unlistenClose = listen(Events.ClosedRecordingInputOptions, () => {

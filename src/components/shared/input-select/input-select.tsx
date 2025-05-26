@@ -91,6 +91,7 @@ const InputSelect = ({
       items={listBox?.selectedItems ?? []}
       placeholder={placeholder}
       selectedKey={selectedItem(listBox?.selectedItems ?? [])}
+      showFocus={false}
       size="sm"
       triggerRef={triggerRef}
       variant="ghost"

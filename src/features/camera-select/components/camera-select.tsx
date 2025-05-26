@@ -41,6 +41,13 @@ const CameraSelect = () => {
     return cameras.map(({ index, name }) => ({ id: index, label: name }));
   };
 
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d", { willReadFrequently: false });
+    if (!canvas || !ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
   const processFrame = (buffer: ArrayBuffer) => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d", { willReadFrequently: false });
@@ -66,6 +73,7 @@ const CameraSelect = () => {
 
   const onChange = async (selectedItems: Item[], isDockOpen: boolean) => {
     await stopCameraStream();
+    clearCanvas();
     if (!isDockOpen) return;
 
     const selectedDevice = selectedItem(selectedItems);

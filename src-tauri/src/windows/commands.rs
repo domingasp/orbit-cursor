@@ -49,7 +49,7 @@ pub fn show_standalone_listbox(app_handle: AppHandle, x: f64, y: f64, width: f64
 pub fn show_recording_input_options(
   app_handle: AppHandle,
   state: State<'_, Mutex<AppState>>,
-  x: i32,
+  x: f64,
 ) {
   let mut state = state.lock().unwrap();
   state.recording_input_options_opened = true;
