@@ -35,8 +35,7 @@
         "decorations": false,
         "resizable": false,
         "fullscreen": false,
-        "transparent": true,
-        "acceptFirstMouse": true
+        "transparent": true
       },
       {
         "title": "Recording Input Options",
@@ -48,7 +47,6 @@
         "resizable": false,
         "shadow": true,
         "transparent": true,
-        "acceptFirstMouse": true,
         "visible": false,
         "windowEffects": {
           "effects": ["underWindowBackground"],

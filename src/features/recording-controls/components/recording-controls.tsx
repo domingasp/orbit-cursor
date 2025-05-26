@@ -26,6 +26,7 @@ import Keyboard from "../../../components/keyboard/keyboard";
 import RadioGroup from "../../../components/radio-group/radio-group";
 import Separator from "../../../components/separator/separator";
 import Sparkles from "../../../components/sparkles/sparkles";
+import { clearInteractionAttributes } from "../../../lib/styling";
 import { usePermissionsStore } from "../../../stores/permissions.store";
 import {
   AppWindow,
@@ -49,12 +50,14 @@ const RecordingControls = () => {
   );
 
   const onCancel = () => {
+    clearInteractionAttributes();
     setWindowOpenState(AppWindow.StartRecordingDock, false);
     hideStartRecordingDock();
   };
 
   const onClickOptions = async () => {
     if (!optionsButtonRef.current) return;
+    clearInteractionAttributes();
 
     const { left, width } = optionsButtonRef.current.getBoundingClientRect();
     const currentWindow = getCurrentWindow();
@@ -69,6 +72,7 @@ const RecordingControls = () => {
       <Button
         className="self-stretch cursor-default group"
         onPress={onCancel}
+        showFocus={false}
         variant="ghost"
       >
         <div className="flex flex-col gap-1 items-center">
@@ -151,6 +155,7 @@ const RecordingControls = () => {
         <Button
           ref={optionsButtonRef}
           className="justify-center transition-transform transform data-[hovered]:scale-110"
+          showFocus={false}
           size="sm"
           variant="ghost"
           onPress={() => {
@@ -167,7 +172,11 @@ const RecordingControls = () => {
         scale={{ max: 0.5, min: 0.2 }}
         sparklesCount={2}
       >
-        <Button className="self-stretch cursor-default group" variant="ghost">
+        <Button
+          className="self-stretch cursor-default group"
+          showFocus={false}
+          variant="ghost"
+        >
           <div className="flex flex-col gap-1 items-center">
             <Circle
               className="group-data-[hovered]:scale-110 transform transition-transform"

@@ -33,6 +33,7 @@ const InputToggle = ({
     <Button
       className="cursor-default relative p-1 transition-transform transform data-[hovered]:scale-110"
       onPress={onToggle}
+      showFocus={false}
       variant="ghost"
     >
       <div className="invisible">{onIcon}</div>

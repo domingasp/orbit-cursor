@@ -5,15 +5,10 @@ import {
 import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../../tailwind-merge.config";
-import { elementFocus, focusStyles } from "../../../lib/styling";
 
 const radioVariants = tv({
   slots: {
-    base: [
-      "group relative flex flex-col grow items-center p-2 rounded-md transition select-none",
-      focusStyles,
-      elementFocus,
-    ],
+    base: "group relative flex flex-col grow items-center p-2 rounded-md transition select-none",
     icon: [
       "text-muted transition-colors",
       "group-data-[hovered]:text-content-fg/75",

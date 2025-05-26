@@ -11,7 +11,6 @@ const buttonVariants = tv({
   base: [
     "inline-flex items-center gap-2 rounded-md font-semibold transition",
     focusStyles,
-    elementFocus,
   ],
   compoundVariants: [
     {
@@ -35,6 +34,7 @@ const buttonVariants = tv({
   ],
   defaultVariants: {
     color: "neutral",
+    showFocus: true,
     size: "md",
     type: "solid",
   },
@@ -62,6 +62,7 @@ const buttonVariants = tv({
         "mask-[linear-gradient(-75deg,var(--color-content)_calc(var(--x)_+_20%),transparent_calc(var(--x)_+_30%),var(--color-content)_calc(var(--x)_+_100%))]",
       ],
     },
+    showFocus: { true: elementFocus },
     size: {
       lg: "text-md px-4 py-2",
       md: "text-sm px-3 py-2",
@@ -109,6 +110,7 @@ const Button = ({
   className,
   color,
   shiny,
+  showFocus,
   size,
   variant,
   ...props
@@ -121,6 +123,7 @@ const Button = ({
         className,
         color,
         shiny,
+        showFocus,
         size,
         variant,
       })}

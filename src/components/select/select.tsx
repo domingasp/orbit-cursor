@@ -25,6 +25,7 @@ const ICON_SIZES = {
 
 const selectVariants = tv({
   defaultVariants: {
+    showFocus: true,
     size: "md",
     variant: "solid",
   },
@@ -33,13 +34,17 @@ const selectVariants = tv({
     controls: "text-muted/75",
     label: "text-muted font-medium",
     trigger: [
-      "shrink inline-flex flex-row items-center justify-between text-content-fg gap-4 rounded-md transition-colors",
+      "outline-none shrink inline-flex flex-row items-center justify-between text-content-fg gap-4 rounded-md transition-colors",
       "data-[hovered]:bg-neutral/50",
       focusStyles,
-      elementFocus,
     ],
   },
   variants: {
+    showFocus: {
+      true: {
+        trigger: elementFocus,
+      },
+    },
     size: {
       md: { label: "text-sm", trigger: "text-sm pl-3 pr-2 py-2" },
       sm: { label: "text-xs", trigger: "text-xs pl-3 pr-2 py-2" },
@@ -86,6 +91,7 @@ const Select = <T extends object>({
   onClear,
   onPress,
   placeholder,
+  showFocus,
   size,
   standalone,
   triggerRef,
@@ -108,7 +114,7 @@ const Select = <T extends object>({
           <div className="relative">
             <Button
               ref={triggerRef}
-              className={trigger({ className })}
+              className={trigger({ className, showFocus })}
               onPress={onPress}
             >
               <div className="inline-flex flex-row items-center gap-2 flex-1 min-w-0">
