@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { Camera, CameraOff } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import GrantAccessOverlay from "../../../components/shared/grant-access-overlay/grant-access-overlay";
 import InputSelect from "../../../components/shared/input-select/input-select";
@@ -18,6 +19,10 @@ import {
   updateStandaloneListBoxStore,
   useStandaloneListBoxStore,
 } from "../../../stores/standalone-listbox.store";
+import {
+  AppWindow,
+  useWindowReopenStore,
+} from "../../../stores/window-open-state.store";
 import { Events } from "../../../types/events";
 import {
   listCameras,
@@ -27,6 +32,10 @@ import {
 
 const CameraSelect = () => {
   const permission = usePermissionsStore((state) => state.permissions.camera);
+  const recordingInputOptionsOpened = useWindowReopenStore(
+    useShallow((state) => state.windows[AppWindow.RecordingInputOptions])
+  );
+
   const { closeListBox } = useStandaloneListBoxStore((state) => state);
 
   const channel = useRef<Channel>(null);
@@ -34,11 +43,11 @@ const CameraSelect = () => {
   const imageDataRef = useRef<ImageData>(null);
   const [dimensions, setDimensions] = useState({ height: 0, width: 0 });
 
-  const [noDevice, setNoDevice] = useState(false);
+  const [isDeviceSelected, setIsDeviceSelected] = useState(false);
 
   const fetchItems = async (): Promise<Item[]> => {
     const cameras = await listCameras();
-    return cameras.map(({ index, name }) => ({ id: index, label: name }));
+    return cameras.map((name) => ({ id: name, label: name }));
   };
 
   const clearCanvas = () => {
@@ -71,22 +80,26 @@ const CameraSelect = () => {
     ctx.putImageData(imageDataRef.current, 0, 0);
   };
 
-  const onChange = async (selectedItems: Item[], isDockOpen: boolean) => {
+  const onChange = async (selectedItems: Item[], isPanelOpen: boolean) => {
     await stopCameraStream();
-    clearCanvas();
-    if (!isDockOpen) return;
 
-    const selectedDevice = selectedItem(selectedItems);
-    if (selectedDevice !== null) {
-      setNoDevice(false);
+    const selectedDevice = selectedItem(selectedItems)?.id;
+    if (
+      isPanelOpen &&
+      selectedDevice !== null &&
+      selectedDevice !== undefined
+    ) {
+      setIsDeviceSelected(true);
       channel.current = new Channel();
       channel.current.onmessage = (message) => {
         processFrame(message as ArrayBuffer);
       };
 
-      startCameraStream(Number(selectedDevice), channel.current);
+      startCameraStream(selectedDevice.toString(), channel.current);
     } else {
-      setNoDevice(true);
+      setIsDeviceSelected(false);
+      // Give time for channel message to end
+      setTimeout(clearCanvas, 30);
     }
   };
 
@@ -107,6 +120,10 @@ const CameraSelect = () => {
     };
   }, []);
 
+  useEffect(() => {
+    clearCanvas();
+  }, [recordingInputOptionsOpened]);
+
   return (
     <div
       className={cn(
@@ -125,12 +142,12 @@ const CameraSelect = () => {
           ref={canvasRef}
           className={cn(
             "w-full h-full object-contain transform -scale-x-100 rounded-md",
-            noDevice && "opacity-0"
+            !isDeviceSelected && "opacity-0"
           )}
         />
 
         <AnimatePresence>
-          {noDevice && (
+          {!isDeviceSelected && (
             <motion.div
               animate={{ opacity: 1, scale: 1 }}
               className="absolute"

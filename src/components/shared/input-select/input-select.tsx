@@ -24,7 +24,7 @@ type InputSelectProps = {
   icon?: React.ReactNode;
   onChange?: (
     selectedItems: Item[],
-    isDockOpen: boolean
+    isPanelOpen: boolean
   ) => void | Promise<void>;
 };
 const InputSelect = ({
@@ -90,7 +90,7 @@ const InputSelect = ({
       isOpen={openListBoxId === id}
       items={listBox?.selectedItems ?? []}
       placeholder={placeholder}
-      selectedKey={selectedItem(listBox?.selectedItems ?? [])}
+      selectedKey={selectedItem(listBox?.selectedItems ?? [])?.id ?? null}
       showFocus={false}
       size="sm"
       triggerRef={triggerRef}

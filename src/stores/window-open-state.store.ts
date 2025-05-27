@@ -46,3 +46,10 @@ export const useWindowReopenStore = create<WindowOpenState>()(
     )
   )
 );
+
+export const rehydrateWindowReopenState = (e: StorageEvent) => {
+  const { key } = e;
+  if (key === STORE_NAME) {
+    void useWindowReopenStore.persist.rehydrate();
+  }
+};

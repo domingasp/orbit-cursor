@@ -1,36 +1,36 @@
 use std::sync::Mutex;
 
-use nokhwa::{
-  query,
-  utils::{ApiBackend, CameraIndex},
-};
+use nokhwa::{query, utils::ApiBackend};
 use tauri::{ipc::Channel, State};
 
 use crate::AppState;
 
-use super::{models::CameraDetails, service::create_and_start_camera};
+use super::service::create_and_start_camera;
 
 #[tauri::command]
-pub fn list_cameras() -> Vec<CameraDetails> {
+pub fn list_cameras() -> Vec<String> {
   let cameras = query(ApiBackend::Auto).unwrap();
 
   let mut camera_details = Vec::new();
   for camera in cameras {
-    camera_details.push(CameraDetails {
-      index: camera.index().as_string(),
-      name: camera.human_name().to_string(),
-    });
+    camera_details.push(camera.human_name().to_string());
   }
 
   camera_details
 }
 
 #[tauri::command]
-pub fn start_camera_stream(state: State<'_, Mutex<AppState>>, device_index: u32, channel: Channel) {
+pub fn start_camera_stream(state: State<'_, Mutex<AppState>>, name: String, channel: Channel) {
   let mut state = state.lock().unwrap();
 
-  if let Some(camera) = create_and_start_camera(CameraIndex::Index(device_index), channel) {
-    state.camera_stream = Some(camera)
+  if let Some(camera_to_start) = query(ApiBackend::Auto)
+    .unwrap()
+    .iter()
+    .find(|camera| camera.human_name() == name)
+  {
+    if let Some(camera) = create_and_start_camera(camera_to_start.index().clone(), channel) {
+      state.camera_stream = Some(camera)
+    }
   }
 }
 

@@ -29,7 +29,7 @@ const InputToggle = ({
   };
 
   const onToggle = () => {
-    if (permission.hasAccess) setValue(!value);
+    if (permission.hasAccess && !showWarning) setValue(!value);
     else void openRecordingInputOptions();
   };
 
