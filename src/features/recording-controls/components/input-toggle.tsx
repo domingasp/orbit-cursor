@@ -7,18 +7,18 @@ import { PermissionStatus } from "../../../stores/permissions.store";
 type InputToggleProps = {
   offIcon: React.ReactNode;
   onIcon: React.ReactNode;
+  openRecordingInputOptions: () => Promise<void>;
   permission: PermissionStatus;
   setValue: (value: boolean) => void;
-  showRecordingInputOptions: () => void;
   value: boolean;
   showWarning?: boolean;
 };
 const InputToggle = ({
   offIcon,
   onIcon,
+  openRecordingInputOptions,
   permission,
   setValue,
-  showRecordingInputOptions,
   showWarning,
   value,
 }: InputToggleProps) => {
@@ -30,7 +30,7 @@ const InputToggle = ({
 
   const onToggle = () => {
     if (permission.hasAccess) setValue(!value);
-    else showRecordingInputOptions();
+    else void openRecordingInputOptions();
   };
 
   return (

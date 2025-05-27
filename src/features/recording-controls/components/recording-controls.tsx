@@ -1,18 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import {
-  AppWindowMac,
-  Camera,
-  CameraOff,
-  Circle,
-  CircleX,
-  Mic,
-  MicOff,
-  Monitor,
-  Sparkle,
-  SquareDashed,
-  Volume2,
-  VolumeOff,
-} from "lucide-react";
+import { Circle, CircleX, Sparkle } from "lucide-react";
 import { ComponentProps, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
 
@@ -22,22 +9,16 @@ import {
 } from "../../../api/windows";
 import Button from "../../../components/button/button";
 import Keyboard from "../../../components/keyboard/keyboard";
-import RadioGroup from "../../../components/radio-group/radio-group";
 import Separator from "../../../components/separator/separator";
 import Sparkles from "../../../components/sparkles/sparkles";
 import { clearInteractionAttributes } from "../../../lib/styling";
-import { usePermissionsStore } from "../../../stores/permissions.store";
-import {
-  RecordingType,
-  useRecordingPreferencesStore,
-} from "../../../stores/recording-preferences.store";
 import {
   AppWindow,
   useWindowReopenStore,
 } from "../../../stores/window-open-state.store";
 
-import IconRadio from "./icon-radio";
-import InputToggle from "./input-toggle";
+import InputToggleGroup from "./input-toggle-groups";
+import RecordingTypeRadioGroup from "./recording-type-radio-group";
 
 const KEYBOARD_STYLE: ComponentProps<typeof Keyboard> = {
   size: "xs",
@@ -45,29 +26,6 @@ const KEYBOARD_STYLE: ComponentProps<typeof Keyboard> = {
 };
 
 const RecordingControls = () => {
-  const permissions = usePermissionsStore((state) => state.permissions);
-  const [
-    recordingType,
-    setRecordingType,
-    camera,
-    setCamera,
-    microphone,
-    setMicrophone,
-    systemAudio,
-    setSystemAudio,
-  ] = useRecordingPreferencesStore(
-    useShallow((state) => [
-      state.recordingType,
-      state.setRecordingType,
-      state.camera,
-      state.setCamera,
-      state.microphone,
-      state.setMicrophone,
-      state.systemAudio,
-      state.setSystemAudio,
-    ])
-  );
-
   const optionsButtonRef = useRef<HTMLButtonElement>(null);
   const setWindowOpenState = useWindowReopenStore(
     useShallow((state) => state.setWindowOpenState)
@@ -79,7 +37,7 @@ const RecordingControls = () => {
     hideStartRecordingDock();
   };
 
-  const onClickOptions = async () => {
+  const openRecordingInputOptions = async () => {
     if (!optionsButtonRef.current) return;
     clearInteractionAttributes();
 
@@ -107,83 +65,14 @@ const RecordingControls = () => {
 
       <Separator className="h-[60px]" orientation="vertical" spacing="sm" />
 
-      <RadioGroup
-        aria-label="Recording type"
-        className="grow"
-        orientation="horizontal"
-        value={recordingType}
-        onChange={(value) => {
-          setRecordingType(value as RecordingType);
-        }}
-      >
-        <IconRadio
-          aria-label="Region"
-          icon={<SquareDashed size={30} />}
-          shortcut={<Keyboard {...KEYBOARD_STYLE}>1</Keyboard>}
-          subtext="Region"
-          value={RecordingType.Region}
-        />
-
-        <IconRadio
-          aria-label="Window"
-          icon={<AppWindowMac size={30} />}
-          shortcut={<Keyboard {...KEYBOARD_STYLE}>2</Keyboard>}
-          subtext="Window"
-          value={RecordingType.Window}
-        />
-
-        <IconRadio
-          aria-label="Screen"
-          icon={<Monitor size={30} />}
-          shortcut={<Keyboard {...KEYBOARD_STYLE}>3</Keyboard>}
-          subtext="Screen"
-          value={RecordingType.Screen}
-        />
-      </RadioGroup>
+      <RecordingTypeRadioGroup />
 
       <Separator className="h-[60px]" orientation="vertical" spacing="sm" />
 
       <div className="flex flex-col min-w-24 mr-2">
-        <div className="flex flex-row justify-between px-2 text-content-fg">
-          {permissions.screen && (
-            <InputToggle
-              offIcon={<VolumeOff size={16} />}
-              onIcon={<Volume2 size={16} />}
-              permission={permissions.screen}
-              setValue={setSystemAudio}
-              value={systemAudio}
-              showRecordingInputOptions={() => {
-                void onClickOptions();
-              }}
-            />
-          )}
-
-          {permissions.microphone && (
-            <InputToggle
-              offIcon={<MicOff size={16} />}
-              onIcon={<Mic size={16} />}
-              permission={permissions.microphone}
-              setValue={setMicrophone}
-              value={microphone}
-              showRecordingInputOptions={() => {
-                void onClickOptions();
-              }}
-            />
-          )}
-
-          {permissions.camera && (
-            <InputToggle
-              offIcon={<CameraOff size={16} />}
-              onIcon={<Camera size={16} />}
-              permission={permissions.camera}
-              setValue={setCamera}
-              value={camera}
-              showRecordingInputOptions={() => {
-                void onClickOptions();
-              }}
-            />
-          )}
-        </div>
+        <InputToggleGroup
+          openRecordingInputOptions={openRecordingInputOptions}
+        />
 
         <Button
           ref={optionsButtonRef}
@@ -192,7 +81,7 @@ const RecordingControls = () => {
           size="sm"
           variant="ghost"
           onPress={() => {
-            void onClickOptions();
+            void openRecordingInputOptions();
           }}
         >
           Options
