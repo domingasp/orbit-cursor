@@ -27,6 +27,11 @@ import { listCameras } from "../../camera-select/api/camera";
 
 import InputToggle from "./input-toggle";
 
+export enum WarningType {
+  Empty = "empty",
+  Disconnected = "disconnected",
+}
+
 type InputToggleGroupProps = {
   openRecordingInputOptions: () => Promise<void>;
 };
@@ -42,8 +47,12 @@ const InputToggleGroup = ({
       ])
     );
 
-  const [microphoneValid, setMicrophoneValid] = useState(true);
-  const [cameraValid, setCameraValid] = useState(true);
+  const [microphoneWarning, setMicrophoneWarning] = useState<
+    WarningType | undefined
+  >(undefined);
+  const [cameraWarning, setCameraWarning] = useState<WarningType | undefined>(
+    undefined
+  );
   const [selectedMicrophone, selectedCamera] = useStandaloneListBoxStore(
     useShallow((state) => [
       selectedItem(
@@ -87,13 +96,17 @@ const InputToggleGroup = ({
   }, []);
 
   useEffect(() => {
-    void listAudioInputs().then((microphones) => {
-      setMicrophoneValid(
-        selectedMicrophone === null ||
-          selectedMicrophone.id === null ||
-          microphones.includes(selectedMicrophone.id.toString())
-      );
-    });
+    if (permissions.microphone?.hasAccess) {
+      void listAudioInputs().then((microphones) => {
+        if (selectedMicrophone === null || selectedMicrophone.id === null) {
+          setMicrophoneWarning(WarningType.Empty);
+        } else if (!microphones.includes(selectedMicrophone.id.toString())) {
+          setMicrophoneWarning(WarningType.Disconnected);
+        } else {
+          setMicrophoneWarning(undefined);
+        }
+      });
+    }
   }, [
     selectedMicrophone,
     startRecordingDockOpened,
@@ -101,14 +114,18 @@ const InputToggleGroup = ({
   ]);
 
   useEffect(() => {
-    void listCameras().then((cameras) => {
-      setCameraValid(
-        selectedCamera === null ||
-          selectedCamera.id === null ||
-          cameras.includes(selectedCamera.id.toString())
-      );
-    });
-  });
+    if (permissions.camera?.hasAccess) {
+      void listCameras().then((cameras) => {
+        if (selectedCamera === null || selectedCamera.id === null) {
+          setCameraWarning(WarningType.Empty);
+        } else if (!cameras.includes(selectedCamera.id.toString())) {
+          setCameraWarning(WarningType.Empty);
+        } else {
+          setCameraWarning(undefined);
+        }
+      });
+    }
+  }, [selectedCamera, startRecordingDockOpened, recordingInputOptionsOpened]);
 
   return (
     <div className="flex flex-row justify-between px-2 text-content-fg">
@@ -130,8 +147,8 @@ const InputToggleGroup = ({
           openRecordingInputOptions={openRecordingInputOptions}
           permission={permissions.microphone}
           setValue={setMicrophone}
-          showWarning={!microphoneValid}
           value={microphone}
+          warning={microphoneWarning}
         />
       )}
 
@@ -142,8 +159,8 @@ const InputToggleGroup = ({
           openRecordingInputOptions={openRecordingInputOptions}
           permission={permissions.camera}
           setValue={setCamera}
-          showWarning={!cameraValid}
           value={camera}
+          warning={cameraWarning}
         />
       )}
     </div>

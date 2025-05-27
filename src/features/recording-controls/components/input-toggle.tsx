@@ -1,8 +1,10 @@
-import { TriangleAlert } from "lucide-react";
+import { CircleOff, TriangleAlert } from "lucide-react";
 import { AnimatePresence, motion, MotionProps } from "motion/react";
 
 import Button from "../../../components/button/button";
 import { PermissionStatus } from "../../../stores/permissions.store";
+
+import { WarningType } from "./input-toggle-groups";
 
 type InputToggleProps = {
   offIcon: React.ReactNode;
@@ -11,7 +13,7 @@ type InputToggleProps = {
   permission: PermissionStatus;
   setValue: (value: boolean) => void;
   value: boolean;
-  showWarning?: boolean;
+  warning?: WarningType;
 };
 const InputToggle = ({
   offIcon,
@@ -19,8 +21,8 @@ const InputToggle = ({
   openRecordingInputOptions,
   permission,
   setValue,
-  showWarning,
   value,
+  warning,
 }: InputToggleProps) => {
   const animationProps: MotionProps = {
     animate: { opacity: 1, scale: 1 },
@@ -29,7 +31,8 @@ const InputToggle = ({
   };
 
   const onToggle = () => {
-    if (permission.hasAccess && !showWarning) setValue(!value);
+    if (permission.hasAccess && warning !== WarningType.Disconnected)
+      setValue(!value);
     else void openRecordingInputOptions();
   };
 
@@ -41,16 +44,21 @@ const InputToggle = ({
       variant="ghost"
     >
       <AnimatePresence>
-        {showWarning && (
-          <motion.div
-            animate={{ opacity: 1, y: 0 }}
-            className="absolute text-warning -top-3"
-            exit={{ opacity: 0, y: -5 }}
-            initial={{ opacity: 0, y: -5 }}
-          >
-            <TriangleAlert size={12} />
-          </motion.div>
-        )}
+        {warning &&
+          ((warning === WarningType.Empty && value) ||
+            warning === WarningType.Disconnected) && (
+            <motion.div
+              animate={{ opacity: 1, y: 0 }}
+              className="absolute text-warning -top-3"
+              exit={{ opacity: 0, y: -5 }}
+              initial={{ opacity: 0, y: -5 }}
+            >
+              {warning === WarningType.Disconnected && (
+                <TriangleAlert size={12} />
+              )}
+              {warning === WarningType.Empty && <CircleOff size={12} />}
+            </motion.div>
+          )}
       </AnimatePresence>
 
       <div className="invisible">{onIcon}</div>
