@@ -5,7 +5,6 @@ import {
   CameraOff,
   Circle,
   CircleX,
-  Cog,
   Mic,
   MicOff,
   Monitor,
@@ -29,6 +28,10 @@ import Sparkles from "../../../components/sparkles/sparkles";
 import { clearInteractionAttributes } from "../../../lib/styling";
 import { usePermissionsStore } from "../../../stores/permissions.store";
 import {
+  RecordingType,
+  useRecordingPreferencesStore,
+} from "../../../stores/recording-preferences.store";
+import {
   AppWindow,
   useWindowReopenStore,
 } from "../../../stores/window-open-state.store";
@@ -43,6 +46,27 @@ const KEYBOARD_STYLE: ComponentProps<typeof Keyboard> = {
 
 const RecordingControls = () => {
   const permissions = usePermissionsStore((state) => state.permissions);
+  const [
+    recordingType,
+    setRecordingType,
+    camera,
+    setCamera,
+    microphone,
+    setMicrophone,
+    systemAudio,
+    setSystemAudio,
+  ] = useRecordingPreferencesStore(
+    useShallow((state) => [
+      state.recordingType,
+      state.setRecordingType,
+      state.camera,
+      state.setCamera,
+      state.microphone,
+      state.setMicrophone,
+      state.systemAudio,
+      state.setSystemAudio,
+    ])
+  );
 
   const optionsButtonRef = useRef<HTMLButtonElement>(null);
   const setWindowOpenState = useWindowReopenStore(
@@ -86,15 +110,18 @@ const RecordingControls = () => {
       <RadioGroup
         aria-label="Recording type"
         className="grow"
-        defaultValue="region"
         orientation="horizontal"
+        value={recordingType}
+        onChange={(value) => {
+          setRecordingType(value as RecordingType);
+        }}
       >
         <IconRadio
           aria-label="Region"
           icon={<SquareDashed size={30} />}
           shortcut={<Keyboard {...KEYBOARD_STYLE}>1</Keyboard>}
           subtext="Region"
-          value="region"
+          value={RecordingType.Region}
         />
 
         <IconRadio
@@ -102,7 +129,7 @@ const RecordingControls = () => {
           icon={<AppWindowMac size={30} />}
           shortcut={<Keyboard {...KEYBOARD_STYLE}>2</Keyboard>}
           subtext="Window"
-          value="window"
+          value={RecordingType.Window}
         />
 
         <IconRadio
@@ -110,7 +137,7 @@ const RecordingControls = () => {
           icon={<Monitor size={30} />}
           shortcut={<Keyboard {...KEYBOARD_STYLE}>3</Keyboard>}
           subtext="Screen"
-          value="screen"
+          value={RecordingType.Screen}
         />
       </RadioGroup>
 
@@ -123,6 +150,8 @@ const RecordingControls = () => {
               offIcon={<VolumeOff size={16} />}
               onIcon={<Volume2 size={16} />}
               permission={permissions.screen}
+              setValue={setSystemAudio}
+              value={systemAudio}
               showRecordingInputOptions={() => {
                 void onClickOptions();
               }}
@@ -134,6 +163,8 @@ const RecordingControls = () => {
               offIcon={<MicOff size={16} />}
               onIcon={<Mic size={16} />}
               permission={permissions.microphone}
+              setValue={setMicrophone}
+              value={microphone}
               showRecordingInputOptions={() => {
                 void onClickOptions();
               }}
@@ -145,6 +176,8 @@ const RecordingControls = () => {
               offIcon={<CameraOff size={16} />}
               onIcon={<Camera size={16} />}
               permission={permissions.camera}
+              setValue={setCamera}
+              value={camera}
               showRecordingInputOptions={() => {
                 void onClickOptions();
               }}
