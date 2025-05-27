@@ -54,7 +54,7 @@ const InputAudioSelect = () => {
     setDecibels(undefined);
     if (!isDockOpen) return;
 
-    const selectedDevice = selectedItem(selectedItems);
+    const selectedDevice = selectedItem(selectedItems)?.id;
     if (selectedDevice) {
       setNoDevice(false);
       channel.current = new Channel<AudioStreamChannel>();
