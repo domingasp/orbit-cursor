@@ -1,17 +1,16 @@
 use std::sync::{Mutex, Once};
 
-use tauri::{AppHandle, Emitter, State};
-use tauri_nspanel::ManagerExt;
+use tauri::{AppHandle, Emitter, Manager, State};
+use tauri_nspanel::{panel_delegate, ManagerExt};
 
 use crate::{
-  constants::events::{RECORDING_INPUT_OPTIONS_OPENED, START_RECORDING_DOCK_OPENED},
+  constants::{Events, PanelLevel, WindowLabel},
   AppState,
 };
 
 use super::service::{
-  position_and_size_standalone_listbox_panel, position_recording_input_options_panel,
-  setup_recording_input_options_listener, setup_standalone_listbox_listeners,
-  swizzle_to_recording_input_options_panel, swizzle_to_standalone_listbox_panel,
+  add_border, add_close_panel_listener, convert_to_stationary_panel, position_and_size_window,
+  position_window_above_dock,
 };
 
 static INIT_STANDALONE_LISTBOX: Once = Once::new();
@@ -20,16 +19,56 @@ static INIT_RECORDING_OPTIONS_PANEL: Once = Once::new();
 #[tauri::command]
 pub fn init_standalone_listbox(app_handle: AppHandle) {
   INIT_STANDALONE_LISTBOX.call_once(|| {
-    swizzle_to_standalone_listbox_panel(&app_handle);
-    setup_standalone_listbox_listeners(&app_handle);
+    let window = app_handle
+      .get_webview_window(WindowLabel::StandaloneListbox.as_ref())
+      .unwrap();
+
+    let panel = convert_to_stationary_panel(&window, PanelLevel::StandaloneListBox);
+
+    let panel_delegate = panel_delegate!(StandaloneListBoxDelegate {
+      window_did_resign_key
+    });
+
+    let handle = app_handle.clone();
+    panel_delegate.set_listener(Box::new(move |delegate_name: String| {
+      if delegate_name.as_str() == "window_did_resign_key" {
+        let _ = handle.emit(Events::StandaloneListboxDidResignKey.as_ref(), ());
+      }
+    }));
+    panel.set_delegate(panel_delegate);
+
+    add_close_panel_listener(
+      app_handle,
+      WindowLabel::StandaloneListbox,
+      Events::StandaloneListboxDidResignKey,
+      move |app_handle| {
+        let _ = app_handle.emit(Events::ClosedStandaloneListbox.as_ref(), ());
+      },
+    );
   });
 }
 
 #[tauri::command]
 pub fn init_recording_input_options(app_handle: AppHandle) {
   INIT_RECORDING_OPTIONS_PANEL.call_once(|| {
-    swizzle_to_recording_input_options_panel(&app_handle);
-    setup_recording_input_options_listener(&app_handle);
+    let window = app_handle
+      .get_webview_window(WindowLabel::RecordingInputOptions.as_ref())
+      .unwrap();
+    add_border(&window);
+
+    let _ = convert_to_stationary_panel(&window, PanelLevel::RecordingInputOptions);
+
+    add_close_panel_listener(
+      app_handle,
+      WindowLabel::RecordingInputOptions,
+      Events::RecordingInputOptionsDidResignKey,
+      move |app_handle| {
+        let _ = app_handle.emit(Events::ClosedRecordingInputOptions.as_ref(), ());
+
+        let state: State<'_, Mutex<AppState>> = app_handle.state();
+        state.lock().unwrap().recording_input_options_opened = false;
+      },
+    );
   });
 }
 
@@ -40,8 +79,14 @@ pub fn quit_app(app_handle: AppHandle) {
 
 #[tauri::command]
 pub fn show_standalone_listbox(app_handle: AppHandle, x: f64, y: f64, width: f64, height: f64) {
-  let panel = app_handle.get_webview_panel("standalone_listbox").unwrap();
-  position_and_size_standalone_listbox_panel(&app_handle, x, y, width, height);
+  let window = app_handle
+    .get_webview_window(WindowLabel::StandaloneListbox.as_ref())
+    .unwrap();
+  position_and_size_window(window, x, y, width, height);
+
+  let panel = app_handle
+    .get_webview_panel(WindowLabel::StandaloneListbox.as_ref())
+    .unwrap();
   panel.show();
 }
 
@@ -55,17 +100,18 @@ pub fn show_recording_input_options(
   state.recording_input_options_opened = true;
 
   let panel = app_handle
-    .get_webview_panel("recording_input_options")
+    .get_webview_panel(WindowLabel::RecordingInputOptions.as_ref())
     .unwrap();
-  position_recording_input_options_panel(&app_handle, x);
+  position_window_above_dock(&app_handle, WindowLabel::RecordingInputOptions, x);
   panel.order_front_regardless();
 
   let _ = app_handle
-    .emit(RECORDING_INPUT_OPTIONS_OPENED, ())
+    .emit(Events::RecordingInputOptionsOpened.as_ref(), ())
     .map_err(|e| {
       format!(
         "Failed to emit {} event: {}",
-        RECORDING_INPUT_OPTIONS_OPENED, e
+        Events::RecordingInputOptionsOpened.as_ref(),
+        e
       )
     });
 }
@@ -76,17 +122,18 @@ pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<
   state.start_recording_dock_opened = true;
 
   let panel = app_handle
-    .get_webview_panel("start_recording_dock")
+    .get_webview_panel(WindowLabel::StartRecordingDock.as_ref())
     .unwrap();
   panel.order_front_regardless();
 
   // Showing/hiding doesn't remount component, instead we emit event to UI
   let _ = app_handle
-    .emit(START_RECORDING_DOCK_OPENED, ())
+    .emit(Events::StartRecordingDockOpened.as_ref(), ())
     .map_err(|e| {
       format!(
         "Failed to emit {} event: {}",
-        START_RECORDING_DOCK_OPENED, e
+        Events::StartRecordingDockOpened.as_ref(),
+        e
       )
     });
 }
@@ -98,7 +145,7 @@ pub fn hide_start_recording_dock(app_handle: AppHandle, state: State<'_, Mutex<A
   state.audio_streams.clear();
 
   let panel = app_handle
-    .get_webview_panel("start_recording_dock")
+    .get_webview_panel(WindowLabel::StartRecordingDock.as_ref())
     .unwrap();
   panel.order_out(None);
 }

@@ -17,7 +17,10 @@ use audio::{
   models::AudioStream,
 };
 use camera::commands::{list_cameras, start_camera_stream, stop_camera_stream};
-use constants::store::{FIRST_RUN, NATIVE_REQUESTABLE_PERMISSIONS, STORE_NAME};
+use constants::{
+  store::{FIRST_RUN, NATIVE_REQUESTABLE_PERMISSIONS, STORE_NAME},
+  WindowLabel,
+};
 use cpal::Stream;
 use nokhwa::CallbackCamera;
 use permissions::{
@@ -35,7 +38,10 @@ use windows::{
     is_recording_input_options_open, is_start_recording_dock_open, quit_app,
     show_recording_input_options, show_standalone_listbox, show_start_recording_dock,
   },
-  service::{init_start_recording_panel, open_permissions},
+  service::{
+    add_animation, add_border, convert_to_stationary_panel, handle_dock_positioning,
+    open_permissions,
+  },
 };
 
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
@@ -68,6 +74,18 @@ async fn setup_store(app: &App) -> Arc<Store<Wry>> {
   }
 
   store
+}
+
+fn init_start_recording_dock(app_handle: &AppHandle) {
+  let window = app_handle
+    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
+    .unwrap();
+
+  add_border(&window);
+  add_animation(&window, 3);
+  handle_dock_positioning(&window);
+
+  let _ = convert_to_stationary_panel(&window, constants::PanelLevel::StartRecordingDock);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -112,7 +130,7 @@ pub fn run() {
       let app_handle_clone = Arc::new(app_handle.clone());
 
       create_system_tray(app)?;
-      init_start_recording_panel(app_handle);
+      init_start_recording_dock(app_handle);
 
       #[cfg(target_os = "macos")]
       {

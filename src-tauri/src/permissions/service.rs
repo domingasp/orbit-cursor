@@ -11,8 +11,8 @@ use tokio::time::interval;
 
 use crate::{
   constants::{
-    events::MONITOR_PERMISSIONS,
     store::{NATIVE_REQUESTABLE_PERMISSIONS, STORE_NAME},
+    Events,
   },
   permissions::models::NativeRequestablePermissions,
 };
@@ -98,8 +98,14 @@ pub async fn monitor_permissions(app_handle: Arc<AppHandle>) -> Result<(), Strin
     let all_granted = response.permissions.values().all(|p| p.has_access);
 
     app_handle
-      .emit(MONITOR_PERMISSIONS, response.permissions)
-      .map_err(|e| format!("Failed to emit {} event: {}", MONITOR_PERMISSIONS, e))?;
+      .emit(Events::MonitorPermissions.as_ref(), response.permissions)
+      .map_err(|e| {
+        format!(
+          "Failed to emit {} event: {}",
+          Events::MonitorPermissions.as_ref(),
+          e
+        )
+      })?;
 
     if all_granted {
       break;
