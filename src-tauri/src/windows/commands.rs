@@ -15,6 +15,7 @@ use super::service::{
 
 static INIT_STANDALONE_LISTBOX: Once = Once::new();
 static INIT_RECORDING_OPTIONS_PANEL: Once = Once::new();
+static INIT_REGION_SELECTOR: Once = Once::new();
 static INIT_RECORDING_SOURCE_SELECTOR: Once = Once::new();
 
 #[tauri::command]
@@ -70,6 +71,16 @@ pub fn init_recording_input_options(app_handle: AppHandle) {
         state.lock().unwrap().recording_input_options_opened = false;
       },
     );
+  });
+}
+
+#[tauri::command]
+pub fn init_region_selector(app_handle: AppHandle) {
+  INIT_REGION_SELECTOR.call_once(|| {
+    let window = app_handle
+      .get_webview_window(WindowLabel::RegionSelector.as_ref())
+      .unwrap();
+    let _ = convert_to_stationary_panel(&window, PanelLevel::RegionSelector);
   });
 }
 
@@ -183,6 +194,14 @@ pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<
 }
 
 #[tauri::command]
+pub fn show_region_selector(app_handle: AppHandle) {
+  let panel = app_handle
+    .get_webview_panel(WindowLabel::RegionSelector.as_ref())
+    .unwrap();
+  panel.order_front_regardless();
+}
+
+#[tauri::command]
 pub fn hide_start_recording_dock(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) {
   let mut state = state.lock().unwrap();
   state.start_recording_dock_opened = false;
@@ -198,6 +217,14 @@ pub fn hide_start_recording_dock(app_handle: AppHandle, state: State<'_, Mutex<A
     .unwrap();
   recording_source_selector.order_out(None);
   collapse_recording_source_selector(app_handle);
+}
+
+#[tauri::command]
+pub fn hide_region_selector(app_handle: AppHandle) {
+  let panel = app_handle
+    .get_webview_panel(WindowLabel::RegionSelector.as_ref())
+    .unwrap();
+  panel.order_out(None);
 }
 
 #[tauri::command]

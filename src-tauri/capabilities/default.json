@@ -7,6 +7,7 @@
     "request_permissions",
     "standalone_listbox",
     "recording_input_options",
+    "region_selector",
     "recording_source_selector"
   ],
   "permissions": [

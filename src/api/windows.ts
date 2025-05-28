@@ -11,8 +11,12 @@ export const initRecordingInputOptions = () => {
   void invoke(Commands.InitRecordingInputOptions);
 };
 
-export const InitRecordingSourceSelector = () => {
+export const initRecordingSourceSelector = () => {
   void invoke(Commands.InitRecordingSourceSelector);
+};
+
+export const initRegionSelector = () => {
+  void invoke(Commands.InitRegionSelector);
 };
 
 export const hideStartRecordingDock = () => {
@@ -50,4 +54,12 @@ export const expandRecordingSourceSelector = () => {
 
 export const collapseRecordingSourceSelector = () => {
   void invoke(Commands.CollapseRecordingSourceSelector);
+};
+
+export const showRegionSelector = () => {
+  void invoke(Commands.ShowRegionSelector);
+};
+
+export const hideRegionSelector = () => {
+  void invoke(Commands.HideRegionSelector);
 };

@@ -53,6 +53,9 @@ pub enum WindowLabel {
   #[strum(serialize = "recording_input_options")]
   RecordingInputOptions,
 
+  #[strum(serialize = "region_selector")]
+  RegionSelector,
+
   #[strum(serialize = "recording_source_selector")]
   RecordingSourceSelector,
 }
@@ -60,10 +63,11 @@ pub enum WindowLabel {
 #[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PanelLevel {
-  StartRecordingDock = 1,
-  RecordingSourceSelector = 2,
-  RecordingInputOptions = 3,
-  StandaloneListBox = 4,
+  RegionSelector = 1,
+  StartRecordingDock = 2,
+  RecordingSourceSelector = 3,
+  RecordingInputOptions = 4,
+  StandaloneListBox = 5,
 }
 
 impl PanelLevel {
