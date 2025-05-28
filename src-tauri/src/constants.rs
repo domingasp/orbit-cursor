@@ -38,6 +38,9 @@ pub enum Events {
 
 #[derive(EnumString, AsRefStr, Display, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum WindowLabel {
+  #[strum(serialize = "request_permissions")]
+  RequestPermissions,
+
   #[strum(serialize = "start_recording_dock")]
   StartRecordingDock,
 
@@ -46,4 +49,18 @@ pub enum WindowLabel {
 
   #[strum(serialize = "recording_input_options")]
   RecordingInputOptions,
+}
+
+#[repr(i32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PanelLevel {
+  StartRecordingDock = 1,
+  RecordingInputOptions = 2,
+  StandaloneListBox = 3,
+}
+
+impl PanelLevel {
+  pub fn value(self) -> i32 {
+    self as i32
+  }
 }

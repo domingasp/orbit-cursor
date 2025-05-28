@@ -1,4 +1,4 @@
-use std::{ffi::CString, sync::Mutex};
+use std::{ffi::CString, sync::Arc};
 
 use border::WebviewWindowExt as BorderWebviewWindowExt;
 use cocoa::{
@@ -9,38 +9,17 @@ use objc::{class, msg_send, sel, sel_impl};
 use tauri::{
   utils::config::WindowEffectsConfig,
   window::{Effect, EffectState},
-  AppHandle, Emitter, Listener, LogicalSize, Manager, PhysicalPosition, Size, State, WebviewWindow,
+  AppHandle, Emitter, Listener, LogicalSize, Manager, PhysicalPosition, Size, WebviewWindow,
   WebviewWindowBuilder,
 };
 use tauri_nspanel::{block::ConcreteBlock, panel_delegate, ManagerExt, WebviewWindowExt};
 
-use crate::{
-  constants::{Events, WindowLabel},
-  AppState,
-};
+use crate::constants::{Events, PanelLevel, WindowLabel};
 
 #[allow(non_upper_case_globals)]
 const NSWindowStyleMaskNonActivatingPanel: i32 = 1 << 7;
 
 // region: Initialize Windows
-
-fn register_workspace_listener(name: String, callback: Box<dyn Fn()>) {
-  let workspace: id = unsafe { msg_send![class!(NSWorkspace), sharedWorkspace] };
-
-  let notification_center: id = unsafe { msg_send![workspace, notificationCenter] };
-
-  let block = ConcreteBlock::new(move |_notification: id| callback());
-
-  let name: id =
-    unsafe { msg_send![class!(NSString), stringWithCString: CString::new(name).unwrap()] };
-
-  unsafe {
-    let _: () = msg_send![
-      notification_center,
-      addObserverForName: name object: nil queue: nil usingBlock: block
-    ];
-  }
-}
 
 pub fn init_start_recording_panel(app_handle: &AppHandle) {
   let window = app_handle
@@ -48,10 +27,11 @@ pub fn init_start_recording_panel(app_handle: &AppHandle) {
     .unwrap();
   handle_record_dock_positioning(&window).ok();
   add_border(&window).ok();
+  add_animation_to_window(&window, 3);
 
   let panel = window.to_panel().unwrap();
 
-  panel.set_level(NSMainMenuWindowLevel + 1);
+  panel.set_level(NSMainMenuWindowLevel + PanelLevel::StartRecordingDock.value());
 
   panel.set_collection_behaviour(
     NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary
@@ -60,16 +40,6 @@ pub fn init_start_recording_panel(app_handle: &AppHandle) {
   );
 
   panel.set_style_mask(NSWindowStyleMaskNonActivatingPanel);
-
-  let window = app_handle
-    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
-    .unwrap();
-  unsafe {
-    let ns_window: id = window.ns_window().unwrap() as id;
-    // Available enum values: https://github.com/phracker/MacOSX-SDKs/blob/master/MacOSX10.9.sdk/System/Library/Frameworks/AppKit.framework/Versions/C/Headers/NSWindow.h?#L131
-    let _: () = msg_send![ns_window, setAnimationBehavior: 3];
-  }
-
   panel.order_out(None);
 }
 
@@ -81,7 +51,7 @@ pub fn swizzle_to_standalone_listbox_panel(app_handle: &AppHandle) {
 
   let handle = app_handle.clone();
 
-  panel.set_level(NSMainMenuWindowLevel + 3);
+  panel.set_level(NSMainMenuWindowLevel + PanelLevel::StandaloneListBox.value());
 
   panel.set_collection_behaviour(
     NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary
@@ -112,7 +82,7 @@ pub fn swizzle_to_recording_input_options_panel(app_handle: &AppHandle) {
 
   let panel = window.to_panel().unwrap();
 
-  panel.set_level(NSMainMenuWindowLevel + 2);
+  panel.set_level(NSMainMenuWindowLevel + PanelLevel::RecordingInputOptions.value());
 
   panel.set_collection_behaviour(
     NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary
@@ -124,101 +94,101 @@ pub fn swizzle_to_recording_input_options_panel(app_handle: &AppHandle) {
   panel.order_out(None);
 }
 
-pub fn setup_standalone_listbox_listeners(app_handle: &AppHandle) {
-  fn hide_standalone_listbox_panel(app_handle: &AppHandle) {
+/// Attach event listener which closes panel on event.
+///
+/// Execute custom `close_callback` if provided.
+pub fn add_close_panel_listener<F>(
+  app_handle: AppHandle,
+  window_label: WindowLabel,
+  event_to_listen_for: Events,
+  close_callback: F,
+) where
+  F: Fn(&AppHandle) + Send + Sync + 'static,
+{
+  fn hide_panel(app_handle: &AppHandle, window_label: WindowLabel) {
     if check_orbit_cursor_frontmost() {
       return;
     }
 
-    let panel = app_handle
-      .get_webview_panel(WindowLabel::StandaloneListbox.as_ref())
-      .unwrap();
-    let _ = app_handle.emit(Events::ClosedStandaloneListbox.as_ref(), ());
-    panel.order_out(None);
+    if let Ok(panel) = app_handle.get_webview_panel(window_label.as_ref()) {
+      panel.order_out(None);
+    }
   }
 
-  let handle = app_handle.clone();
+  let close_callback_arc: Arc<F> = Arc::new(close_callback);
 
-  app_handle.listen_any(Events::StandaloneListboxDidResignKey.as_ref(), move |_| {
-    hide_standalone_listbox_panel(&handle);
+  let listener_handle = app_handle.clone();
+  let listener_close_callback = close_callback_arc.clone();
+  app_handle.listen_any(event_to_listen_for.as_ref(), move |_| {
+    hide_panel(&listener_handle, window_label);
+    listener_close_callback(&listener_handle);
   });
 
-  let handle = app_handle.clone();
-
-  let callback = Box::new(move || {
-    hide_standalone_listbox_panel(&handle);
-  });
-
+  let workspace_handle = app_handle.clone();
+  let workspace_close_callback = close_callback_arc.clone();
   register_workspace_listener(
     "NSWorkspaceDidActivateApplicationNotification".into(),
-    callback.clone(),
+    Box::new(move || {
+      hide_panel(&workspace_handle, window_label);
+      workspace_close_callback(&workspace_handle);
+    }),
   );
 }
 
-pub fn setup_recording_input_options_listener(app_handle: &AppHandle) {
-  fn hide_recording_input_options(app_handle: &AppHandle) {
-    if check_orbit_cursor_frontmost() {
-      return;
-    }
+/// Open the permissions window.
+pub async fn open_permissions(app_handle: &AppHandle) {
+  let window = WebviewWindowBuilder::new(
+    app_handle,
+    WindowLabel::RequestPermissions.as_ref(),
+    tauri::WebviewUrl::App("/request-permissions".into()),
+  )
+  .title("Request Permissions")
+  .inner_size(540.0, 432.0)
+  .decorations(false)
+  .resizable(false)
+  .shadow(true)
+  .transparent(true)
+  .closable(false)
+  .effects(WindowEffectsConfig {
+    effects: vec![Effect::UnderWindowBackground],
+    state: Some(EffectState::Active),
+    radius: Some(10.0),
+    color: None,
+  })
+  .build()
+  .unwrap();
 
-    let panel = app_handle
-      .get_webview_panel(WindowLabel::RecordingInputOptions.as_ref())
-      .unwrap();
-    let _ = app_handle.emit(Events::ClosedRecordingInputOptions.as_ref(), ());
-    panel.order_out(None);
+  add_border(&window).ok();
 
-    let state: State<'_, Mutex<AppState>> = app_handle.state();
-    state.lock().unwrap().recording_input_options_opened = false;
-  }
-
-  let handle = app_handle.clone();
-
-  app_handle.listen_any(
-    Events::RecordingInputOptionsDidResignKey.as_ref(),
-    move |_| {
-      hide_recording_input_options(&handle);
-    },
-  );
-
-  let handle = app_handle.clone();
-
-  let callback = Box::new(move || {
-    hide_recording_input_options(&handle);
-  });
-
-  register_workspace_listener(
-    "NSWorkspaceDidActivateApplicationNotification".into(),
-    callback.clone(),
-  );
+  window.show().ok();
 }
 
 // endregion
 
 // region: Layout
 
-pub fn position_and_size_standalone_listbox_panel(
-  app_handle: &AppHandle,
+/// Position and size window according to parameters.
+pub fn position_and_size_window(
+  webview_window: WebviewWindow,
   x: f64,
   y: f64,
   width: f64,
   height: f64,
 ) {
-  let window = app_handle
-    .get_webview_window(WindowLabel::StandaloneListbox.as_ref())
-    .unwrap();
-  window.set_position(PhysicalPosition { x, y }).ok();
-  window
+  webview_window.set_position(PhysicalPosition { x, y }).ok();
+  webview_window
     .set_size(Size::Logical(LogicalSize { width, height }))
     .ok();
 }
 
-pub fn position_recording_input_options_panel(app_handle: &AppHandle, x: f64) {
+/// Position window above recording dock, `x` parameter determines the x position.
+pub fn position_window_above_dock(app_handle: &AppHandle, window_label: WindowLabel, x: f64) {
   let margin_bottom = 20.0;
   let dock = app_handle
     .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
     .unwrap();
   let window = app_handle
-    .get_webview_window(WindowLabel::RecordingInputOptions.as_ref())
+    .get_webview_window(window_label.as_ref())
     .unwrap();
 
   window
@@ -252,37 +222,27 @@ pub fn handle_record_dock_positioning(window: &WebviewWindow) -> tauri::Result<(
   Ok(())
 }
 
-/// Open the permissions window.
-pub async fn open_permissions(app_handle: &AppHandle) {
-  let window = WebviewWindowBuilder::new(
-    app_handle,
-    "request_permissions",
-    tauri::WebviewUrl::App("/request-permissions".into()),
-  )
-  .title("Request Permissions")
-  .inner_size(540.0, 432.0)
-  .decorations(false)
-  .resizable(false)
-  .shadow(true)
-  .transparent(true)
-  .closable(false)
-  .effects(WindowEffectsConfig {
-    effects: vec![Effect::UnderWindowBackground],
-    state: Some(EffectState::Active),
-    radius: Some(10.0),
-    color: None,
-  })
-  .build()
-  .unwrap();
-
-  add_border(&window).ok();
-
-  window.show().ok();
-}
-
 // endregion
 
 // region: Utilities
+
+fn register_workspace_listener(name: String, callback: Box<dyn Fn()>) {
+  let workspace: id = unsafe { msg_send![class!(NSWorkspace), sharedWorkspace] };
+
+  let notification_center: id = unsafe { msg_send![workspace, notificationCenter] };
+
+  let block = ConcreteBlock::new(move |_notification: id| callback());
+
+  let name: id =
+    unsafe { msg_send![class!(NSString), stringWithCString: CString::new(name).unwrap()] };
+
+  unsafe {
+    let _: () = msg_send![
+      notification_center,
+      addObserverForName: name object: nil queue: nil usingBlock: block
+    ];
+  }
+}
 
 /// Add window border effect.
 pub fn add_border(window: &WebviewWindow) -> tauri::Result<()> {
@@ -290,6 +250,16 @@ pub fn add_border(window: &WebviewWindow) -> tauri::Result<()> {
   let border = window.border().expect("window has no border");
   border.set_accepts_first_mouse(true);
   Ok(())
+}
+
+/// [MacOS] Add animation behaviour.
+///
+/// Available values: https://github.com/phracker/MacOSX-SDKs/blob/master/MacOSX10.9.sdk/System/Library/Frameworks/AppKit.framework/Versions/C/Headers/NSWindow.h?#L131
+fn add_animation_to_window(window: &WebviewWindow, animation_behaviour: u32) {
+  unsafe {
+    let ns_window: id = window.ns_window().unwrap() as id;
+    let _: () = msg_send![ns_window, setAnimationBehavior: animation_behaviour];
+  }
 }
 
 fn app_pid() -> i32 {
