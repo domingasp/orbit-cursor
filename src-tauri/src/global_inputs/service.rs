@@ -5,7 +5,10 @@ use rdev::{Button, Event, EventType};
 use tauri::{Emitter, Manager};
 
 use crate::{
-  constants::events::{RECORDING_INPUT_OPTIONS_DID_RESIGN_KEY, STANDALONE_LISTBOX_DID_RESIGN_KEY},
+  constants::{
+    events::{RECORDING_INPUT_OPTIONS_DID_RESIGN_KEY, STANDALONE_LISTBOX_DID_RESIGN_KEY},
+    WindowLabel,
+  },
   windows::service::is_coordinate_in_window,
   APP_HANDLE,
 };
@@ -25,10 +28,12 @@ pub fn global_input_event_handler(event: Event) {
       // Handle recording input options popover
       let pos = LAST_MOUSE_POS.lock().unwrap();
       let recording_input_options_window = app_handle
-        .get_webview_window("recording_input_options")
+        .get_webview_window(WindowLabel::RecordingInputOptions.as_ref())
         .unwrap();
 
-      let standalone_listbox_window = app_handle.get_webview_window("standalone_listbox").unwrap();
+      let standalone_listbox_window = app_handle
+        .get_webview_window(WindowLabel::StandaloneListbox.as_ref())
+        .unwrap();
 
       if !is_coordinate_in_window(pos.0, pos.1, &recording_input_options_window)
         && !is_coordinate_in_window(pos.0, pos.1, &standalone_listbox_window)

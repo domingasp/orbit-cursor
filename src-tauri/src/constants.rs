@@ -1,3 +1,5 @@
+use strum_macros::{AsRefStr, Display, EnumString};
+
 pub mod store {
   pub const STORE_NAME: &str = "orbit-cursor-store.json";
   pub const FIRST_RUN: &str = "firstRun";
@@ -14,4 +16,16 @@ pub mod events {
   pub const RECORDING_INPUT_OPTIONS_OPENED: &str = "recording_input_options_opened";
   pub const CLOSED_STANDALONE_LISTBOX: &str = "closed_standalone_listbox";
   pub const CLOSED_RECORDING_INPUT_OPTIONS: &str = "closed_recording_input_options";
+}
+
+#[derive(EnumString, AsRefStr, Display, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum WindowLabel {
+  #[strum(serialize = "start_recording_dock")]
+  StartRecordingDock,
+
+  #[strum(serialize = "standalone_listbox")]
+  StandaloneListbox,
+
+  #[strum(serialize = "recording_input_options")]
+  RecordingInputOptions,
 }

@@ -4,7 +4,7 @@ use tauri::{AppHandle, Emitter, State};
 use tauri_nspanel::ManagerExt;
 
 use crate::{
-  constants::events::{RECORDING_INPUT_OPTIONS_OPENED, START_RECORDING_DOCK_OPENED},
+  constants::{Events, WindowLabel},
   AppState,
 };
 
@@ -40,7 +40,9 @@ pub fn quit_app(app_handle: AppHandle) {
 
 #[tauri::command]
 pub fn show_standalone_listbox(app_handle: AppHandle, x: f64, y: f64, width: f64, height: f64) {
-  let panel = app_handle.get_webview_panel("standalone_listbox").unwrap();
+  let panel = app_handle
+    .get_webview_panel(WindowLabel::StandaloneListbox.as_ref())
+    .unwrap();
   position_and_size_standalone_listbox_panel(&app_handle, x, y, width, height);
   panel.show();
 }
@@ -55,7 +57,7 @@ pub fn show_recording_input_options(
   state.recording_input_options_opened = true;
 
   let panel = app_handle
-    .get_webview_panel("recording_input_options")
+    .get_webview_panel(WindowLabel::RecordingInputOptions.as_ref())
     .unwrap();
   position_recording_input_options_panel(&app_handle, x);
   panel.order_front_regardless();
@@ -76,7 +78,7 @@ pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<
   state.start_recording_dock_opened = true;
 
   let panel = app_handle
-    .get_webview_panel("start_recording_dock")
+    .get_webview_panel(WindowLabel::StartRecordingDock.as_ref())
     .unwrap();
   panel.order_front_regardless();
 
@@ -98,7 +100,7 @@ pub fn hide_start_recording_dock(app_handle: AppHandle, state: State<'_, Mutex<A
   state.audio_streams.clear();
 
   let panel = app_handle
-    .get_webview_panel("start_recording_dock")
+    .get_webview_panel(WindowLabel::StartRecordingDock.as_ref())
     .unwrap();
   panel.order_out(None);
 }

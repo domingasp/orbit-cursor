@@ -15,9 +15,12 @@ use tauri::{
 use tauri_nspanel::{block::ConcreteBlock, panel_delegate, ManagerExt, WebviewWindowExt};
 
 use crate::{
-  constants::events::{
-    CLOSED_RECORDING_INPUT_OPTIONS, CLOSED_STANDALONE_LISTBOX,
-    RECORDING_INPUT_OPTIONS_DID_RESIGN_KEY, STANDALONE_LISTBOX_DID_RESIGN_KEY,
+  constants::{
+    events::{
+      CLOSED_RECORDING_INPUT_OPTIONS, CLOSED_STANDALONE_LISTBOX,
+      RECORDING_INPUT_OPTIONS_DID_RESIGN_KEY, STANDALONE_LISTBOX_DID_RESIGN_KEY,
+    },
+    WindowLabel,
   },
   AppState,
 };
@@ -47,7 +50,7 @@ fn register_workspace_listener(name: String, callback: Box<dyn Fn()>) {
 
 pub fn init_start_recording_panel(app_handle: &AppHandle) {
   let window = app_handle
-    .get_webview_window("start_recording_dock")
+    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
     .unwrap();
   handle_record_dock_positioning(&window).ok();
   add_border(&window).ok();
@@ -65,7 +68,7 @@ pub fn init_start_recording_panel(app_handle: &AppHandle) {
   panel.set_style_mask(NSWindowStyleMaskNonActivatingPanel);
 
   let window = app_handle
-    .get_webview_window("start_recording_dock")
+    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
     .unwrap();
   unsafe {
     let ns_window: id = window.ns_window().unwrap() as id;
@@ -77,7 +80,9 @@ pub fn init_start_recording_panel(app_handle: &AppHandle) {
 }
 
 pub fn swizzle_to_standalone_listbox_panel(app_handle: &AppHandle) {
-  let window = app_handle.get_webview_window("standalone_listbox").unwrap();
+  let window = app_handle
+    .get_webview_window(WindowLabel::StandaloneListbox.as_ref())
+    .unwrap();
   let panel = window.to_panel().unwrap();
 
   let handle = app_handle.clone();
@@ -107,7 +112,7 @@ pub fn swizzle_to_standalone_listbox_panel(app_handle: &AppHandle) {
 
 pub fn swizzle_to_recording_input_options_panel(app_handle: &AppHandle) {
   let window = app_handle
-    .get_webview_window("recording_input_options")
+    .get_webview_window(WindowLabel::RecordingInputOptions.as_ref())
     .unwrap();
   add_border(&window).ok();
 
@@ -131,8 +136,10 @@ pub fn setup_standalone_listbox_listeners(app_handle: &AppHandle) {
       return;
     }
 
-    let panel = app_handle.get_webview_panel("standalone_listbox").unwrap();
-    let _ = app_handle.emit(CLOSED_STANDALONE_LISTBOX, ());
+    let panel = app_handle
+      .get_webview_panel(WindowLabel::StandaloneListbox.as_ref())
+      .unwrap();
+    let _ = app_handle.emit(Events::ClosedStandaloneListbox.as_ref(), ());
     panel.order_out(None);
   }
 
@@ -161,7 +168,7 @@ pub fn setup_recording_input_options_listener(app_handle: &AppHandle) {
     }
 
     let panel = app_handle
-      .get_webview_panel("recording_input_options")
+      .get_webview_panel(WindowLabel::RecordingInputOptions.as_ref())
       .unwrap();
     let _ = app_handle.emit(CLOSED_RECORDING_INPUT_OPTIONS, ());
     panel.order_out(None);
@@ -199,7 +206,9 @@ pub fn position_and_size_standalone_listbox_panel(
   width: f64,
   height: f64,
 ) {
-  let window = app_handle.get_webview_window("standalone_listbox").unwrap();
+  let window = app_handle
+    .get_webview_window(WindowLabel::StandaloneListbox.as_ref())
+    .unwrap();
   window.set_position(PhysicalPosition { x, y }).ok();
   window
     .set_size(Size::Logical(LogicalSize { width, height }))
@@ -209,10 +218,10 @@ pub fn position_and_size_standalone_listbox_panel(
 pub fn position_recording_input_options_panel(app_handle: &AppHandle, x: f64) {
   let margin_bottom = 20.0;
   let dock = app_handle
-    .get_webview_window("start_recording_dock")
+    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
     .unwrap();
   let window = app_handle
-    .get_webview_window("recording_input_options")
+    .get_webview_window(WindowLabel::RecordingInputOptions.as_ref())
     .unwrap();
 
   window
