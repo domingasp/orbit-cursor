@@ -9,92 +9,44 @@ use objc::{class, msg_send, sel, sel_impl};
 use tauri::{
   utils::config::WindowEffectsConfig,
   window::{Effect, EffectState},
-  AppHandle, Emitter, Listener, LogicalSize, Manager, PhysicalPosition, Size, WebviewWindow,
+  AppHandle, Listener, LogicalSize, Manager, PhysicalPosition, Size, WebviewWindow,
   WebviewWindowBuilder,
 };
-use tauri_nspanel::{block::ConcreteBlock, panel_delegate, ManagerExt, WebviewWindowExt};
+use tauri_nspanel::{
+  block::ConcreteBlock,
+  objc_id::{Id, Shared},
+  raw_nspanel::RawNSPanel,
+  ManagerExt, WebviewWindowExt,
+};
 
 use crate::constants::{Events, PanelLevel, WindowLabel};
 
 #[allow(non_upper_case_globals)]
 const NSWindowStyleMaskNonActivatingPanel: i32 = 1 << 7;
 
-// region: Initialize Windows
+// region: Behaviors
 
-pub fn init_start_recording_panel(app_handle: &AppHandle) {
-  let window = app_handle
-    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
-    .unwrap();
-  handle_record_dock_positioning(&window).ok();
-  add_border(&window).ok();
-  add_animation_to_window(&window, 3);
-
+/// Convert a Webview Window into a stationary NSPanel.
+pub fn convert_to_stationary_panel(
+  window: &WebviewWindow,
+  level: PanelLevel,
+) -> Id<RawNSPanel, Shared> {
   let panel = window.to_panel().unwrap();
-
-  panel.set_level(NSMainMenuWindowLevel + PanelLevel::StartRecordingDock.value());
-
+  panel.set_level(NSMainMenuWindowLevel + level.value());
   panel.set_collection_behaviour(
     NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary
       | NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
       | NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary,
   );
-
-  panel.set_style_mask(NSWindowStyleMaskNonActivatingPanel);
-  panel.order_out(None);
-}
-
-pub fn swizzle_to_standalone_listbox_panel(app_handle: &AppHandle) {
-  let window = app_handle
-    .get_webview_window(WindowLabel::StandaloneListbox.as_ref())
-    .unwrap();
-  let panel = window.to_panel().unwrap();
-
-  let handle = app_handle.clone();
-
-  panel.set_level(NSMainMenuWindowLevel + PanelLevel::StandaloneListBox.value());
-
-  panel.set_collection_behaviour(
-    NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary
-      | NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
-      | NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary,
-  );
-
-  let panel_delegate = panel_delegate!(StandaloneListBoxDelegate {
-    window_did_resign_key,
-  });
-  panel_delegate.set_listener(Box::new(move |delegate_name: String| {
-    if delegate_name.as_str() == "window_did_resign_key" {
-      let _ = handle.emit(Events::StandaloneListboxDidResignKey.as_ref(), ());
-    }
-  }));
-  panel.set_delegate(panel_delegate);
 
   // Necessary to show above fullscreen apps
   panel.set_style_mask(NSWindowStyleMaskNonActivatingPanel);
+
   panel.order_out(None);
+  panel
 }
 
-pub fn swizzle_to_recording_input_options_panel(app_handle: &AppHandle) {
-  let window = app_handle
-    .get_webview_window(WindowLabel::RecordingInputOptions.as_ref())
-    .unwrap();
-  add_border(&window).ok();
-
-  let panel = window.to_panel().unwrap();
-
-  panel.set_level(NSMainMenuWindowLevel + PanelLevel::RecordingInputOptions.value());
-
-  panel.set_collection_behaviour(
-    NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary
-      | NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
-      | NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary,
-  );
-
-  panel.set_style_mask(NSWindowStyleMaskNonActivatingPanel);
-  panel.order_out(None);
-}
-
-/// Attach event listener which closes panel on event.
+/// Attach event listener which closes panel on `event_to_listen_for`.
 ///
 /// Execute custom `close_callback` if provided.
 pub fn add_close_panel_listener<F>(
@@ -158,7 +110,7 @@ pub async fn open_permissions(app_handle: &AppHandle) {
   .build()
   .unwrap();
 
-  add_border(&window).ok();
+  add_border(&window);
 
   window.show().ok();
 }
@@ -202,24 +154,19 @@ pub fn position_window_above_dock(app_handle: &AppHandle, window_label: WindowLa
 }
 
 /// Center the window horizontally and 200 px from the bottom of the monitor.
-pub fn handle_record_dock_positioning(window: &WebviewWindow) -> tauri::Result<()> {
-  let label = window.label();
-
-  if let Some(monitor) = window.current_monitor()? {
-    let window_size = window.outer_size()?;
+pub fn handle_dock_positioning(window: &WebviewWindow) {
+  if let Ok(Some(monitor)) = window.current_monitor() {
+    let window_size = window.outer_size().unwrap();
     let monitor_size = monitor.size();
 
-    if label == "start_recording_dock" {
-      let x = (monitor_size.width / 2).saturating_sub(window_size.width / 2);
-      let y = monitor_size
-        .height
-        .saturating_sub(window_size.height)
-        .saturating_sub(200);
-      window.set_position(PhysicalPosition { x, y })?;
-    }
-  }
+    let x = (monitor_size.width / 2).saturating_sub(window_size.width / 2);
+    let y = monitor_size
+      .height
+      .saturating_sub(window_size.height)
+      .saturating_sub(200);
 
-  Ok(())
+    let _ = window.set_position(PhysicalPosition { x, y });
+  }
 }
 
 // endregion
@@ -245,17 +192,16 @@ fn register_workspace_listener(name: String, callback: Box<dyn Fn()>) {
 }
 
 /// Add window border effect.
-pub fn add_border(window: &WebviewWindow) -> tauri::Result<()> {
+pub fn add_border(window: &WebviewWindow) {
   window.add_border(None);
   let border = window.border().expect("window has no border");
   border.set_accepts_first_mouse(true);
-  Ok(())
 }
 
 /// [MacOS] Add animation behaviour.
 ///
 /// Available values: https://github.com/phracker/MacOSX-SDKs/blob/master/MacOSX10.9.sdk/System/Library/Frameworks/AppKit.framework/Versions/C/Headers/NSWindow.h?#L131
-fn add_animation_to_window(window: &WebviewWindow, animation_behaviour: u32) {
+pub fn add_animation(window: &WebviewWindow, animation_behaviour: u32) {
   unsafe {
     let ns_window: id = window.ns_window().unwrap() as id;
     let _: () = msg_send![ns_window, setAnimationBehavior: animation_behaviour];

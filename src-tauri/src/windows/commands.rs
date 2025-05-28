@@ -1,16 +1,16 @@
 use std::sync::{Mutex, Once};
 
 use tauri::{AppHandle, Emitter, Manager, State};
-use tauri_nspanel::ManagerExt;
+use tauri_nspanel::{panel_delegate, ManagerExt};
 
 use crate::{
-  constants::{Events, WindowLabel},
+  constants::{Events, PanelLevel, WindowLabel},
   AppState,
 };
 
 use super::service::{
-  add_close_panel_listener, position_and_size_window, position_window_above_dock,
-  swizzle_to_recording_input_options_panel, swizzle_to_standalone_listbox_panel,
+  add_border, add_close_panel_listener, convert_to_stationary_panel, position_and_size_window,
+  position_window_above_dock,
 };
 
 static INIT_STANDALONE_LISTBOX: Once = Once::new();
@@ -19,12 +19,31 @@ static INIT_RECORDING_OPTIONS_PANEL: Once = Once::new();
 #[tauri::command]
 pub fn init_standalone_listbox(app_handle: AppHandle) {
   INIT_STANDALONE_LISTBOX.call_once(|| {
-    swizzle_to_standalone_listbox_panel(&app_handle);
+    let window = app_handle
+      .get_webview_window(WindowLabel::StandaloneListbox.as_ref())
+      .unwrap();
+
+    let panel = convert_to_stationary_panel(&window, PanelLevel::StandaloneListBox);
+
+    let panel_delegate = panel_delegate!(StandaloneListBoxDelegate {
+      window_did_resign_key
+    });
+
+    let handle = app_handle.clone();
+    panel_delegate.set_listener(Box::new(move |delegate_name: String| {
+      if delegate_name.as_str() == "window_did_resign_key" {
+        let _ = handle.emit(Events::StandaloneListboxDidResignKey.as_ref(), ());
+      }
+    }));
+    panel.set_delegate(panel_delegate);
+
     add_close_panel_listener(
       app_handle,
       WindowLabel::StandaloneListbox,
-      Events::RecordingInputOptionsDidResignKey,
-      move |_| {},
+      Events::StandaloneListboxDidResignKey,
+      move |app_handle| {
+        let _ = app_handle.emit(Events::ClosedStandaloneListbox.as_ref(), ());
+      },
     );
   });
 }
@@ -32,12 +51,20 @@ pub fn init_standalone_listbox(app_handle: AppHandle) {
 #[tauri::command]
 pub fn init_recording_input_options(app_handle: AppHandle) {
   INIT_RECORDING_OPTIONS_PANEL.call_once(|| {
-    swizzle_to_recording_input_options_panel(&app_handle);
+    let window = app_handle
+      .get_webview_window(WindowLabel::RecordingInputOptions.as_ref())
+      .unwrap();
+    add_border(&window);
+
+    let _ = convert_to_stationary_panel(&window, PanelLevel::RecordingInputOptions);
+
     add_close_panel_listener(
       app_handle,
       WindowLabel::RecordingInputOptions,
       Events::RecordingInputOptionsDidResignKey,
       move |app_handle| {
+        let _ = app_handle.emit(Events::ClosedRecordingInputOptions.as_ref(), ());
+
         let state: State<'_, Mutex<AppState>> = app_handle.state();
         state.lock().unwrap().recording_input_options_opened = false;
       },
