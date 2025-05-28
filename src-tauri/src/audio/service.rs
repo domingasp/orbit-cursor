@@ -6,10 +6,7 @@ use cpal::{
 };
 use tauri::{ipc::Channel, Emitter};
 
-use crate::{
-  constants::events::{INPUT_AUDIO_STREAM_ERROR, SYSTEM_AUDIO_STREAM_ERROR},
-  APP_HANDLE,
-};
+use crate::{constants::Events, APP_HANDLE};
 
 use super::commands::AudioStreamChannel;
 
@@ -69,7 +66,7 @@ pub fn create_system_audio_stream(channel: Channel<AudioStreamChannel>) -> Strea
     &device,
     &config.into(),
     channel,
-    SYSTEM_AUDIO_STREAM_ERROR.to_string(),
+    Events::SystemAudioStreamError.to_string(),
   )
 }
 
@@ -88,6 +85,6 @@ pub fn create_input_audio_stream(
     &device,
     &config.into(),
     channel,
-    INPUT_AUDIO_STREAM_ERROR.to_string(),
+    Events::InputAudioStreamError.to_string(),
   ))
 }

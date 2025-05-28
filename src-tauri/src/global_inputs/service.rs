@@ -5,10 +5,7 @@ use rdev::{Button, Event, EventType};
 use tauri::{Emitter, Manager};
 
 use crate::{
-  constants::{
-    events::{RECORDING_INPUT_OPTIONS_DID_RESIGN_KEY, STANDALONE_LISTBOX_DID_RESIGN_KEY},
-    WindowLabel,
-  },
+  constants::{Events, WindowLabel},
   windows::service::is_coordinate_in_window,
   APP_HANDLE,
 };
@@ -23,7 +20,7 @@ pub fn global_input_event_handler(event: Event) {
     }
     EventType::ButtonRelease(Button::Left) => {
       let app_handle = APP_HANDLE.get().unwrap();
-      let _ = app_handle.emit(STANDALONE_LISTBOX_DID_RESIGN_KEY, ());
+      let _ = app_handle.emit(Events::StandaloneListboxDidResignKey.as_ref(), ());
 
       // Handle recording input options popover
       let pos = LAST_MOUSE_POS.lock().unwrap();
@@ -38,7 +35,7 @@ pub fn global_input_event_handler(event: Event) {
       if !is_coordinate_in_window(pos.0, pos.1, &recording_input_options_window)
         && !is_coordinate_in_window(pos.0, pos.1, &standalone_listbox_window)
       {
-        let _ = app_handle.emit(RECORDING_INPUT_OPTIONS_DID_RESIGN_KEY, ());
+        let _ = app_handle.emit(Events::RecordingInputOptionsDidResignKey.as_ref(), ());
       }
     }
     _ => {}

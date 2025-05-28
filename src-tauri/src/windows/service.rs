@@ -15,13 +15,7 @@ use tauri::{
 use tauri_nspanel::{block::ConcreteBlock, panel_delegate, ManagerExt, WebviewWindowExt};
 
 use crate::{
-  constants::{
-    events::{
-      CLOSED_RECORDING_INPUT_OPTIONS, CLOSED_STANDALONE_LISTBOX,
-      RECORDING_INPUT_OPTIONS_DID_RESIGN_KEY, STANDALONE_LISTBOX_DID_RESIGN_KEY,
-    },
-    WindowLabel,
-  },
+  constants::{Events, WindowLabel},
   AppState,
 };
 
@@ -100,7 +94,7 @@ pub fn swizzle_to_standalone_listbox_panel(app_handle: &AppHandle) {
   });
   panel_delegate.set_listener(Box::new(move |delegate_name: String| {
     if delegate_name.as_str() == "window_did_resign_key" {
-      let _ = handle.emit(STANDALONE_LISTBOX_DID_RESIGN_KEY, ());
+      let _ = handle.emit(Events::StandaloneListboxDidResignKey.as_ref(), ());
     }
   }));
   panel.set_delegate(panel_delegate);
@@ -145,7 +139,7 @@ pub fn setup_standalone_listbox_listeners(app_handle: &AppHandle) {
 
   let handle = app_handle.clone();
 
-  app_handle.listen_any(STANDALONE_LISTBOX_DID_RESIGN_KEY, move |_| {
+  app_handle.listen_any(Events::StandaloneListboxDidResignKey.as_ref(), move |_| {
     hide_standalone_listbox_panel(&handle);
   });
 
@@ -170,7 +164,7 @@ pub fn setup_recording_input_options_listener(app_handle: &AppHandle) {
     let panel = app_handle
       .get_webview_panel(WindowLabel::RecordingInputOptions.as_ref())
       .unwrap();
-    let _ = app_handle.emit(CLOSED_RECORDING_INPUT_OPTIONS, ());
+    let _ = app_handle.emit(Events::ClosedRecordingInputOptions.as_ref(), ());
     panel.order_out(None);
 
     let state: State<'_, Mutex<AppState>> = app_handle.state();
@@ -179,9 +173,12 @@ pub fn setup_recording_input_options_listener(app_handle: &AppHandle) {
 
   let handle = app_handle.clone();
 
-  app_handle.listen_any(RECORDING_INPUT_OPTIONS_DID_RESIGN_KEY, move |_| {
-    hide_recording_input_options(&handle);
-  });
+  app_handle.listen_any(
+    Events::RecordingInputOptionsDidResignKey.as_ref(),
+    move |_| {
+      hide_recording_input_options(&handle);
+    },
+  );
 
   let handle = app_handle.clone();
 

@@ -63,11 +63,12 @@ pub fn show_recording_input_options(
   panel.order_front_regardless();
 
   let _ = app_handle
-    .emit(RECORDING_INPUT_OPTIONS_OPENED, ())
+    .emit(Events::RecordingInputOptionsOpened.as_ref(), ())
     .map_err(|e| {
       format!(
         "Failed to emit {} event: {}",
-        RECORDING_INPUT_OPTIONS_OPENED, e
+        Events::RecordingInputOptionsOpened.as_ref(),
+        e
       )
     });
 }
@@ -84,11 +85,12 @@ pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<
 
   // Showing/hiding doesn't remount component, instead we emit event to UI
   let _ = app_handle
-    .emit(START_RECORDING_DOCK_OPENED, ())
+    .emit(Events::StartRecordingDockOpened.as_ref(), ())
     .map_err(|e| {
       format!(
         "Failed to emit {} event: {}",
-        START_RECORDING_DOCK_OPENED, e
+        Events::StartRecordingDockOpened.as_ref(),
+        e
       )
     });
 }
