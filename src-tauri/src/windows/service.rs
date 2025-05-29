@@ -9,8 +9,7 @@ use objc::{class, msg_send, sel, sel_impl};
 use tauri::{
   utils::config::WindowEffectsConfig,
   window::{Effect, EffectState},
-  AppHandle, Listener, LogicalSize, Manager, PhysicalPosition, Size, WebviewWindow,
-  WebviewWindowBuilder,
+  AppHandle, Listener, LogicalPosition, Manager, WebviewWindow, WebviewWindowBuilder,
 };
 use tauri_nspanel::{
   block::ConcreteBlock,
@@ -119,36 +118,29 @@ pub async fn open_permissions(app_handle: &AppHandle) {
 
 // region: Layout
 
-/// Position and size window according to parameters.
-pub fn position_and_size_window(
-  webview_window: WebviewWindow,
-  x: f64,
-  y: f64,
-  width: f64,
-  height: f64,
-) {
-  webview_window.set_position(PhysicalPosition { x, y }).ok();
-  webview_window
-    .set_size(Size::Logical(LogicalSize { width, height }))
-    .ok();
-}
-
 /// Position window above recording dock, `x` parameter determines the x position.
 pub fn position_window_above_dock(app_handle: &AppHandle, window_label: WindowLabel, x: f64) {
-  let margin_bottom = 20.0;
+  let margin_bottom = 5.0;
+
   let dock = app_handle
     .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
     .unwrap();
   let window = app_handle
     .get_webview_window(window_label.as_ref())
     .unwrap();
+  let scale_factor = window.scale_factor().unwrap();
+
+  let window_logical_size = window.outer_size().unwrap().to_logical::<f64>(scale_factor);
+  let dock_y = dock
+    .outer_position()
+    .unwrap()
+    .to_logical::<f64>(scale_factor)
+    .y;
 
   window
-    .set_position(PhysicalPosition {
-      x: x - (window.outer_size().unwrap().width as f64) / 2.0,
-      y: dock.outer_position().unwrap().y as f64
-        - window.outer_size().unwrap().height as f64
-        - margin_bottom,
+    .set_position(LogicalPosition {
+      x: x - (window_logical_size.width) / 2.0,
+      y: dock_y - window_logical_size.height - margin_bottom,
     })
     .ok();
 }
@@ -156,16 +148,14 @@ pub fn position_window_above_dock(app_handle: &AppHandle, window_label: WindowLa
 /// Center the window horizontally and 200 px from the bottom of the monitor.
 pub fn handle_dock_positioning(window: &WebviewWindow) {
   if let Ok(Some(monitor)) = window.current_monitor() {
-    let window_size = window.outer_size().unwrap();
-    let monitor_size = monitor.size();
+    let scale_factor = monitor.scale_factor();
+    let window_size = window.outer_size().unwrap().to_logical::<f64>(scale_factor);
+    let monitor_size = monitor.size().to_logical::<f64>(scale_factor);
 
-    let x = (monitor_size.width / 2).saturating_sub(window_size.width / 2);
-    let y = monitor_size
-      .height
-      .saturating_sub(window_size.height)
-      .saturating_sub(200);
+    let x = (monitor_size.width / 2.0) - (window_size.width / 2.0);
+    let y = monitor_size.height - window_size.height - 100.0;
 
-    let _ = window.set_position(PhysicalPosition { x, y });
+    let _ = window.set_position(LogicalPosition { x, y });
   }
 }
 

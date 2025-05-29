@@ -1,4 +1,4 @@
-import { getCurrentWindow, PhysicalSize } from "@tauri-apps/api/window";
+import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { Selection } from "react-aria-components";
 import { useShallow } from "zustand/react/shallow";
@@ -43,10 +43,10 @@ const StandaloneListBox = () => {
    * No way to know ahead of time.
    */
   const adjustWebviewHeight = async (height: number) => {
-    const finalHeight =
-      (Math.min(height, MAX_HEIGHT) + PADDING) * devicePixelRatio;
-    const { width } = await webview.innerSize();
-    await webview.setSize(new PhysicalSize(width, finalHeight));
+    const finalHeight = Math.min(height, MAX_HEIGHT) + PADDING;
+    const scaleFactor = await webview.scaleFactor();
+    const { width } = (await webview.innerSize()).toLogical(scaleFactor);
+    await webview.setSize(new LogicalSize(width, finalHeight));
   };
 
   useEffect(() => {

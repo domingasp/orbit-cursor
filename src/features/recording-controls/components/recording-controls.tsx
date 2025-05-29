@@ -43,10 +43,11 @@ const RecordingControls = () => {
 
     const { left, width } = optionsButtonRef.current.getBoundingClientRect();
     const currentWindow = getCurrentWindow();
-    const { x } = await currentWindow.outerPosition();
+    const scaleFactor = await currentWindow.scaleFactor();
+    const { x } = (await currentWindow.outerPosition()).toLogical(scaleFactor);
 
     // Position at center x of options button,
-    showRecordingInputOptions(x + (left + width / 2) * window.devicePixelRatio);
+    showRecordingInputOptions(x + (left + width / 2));
   };
 
   return (
