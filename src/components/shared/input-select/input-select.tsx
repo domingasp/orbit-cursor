@@ -1,4 +1,8 @@
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import {
+  getCurrentWindow,
+  LogicalPosition,
+  LogicalSize,
+} from "@tauri-apps/api/window";
 import { useEffect, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
 
@@ -60,14 +64,14 @@ const InputSelect = ({
       triggerRef.current.getBoundingClientRect();
     const currentWindow = getCurrentWindow();
 
-    const { x, y } = await currentWindow.outerPosition();
-
     const PADDING = 4;
-    await showStandaloneListBox({
-      width,
-      x: x + left * window.devicePixelRatio,
-      y: y + (top + height + PADDING) * window.devicePixelRatio,
-    });
+    await showStandaloneListBox(
+      currentWindow.label,
+      new LogicalPosition(left, top + height + PADDING),
+      // Height as 1 as standalone listbox auto resizes on open - value has to
+      // > 0 for proper positioning
+      new LogicalSize(width, 1)
+    );
 
     const items = await fetchItems();
     setItems(id, items);

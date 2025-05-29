@@ -1,6 +1,6 @@
 use std::sync::{Mutex, Once};
 
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, State};
 use tauri_nspanel::{panel_delegate, ManagerExt};
 
 use crate::{
@@ -9,8 +9,7 @@ use crate::{
 };
 
 use super::service::{
-  add_border, add_close_panel_listener, convert_to_stationary_panel, position_and_size_window,
-  position_window_above_dock,
+  add_border, add_close_panel_listener, convert_to_stationary_panel, position_window_above_dock,
 };
 
 static INIT_STANDALONE_LISTBOX: Once = Once::new();
@@ -78,11 +77,29 @@ pub fn quit_app(app_handle: AppHandle) {
 }
 
 #[tauri::command]
-pub fn show_standalone_listbox(app_handle: AppHandle, x: f64, y: f64, width: f64, height: f64) {
+pub fn show_standalone_listbox(
+  app_handle: AppHandle,
+  parent_window_label: String,
+  offset: LogicalPosition<f64>,
+  size: LogicalSize<f64>,
+) {
+  let parent_window = app_handle
+    .get_webview_window(parent_window_label.as_ref())
+    .unwrap();
   let window = app_handle
     .get_webview_window(WindowLabel::StandaloneListbox.as_ref())
     .unwrap();
-  position_and_size_window(window, x, y, width, height);
+  let scale_factor = parent_window.scale_factor().unwrap();
+
+  let parent_position = parent_window
+    .outer_position()
+    .unwrap()
+    .to_logical::<f64>(scale_factor);
+  let _ = window.set_position(LogicalPosition {
+    x: parent_position.x + offset.x,
+    y: parent_position.y + offset.y,
+  });
+  let _ = window.set_size(size);
 
   let panel = app_handle
     .get_webview_panel(WindowLabel::StandaloneListbox.as_ref())
