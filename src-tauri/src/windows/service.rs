@@ -1,4 +1,4 @@
-use std::{ffi::CString, sync::Arc};
+use std::{ffi::CString, sync::Arc, time::Duration};
 
 use border::WebviewWindowExt as BorderWebviewWindowExt;
 use cocoa::{
@@ -9,7 +9,7 @@ use objc::{class, msg_send, sel, sel_impl};
 use tauri::{
   utils::config::WindowEffectsConfig,
   window::{Effect, EffectState},
-  AppHandle, Listener, LogicalPosition, Manager, WebviewWindow, WebviewWindowBuilder,
+  AppHandle, Listener, LogicalPosition, LogicalSize, Manager, WebviewWindow, WebviewWindowBuilder,
 };
 use tauri_nspanel::{
   block::ConcreteBlock,
@@ -233,6 +233,79 @@ pub fn is_coordinate_in_window(x: f64, y: f64, window: &WebviewWindow) -> bool {
   let right = left + (size.width as f64 / scale_factor);
 
   y >= top && y <= bottom && x >= left && x <= right
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Copy, Clone)]
+pub enum Anchor {
+  Bottom,
+  Left,
+  Top,
+  Right,
+}
+
+/// Resize window to target size with transition.
+///
+/// When no anchor provided sizing happens from top-left.
+pub fn animate_resize(
+  window: WebviewWindow,
+  target_width: f64,
+  target_height: f64,
+  anchor: Option<Anchor>,
+) {
+  std::thread::spawn(move || {
+    let steps = 60;
+    let delay = Duration::from_millis(175 / steps);
+
+    let start_size = window
+      .outer_size()
+      .unwrap()
+      .to_logical::<f64>(window.scale_factor().unwrap());
+
+    let start_position = window
+      .outer_position()
+      .unwrap()
+      .to_logical::<f64>(window.scale_factor().unwrap());
+
+    let start_x = start_position.x;
+    let start_y = start_position.y;
+    let start_width = start_size.width;
+    let start_height = start_size.height;
+
+    let delta_width = target_width - start_width;
+    let delta_height = target_height - start_height;
+
+    for i in 1..=steps {
+      let t = i as f64 / steps as f64;
+
+      let transition_width = start_width + delta_width * t;
+      let transition_height = start_height + delta_height * t;
+
+      let _ = window.set_size(LogicalSize::new(transition_width, transition_height));
+
+      if let Some(anchor) = anchor {
+        let (offset_x, offset_y) = match anchor {
+          Anchor::Bottom => (
+            (start_width - transition_width) / 2.0,
+            start_height - transition_height,
+          ),
+          Anchor::Left => (0.0, (start_height - transition_height) / 2.0),
+          Anchor::Top => ((start_width - transition_width) / 2.0, 0.0),
+          Anchor::Right => (
+            start_width - transition_width,
+            (start_height - transition_height) / 2.0,
+          ),
+        };
+
+        let new_x = start_x + offset_x;
+        let new_y = start_y + offset_y;
+
+        let _ = window.set_position(LogicalPosition::new(new_x, new_y));
+      }
+
+      std::thread::sleep(delay);
+    }
+  });
 }
 
 // endregion
