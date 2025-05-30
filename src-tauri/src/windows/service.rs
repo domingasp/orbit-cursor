@@ -249,8 +249,7 @@ pub enum Anchor {
 /// When no anchor provided sizing happens from top-left.
 pub fn animate_resize(
   window: WebviewWindow,
-  target_width: f64,
-  target_height: f64,
+  target_size: LogicalSize<f64>,
   anchor: Option<Anchor>,
 ) {
   std::thread::spawn(move || {
@@ -272,8 +271,8 @@ pub fn animate_resize(
     let start_width = start_size.width;
     let start_height = start_size.height;
 
-    let delta_width = target_width - start_width;
-    let delta_height = target_height - start_height;
+    let delta_width = target_size.width - start_width;
+    let delta_height = target_size.height - start_height;
 
     for i in 1..=steps {
       let t = i as f64 / steps as f64;

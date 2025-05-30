@@ -11,6 +11,10 @@ export const initRecordingInputOptions = () => {
   void invoke(Commands.InitRecordingInputOptions);
 };
 
+export const InitRecordingSourceSelector = () => {
+  void invoke(Commands.InitRecordingSourceSelector);
+};
+
 export const hideStartRecordingDock = () => {
   void invoke(Commands.HideStartRecordingDock);
 };
@@ -38,4 +42,12 @@ export const showRecordingInputOptions = (x: number) => {
 
 export const isRecordingInputOptionsOpen = async (): Promise<boolean> => {
   return await invoke(Commands.IsRecordingInputOptionsOpen);
+};
+
+export const expandRecordingSourceSelector = () => {
+  void invoke(Commands.ExpandRecordingSourceSelector);
+};
+
+export const collapseRecordingSourceSelector = () => {
+  void invoke(Commands.CollapseRecordingSourceSelector);
 };

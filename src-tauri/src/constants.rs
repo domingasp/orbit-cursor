@@ -34,6 +34,9 @@ pub enum Events {
 
   #[strum(serialize = "closed_recording_input_options")]
   ClosedRecordingInputOptions,
+
+  #[strum(serialize = "collapsed_recording_source_selector")]
+  CollapsedRecordingSourceSelector,
 }
 
 #[derive(EnumString, AsRefStr, Display, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -49,14 +52,18 @@ pub enum WindowLabel {
 
   #[strum(serialize = "recording_input_options")]
   RecordingInputOptions,
+
+  #[strum(serialize = "recording_source_selector")]
+  RecordingSourceSelector,
 }
 
 #[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PanelLevel {
   StartRecordingDock = 1,
-  RecordingInputOptions = 2,
-  StandaloneListBox = 3,
+  RecordingSourceSelector = 2,
+  RecordingInputOptions = 3,
+  StandaloneListBox = 4,
 }
 
 impl PanelLevel {

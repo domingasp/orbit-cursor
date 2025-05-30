@@ -6,7 +6,8 @@
     "start_recording_dock",
     "request_permissions",
     "standalone_listbox",
-    "recording_input_options"
+    "recording_input_options",
+    "recording_source_selector"
   ],
   "permissions": [
     "core:default",
