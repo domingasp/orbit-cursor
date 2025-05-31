@@ -242,7 +242,7 @@ pub fn collapse_recording_source_selector(app_handle: AppHandle) {
     .unwrap();
 
   let size = LogicalSize {
-    width: 230.0,
+    width: 232.0,
     height: 40.0,
   };
   animate_resize(window, size, Some(Anchor::Bottom));

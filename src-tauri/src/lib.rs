@@ -4,6 +4,7 @@ mod constants;
 mod global_inputs;
 #[cfg(target_os = "macos")]
 mod permissions;
+mod recording_sources;
 mod system_tray;
 mod windows;
 
@@ -28,6 +29,7 @@ use permissions::{
   service::{ensure_permissions, monitor_permissions},
 };
 use rdev::listen;
+use recording_sources::commands::list_monitors;
 use serde_json::{json, Value};
 use system_tray::service::create_system_tray;
 use tauri::{App, AppHandle, Manager, Wry};
@@ -114,7 +116,8 @@ pub fn run() {
       is_recording_input_options_open,
       list_cameras,
       start_camera_stream,
-      stop_camera_stream
+      stop_camera_stream,
+      list_monitors
     ])
     .manage(Mutex::new(AppState {
       start_recording_dock_opened: false,

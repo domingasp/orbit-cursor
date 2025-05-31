@@ -6,7 +6,8 @@ import {
   collapseRecordingSourceSelector,
   expandRecordingSourceSelector,
 } from "../../api/windows";
-import Button from "../../components/button/button";
+import RecordingSource from "../../features/recording-source/components/recording-source";
+import { rehydrateRecordingPreferencesStore } from "../../stores/recording-preferences.store";
 import {
   AppWindow,
   rehydrateWindowReopenState,
@@ -20,6 +21,11 @@ const RecordingSourceSelector = () => {
   );
 
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const rehydrateStores = (e: StorageEvent) => {
+    rehydrateWindowReopenState(e);
+    rehydrateRecordingPreferencesStore(e);
+  };
 
   const onToggle = () => {
     // Invert the state
@@ -45,23 +51,15 @@ const RecordingSourceSelector = () => {
   }, [startRecordingDockOpened]);
 
   useEffect(() => {
-    window.addEventListener("storage", rehydrateWindowReopenState);
+    window.addEventListener("storage", rehydrateStores);
     return () => {
-      window.removeEventListener("storage", rehydrateWindowReopenState);
+      window.removeEventListener("storage", rehydrateStores);
     };
   }, []);
 
   return (
-    <div className="h-[100vh] flex flex-row p-2 gap-2 items-center justify-center">
-      <span className="text-xs text-muted font-semibold">Monitor:</span>
-      <Button
-        className="w-40 justify-center"
-        onPress={onToggle}
-        showFocus={false}
-        size="sm"
-      >
-        Built-In Display
-      </Button>
+    <div className="flex flex-row p-2 h-[100vh] w-full items-end justify-center">
+      <RecordingSource onPress={onToggle} />
     </div>
   );
 };

@@ -19,4 +19,5 @@ export enum Commands {
   StopCameraStream = "stop_camera_stream",
   ExpandRecordingSourceSelector = "expand_recording_source_selector",
   CollapseRecordingSourceSelector = "collapse_recording_source_selector",
+  ListMonitors = "list_monitors",
 }
