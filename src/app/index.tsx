@@ -3,6 +3,9 @@ import { useEffect, useState } from "react";
 
 import { checkPermissions } from "../api/permissions";
 import { Permissions, usePermissionsStore } from "../stores/permissions.store";
+import { rehydrateRecordingPreferencesStore } from "../stores/recording-preferences.store";
+import { updateStandaloneListBoxStore } from "../stores/standalone-listbox.store";
+import { rehydrateWindowReopenState } from "../stores/window-open-state.store";
 import { Events } from "../types/events";
 
 import { AppProvider } from "./provider";
@@ -28,6 +31,20 @@ export const App = () => {
 
     setUnlisten(() => unlistenFn);
   };
+
+  // Ensure stores are kept to date for all windows
+  const rehydrateStores = (e: StorageEvent) => {
+    updateStandaloneListBoxStore(e);
+    rehydrateRecordingPreferencesStore(e);
+    rehydrateWindowReopenState(e);
+  };
+
+  useEffect(() => {
+    window.addEventListener("storage", rehydrateStores);
+    return () => {
+      window.removeEventListener("storage", rehydrateStores);
+    };
+  }, []);
 
   useEffect(() => {
     void setupPermissions();
