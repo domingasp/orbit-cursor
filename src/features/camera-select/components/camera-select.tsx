@@ -16,7 +16,6 @@ import {
   Item,
   selectedItem,
   StandaloneListBoxes,
-  updateStandaloneListBoxStore,
   useStandaloneListBoxStore,
 } from "../../../stores/standalone-listbox.store";
 import {
@@ -111,9 +110,7 @@ const CameraSelect = () => {
       }
     );
 
-    window.addEventListener("storage", updateStandaloneListBoxStore);
     return () => {
-      window.removeEventListener("storage", updateStandaloneListBoxStore);
       void unlistenStandaloneListBox.then((f) => {
         f();
       });

@@ -21,6 +21,10 @@ const colors: React.ComponentProps<typeof Button>["color"][] = [
 
 const meta = {
   argTypes: {
+    color: {
+      control: "inline-radio",
+      options: colors,
+    },
     size: {
       control: "inline-radio",
       options: sizes,

@@ -698,7 +698,17 @@ name = "cidre"
 version = "0.7.0"
 source = "git+https://github.com/yury/cidre.git?rev=561036b#561036bcc45f0a46a3ceef9f84a2161499243f03"
 dependencies = [
- "cidre-macros",
+ "cidre-macros 0.1.0 (git+https://github.com/yury/cidre.git?rev=561036b)",
+ "parking_lot",
+ "tokio",
+]
+
+[[package]]
+name = "cidre"
+version = "0.7.0"
+source = "git+https://github.com/yury/cidre#e49c28f345324541268ab9bb1bfa31c5c5a9ec36"
+dependencies = [
+ "cidre-macros 0.1.0 (git+https://github.com/yury/cidre)",
  "parking_lot",
  "tokio",
 ]
@@ -707,6 +717,11 @@ dependencies = [
 name = "cidre-macros"
 version = "0.1.0"
 source = "git+https://github.com/yury/cidre.git?rev=561036b#561036bcc45f0a46a3ceef9f84a2161499243f03"
+
+[[package]]
+name = "cidre-macros"
+version = "0.1.0"
+source = "git+https://github.com/yury/cidre#e49c28f345324541268ab9bb1bfa31c5c5a9ec36"
 
 [[package]]
 name = "clang-sys"
@@ -1008,7 +1023,7 @@ version = "0.15.3"
 source = "git+https://github.com/domingasp/cpal.git#46b356b7a63dac86eb757c9d4173de3ccba19b28"
 dependencies = [
  "alsa",
- "cidre",
+ "cidre 0.7.0 (git+https://github.com/yury/cidre.git?rev=561036b)",
  "core-foundation-sys 0.8.7",
  "coreaudio-rs",
  "dasp_sample",
@@ -3563,6 +3578,7 @@ name = "orbit-cursor"
 version = "0.1.0"
 dependencies = [
  "border",
+ "cidre 0.7.0 (git+https://github.com/yury/cidre)",
  "cocoa 0.26.0",
  "cpal",
  "dispatch",

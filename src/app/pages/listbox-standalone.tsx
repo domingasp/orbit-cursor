@@ -1,5 +1,5 @@
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { Selection } from "react-aria-components";
 import { useShallow } from "zustand/react/shallow";
 
@@ -7,7 +7,6 @@ import ListBox from "../../components/listbox/listbox";
 import ListBoxItem from "../../components/listbox-item/listbox-item";
 import {
   Item,
-  updateStandaloneListBoxStore,
   useStandaloneListBoxStore,
 } from "../../stores/standalone-listbox.store";
 
@@ -48,13 +47,6 @@ const StandaloneListBox = () => {
     const { width } = (await webview.innerSize()).toLogical(scaleFactor);
     await webview.setSize(new LogicalSize(width, finalHeight));
   };
-
-  useEffect(() => {
-    window.addEventListener("storage", updateStandaloneListBoxStore);
-    return () => {
-      window.removeEventListener("storage", updateStandaloneListBoxStore);
-    };
-  }, []);
 
   useLayoutEffect(() => {
     // Unbound webview height to allow proper calculation

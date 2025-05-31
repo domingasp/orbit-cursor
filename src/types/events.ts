@@ -6,4 +6,5 @@ export enum Events {
   ClosedRecordingInputOptions = "closed_recording_input_options",
   SystemAudioStreamError = "system_audio_stream_error",
   InputAudioStreamError = "input_audio_stream_error",
+  CollapsedRecordingSourceSelector = "collapsed_recording_source_selector",
 }

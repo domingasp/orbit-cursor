@@ -4,6 +4,7 @@ mod constants;
 mod global_inputs;
 #[cfg(target_os = "macos")]
 mod permissions;
+mod recording_sources;
 mod system_tray;
 mod windows;
 
@@ -28,15 +29,17 @@ use permissions::{
   service::{ensure_permissions, monitor_permissions},
 };
 use rdev::listen;
+use recording_sources::commands::list_monitors;
 use serde_json::{json, Value};
 use system_tray::service::create_system_tray;
 use tauri::{App, AppHandle, Manager, Wry};
 use tauri_plugin_store::{Store, StoreExt};
 use windows::{
   commands::{
-    hide_start_recording_dock, init_recording_input_options, init_standalone_listbox,
-    is_recording_input_options_open, is_start_recording_dock_open, quit_app,
-    show_recording_input_options, show_standalone_listbox, show_start_recording_dock,
+    collapse_recording_source_selector, expand_recording_source_selector,
+    hide_start_recording_dock, init_recording_input_options, init_recording_source_selector,
+    init_standalone_listbox, is_recording_input_options_open, is_start_recording_dock_open,
+    quit_app, show_recording_input_options, show_standalone_listbox, show_start_recording_dock,
   },
   service::{
     add_animation, add_border, convert_to_stationary_panel, handle_dock_positioning,
@@ -103,6 +106,9 @@ pub fn run() {
       init_recording_input_options,
       show_recording_input_options,
       hide_start_recording_dock,
+      init_recording_source_selector,
+      expand_recording_source_selector,
+      collapse_recording_source_selector,
       start_audio_listener,
       stop_audio_listener,
       list_audio_inputs,
@@ -110,7 +116,8 @@ pub fn run() {
       is_recording_input_options_open,
       list_cameras,
       start_camera_stream,
-      stop_camera_stream
+      stop_camera_stream,
+      list_monitors
     ])
     .manage(Mutex::new(AppState {
       start_recording_dock_opened: false,

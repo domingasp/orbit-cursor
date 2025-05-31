@@ -1,6 +1,7 @@
 export enum Commands {
   InitStandaloneListBox = "init_standalone_listbox",
   InitRecordingInputOptions = "init_recording_input_options",
+  InitRecordingSourceSelector = "init_recording_source_selector",
   CheckPermissions = "check_permissions",
   RequestPermission = "request_permission",
   OpenSystemSettings = "open_system_settings",
@@ -16,4 +17,7 @@ export enum Commands {
   ListCameras = "list_cameras",
   StartCameraStream = "start_camera_stream",
   StopCameraStream = "stop_camera_stream",
+  ExpandRecordingSourceSelector = "expand_recording_source_selector",
+  CollapseRecordingSourceSelector = "collapse_recording_source_selector",
+  ListMonitors = "list_monitors",
 }

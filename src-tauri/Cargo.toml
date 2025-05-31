@@ -48,6 +48,7 @@ features = ["default-formats"]
 tauri-plugin-macos-permissions = "2.2.0"
 cocoa = "0.26"
 objc = "0.2.7"
+cidre = { git = "https://github.com/yury/cidre" }
 
 [features]
 # for tauri-nspanel

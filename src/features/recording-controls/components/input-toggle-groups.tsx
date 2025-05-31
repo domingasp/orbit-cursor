@@ -14,12 +14,10 @@ import { useRecordingPreferencesStore } from "../../../stores/recording-preferen
 import {
   selectedItem,
   StandaloneListBoxes,
-  updateStandaloneListBoxStore,
   useStandaloneListBoxStore,
 } from "../../../stores/standalone-listbox.store";
 import {
   AppWindow,
-  rehydrateWindowReopenState,
   useWindowReopenStore,
 } from "../../../stores/window-open-state.store";
 import { listAudioInputs } from "../../audio-inputs/api/audio-listeners";
@@ -82,18 +80,6 @@ const InputToggleGroup = ({
       state.setSystemAudio,
     ])
   );
-
-  const rehydrateStores = (e: StorageEvent) => {
-    updateStandaloneListBoxStore(e);
-    rehydrateWindowReopenState(e);
-  };
-
-  useEffect(() => {
-    window.addEventListener("storage", rehydrateStores);
-    return () => {
-      window.removeEventListener("storage", rehydrateStores);
-    };
-  }, []);
 
   useEffect(() => {
     if (permissions.microphone?.hasAccess) {

@@ -53,6 +53,23 @@
           "radius": 10,
           "state": "active"
         }
+      },
+      {
+        "title": "Recording Source Selector",
+        "label": "recording_source_selector",
+        "url": "/recording-source-selector",
+        "width": 232,
+        "height": 40,
+        "decorations": false,
+        "resizable": false,
+        "shadow": true,
+        "transparent": true,
+        "visible": false,
+        "windowEffects": {
+          "effects": ["underWindowBackground"],
+          "radius": 10,
+          "state": "active"
+        }
       }
     ],
     "security": {

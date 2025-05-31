@@ -9,11 +9,13 @@ use crate::{
 };
 
 use super::service::{
-  add_border, add_close_panel_listener, convert_to_stationary_panel, position_window_above_dock,
+  add_animation, add_border, add_close_panel_listener, animate_resize, convert_to_stationary_panel,
+  position_recording_source_selector, position_window_above_dock, Anchor,
 };
 
 static INIT_STANDALONE_LISTBOX: Once = Once::new();
 static INIT_RECORDING_OPTIONS_PANEL: Once = Once::new();
+static INIT_RECORDING_SOURCE_SELECTOR: Once = Once::new();
 
 #[tauri::command]
 pub fn init_standalone_listbox(app_handle: AppHandle) {
@@ -68,6 +70,21 @@ pub fn init_recording_input_options(app_handle: AppHandle) {
         state.lock().unwrap().recording_input_options_opened = false;
       },
     );
+  });
+}
+
+#[tauri::command]
+pub fn init_recording_source_selector(app_handle: AppHandle) {
+  INIT_RECORDING_SOURCE_SELECTOR.call_once(|| {
+    let window = app_handle
+      .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
+      .unwrap();
+    add_border(&window);
+    add_animation(&window, 3);
+
+    position_recording_source_selector(&app_handle, &window);
+
+    let _ = convert_to_stationary_panel(&window, PanelLevel::RecordingSourceSelector);
   });
 }
 
@@ -153,6 +170,16 @@ pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<
         e
       )
     });
+
+  if let Ok(recording_source_selector) =
+    app_handle.get_webview_panel(WindowLabel::RecordingSourceSelector.as_ref())
+  {
+    let recording_source_selector_window = app_handle
+      .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
+      .unwrap();
+    position_recording_source_selector(app_handle, &recording_source_selector_window);
+    recording_source_selector.order_front_regardless();
+  }
 }
 
 #[tauri::command]
@@ -165,6 +192,12 @@ pub fn hide_start_recording_dock(app_handle: AppHandle, state: State<'_, Mutex<A
     .get_webview_panel(WindowLabel::StartRecordingDock.as_ref())
     .unwrap();
   panel.order_out(None);
+
+  let recording_source_selector = app_handle
+    .get_webview_panel(WindowLabel::RecordingSourceSelector.as_ref())
+    .unwrap();
+  recording_source_selector.order_out(None);
+  collapse_recording_source_selector(app_handle);
 }
 
 #[tauri::command]
@@ -177,4 +210,30 @@ pub fn is_start_recording_dock_open(state: State<'_, Mutex<AppState>>) -> bool {
 pub fn is_recording_input_options_open(state: State<'_, Mutex<AppState>>) -> bool {
   let state = state.lock().unwrap();
   state.recording_input_options_opened
+}
+
+#[tauri::command]
+pub fn expand_recording_source_selector(app_handle: AppHandle) {
+  let window = app_handle
+    .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
+    .unwrap();
+
+  let size = LogicalSize {
+    width: 500.0,
+    height: 250.0,
+  };
+  animate_resize(window, size, Some(Anchor::Bottom));
+}
+
+#[tauri::command]
+pub fn collapse_recording_source_selector(app_handle: AppHandle) {
+  let window = app_handle
+    .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
+    .unwrap();
+
+  let size = LogicalSize {
+    width: 232.0,
+    height: 40.0,
+  };
+  animate_resize(window, size, Some(Anchor::Bottom));
 }
