@@ -31,6 +31,11 @@ const buttonVariants = tv({
       color: "info",
       variant: "soft",
     },
+    {
+      class: "bg-neutral/75",
+      color: "neutral",
+      variant: "soft",
+    },
   ],
   defaultVariants: {
     color: "neutral",

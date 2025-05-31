@@ -1,5 +1,4 @@
 import { AppWindowMac, Monitor } from "lucide-react";
-import { useEffect } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import Button from "../../../components/button/button";
@@ -8,32 +7,14 @@ import {
   RecordingType,
   useRecordingPreferencesStore,
 } from "../../../stores/recording-preferences.store";
-import { listMonitors } from "../api/recording-sources";
 
 type RecordingSourceProps = {
   onPress: () => void;
 };
 const RecordingSource = ({ onPress }: RecordingSourceProps) => {
-  const [recordingType, selectedMonitor, setSelectedMonitor] =
-    useRecordingPreferencesStore(
-      useShallow((state) => [
-        state.recordingType,
-        state.selectedMonitor,
-        state.setSelectedMonitor,
-      ])
-    );
-
-  useEffect(() => {
-    void listMonitors().then((monitors) => {
-      if (
-        !selectedMonitor ||
-        (monitors.find((monitor) => monitor.id === selectedMonitor.id) &&
-          monitors.length > 0)
-      ) {
-        setSelectedMonitor(monitors[0]);
-      }
-    });
-  }, []);
+  const [recordingType, selectedMonitor] = useRecordingPreferencesStore(
+    useShallow((state) => [state.recordingType, state.selectedMonitor])
+  );
 
   return (
     <div className="flex flex-row gap-2 items-center justify-center">

@@ -10,7 +10,7 @@ use crate::{
 
 use super::service::{
   add_animation, add_border, add_close_panel_listener, animate_resize, convert_to_stationary_panel,
-  position_window_above_dock, Anchor,
+  position_recording_source_selector, position_window_above_dock, Anchor,
 };
 
 static INIT_STANDALONE_LISTBOX: Once = Once::new();
@@ -82,22 +82,7 @@ pub fn init_recording_source_selector(app_handle: AppHandle) {
     add_border(&window);
     add_animation(&window, 3);
 
-    let scale_factor = window.scale_factor().unwrap();
-    let dock = app_handle
-      .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
-      .unwrap();
-
-    let dock_pos = dock
-      .outer_position()
-      .unwrap()
-      .to_logical::<f64>(scale_factor);
-    let dock_size = dock.outer_size().unwrap().to_logical::<f64>(scale_factor);
-
-    position_window_above_dock(
-      &app_handle,
-      WindowLabel::RecordingSourceSelector,
-      dock_pos.x + (dock_size.width / 2.0),
-    );
+    position_recording_source_selector(&app_handle, &window);
 
     let _ = convert_to_stationary_panel(&window, PanelLevel::RecordingSourceSelector);
   });
@@ -189,6 +174,10 @@ pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<
   if let Ok(recording_source_selector) =
     app_handle.get_webview_panel(WindowLabel::RecordingSourceSelector.as_ref())
   {
+    let recording_source_selector_window = app_handle
+      .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
+      .unwrap();
+    position_recording_source_selector(app_handle, &recording_source_selector_window);
     recording_source_selector.order_front_regardless();
   }
 }

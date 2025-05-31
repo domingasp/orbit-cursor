@@ -159,6 +159,25 @@ pub fn handle_dock_positioning(window: &WebviewWindow) {
   }
 }
 
+pub fn position_recording_source_selector(app_handle: &AppHandle, window: &WebviewWindow) {
+  let scale_factor = window.scale_factor().unwrap();
+  let dock = app_handle
+    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
+    .unwrap();
+
+  let dock_pos = dock
+    .outer_position()
+    .unwrap()
+    .to_logical::<f64>(scale_factor);
+  let dock_size = dock.outer_size().unwrap().to_logical::<f64>(scale_factor);
+
+  position_window_above_dock(
+    app_handle,
+    WindowLabel::RecordingSourceSelector,
+    dock_pos.x + (dock_size.width / 2.0),
+  );
+}
+
 // endregion
 
 // region: Utilities
