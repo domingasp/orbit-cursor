@@ -175,11 +175,6 @@ pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<
     .unwrap();
   panel.order_front_regardless();
 
-  let recording_source_selector = app_handle
-    .get_webview_panel(WindowLabel::RecordingSourceSelector.as_ref())
-    .unwrap();
-  recording_source_selector.order_front_regardless();
-
   // Showing/hiding doesn't remount component, instead we emit event to UI
   let _ = app_handle
     .emit(Events::StartRecordingDockOpened.as_ref(), ())
@@ -190,6 +185,12 @@ pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<
         e
       )
     });
+
+  if let Ok(recording_source_selector) =
+    app_handle.get_webview_panel(WindowLabel::RecordingSourceSelector.as_ref())
+  {
+    recording_source_selector.order_front_regardless();
+  }
 }
 
 #[tauri::command]
