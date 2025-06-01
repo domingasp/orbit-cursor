@@ -51,8 +51,7 @@ use windows::{
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
 struct AppState {
-  start_recording_dock_opened: bool,
-  recording_input_options_opened: bool,
+  open_windows: HashMap<WindowLabel, bool>,
   audio_streams: HashMap<AudioStream, Stream>,
   camera_stream: Option<CallbackCamera>,
 }
@@ -124,8 +123,11 @@ pub fn run() {
       list_monitors
     ])
     .manage(Mutex::new(AppState {
-      start_recording_dock_opened: false,
-      recording_input_options_opened: false,
+      open_windows: HashMap::from([
+        (WindowLabel::StartRecordingDock, false),
+        (WindowLabel::RecordingInputOptions, false),
+        (WindowLabel::RecordingSourceSelector, false),
+      ]),
       audio_streams: HashMap::new(),
       camera_stream: None,
     }))
