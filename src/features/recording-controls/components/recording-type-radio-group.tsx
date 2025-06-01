@@ -26,22 +26,28 @@ const RecordingTypeRadioGroup = () => {
     useShallow((state) => state.windows[AppWindow.StartRecordingDock])
   );
 
-  const [recordingType, setRecordingType] = useRecordingPreferencesStore(
-    useShallow((state) => [state.recordingType, state.setRecordingType])
-  );
+  const [recordingType, setRecordingType, selectedMonitor] =
+    useRecordingPreferencesStore(
+      useShallow((state) => [
+        state.recordingType,
+        state.setRecordingType,
+        state.selectedMonitor,
+      ])
+    );
 
   useEffect(() => {
     switch (recordingType) {
       case RecordingType.Region:
-        if (startRecordingDockOpened) showRegionSelector();
-        else hideRegionSelector();
+        if (selectedMonitor && startRecordingDockOpened) {
+          showRegionSelector(selectedMonitor.position, selectedMonitor.size);
+        } else hideRegionSelector();
         break;
       case RecordingType.Window:
       case RecordingType.Screen:
         hideRegionSelector();
         return;
     }
-  }, [recordingType, startRecordingDockOpened]);
+  }, [recordingType, startRecordingDockOpened, selectedMonitor]);
 
   return (
     <RadioGroup

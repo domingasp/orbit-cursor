@@ -56,8 +56,11 @@ export const collapseRecordingSourceSelector = () => {
   void invoke(Commands.CollapseRecordingSourceSelector);
 };
 
-export const showRegionSelector = () => {
-  void invoke(Commands.ShowRegionSelector);
+export const showRegionSelector = (
+  position: LogicalPosition,
+  size: LogicalSize
+) => {
+  void invoke(Commands.ShowRegionSelector, { position, size });
 };
 
 export const hideRegionSelector = () => {

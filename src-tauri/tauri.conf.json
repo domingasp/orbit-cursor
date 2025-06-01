@@ -61,7 +61,9 @@
         "decorations": false,
         "resizable": false,
         "fullscreen": false,
-        "transparent": true
+        "shadow": false,
+        "transparent": true,
+        "acceptFirstMouse": true
       },
       {
         "title": "Recording Source Selector",

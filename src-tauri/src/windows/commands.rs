@@ -200,7 +200,7 @@ pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<
       .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
       .unwrap();
     position_recording_source_selector(app_handle, &recording_source_selector_window);
-    recording_source_selector.make_key_and_order_front(None);
+    recording_source_selector.order_front_regardless();
   }
 }
 
@@ -219,7 +219,7 @@ pub fn show_region_selector(
   let panel = app_handle
     .get_webview_panel(WindowLabel::RegionSelector.as_ref())
     .unwrap();
-  panel.order_front_regardless();
+  panel.make_key_and_order_front(None);
 }
 
 #[tauri::command]
