@@ -36,16 +36,14 @@ const RecordingTypeRadioGroup = () => {
     );
 
   useEffect(() => {
-    switch (recordingType) {
-      case RecordingType.Region:
-        if (selectedMonitor && startRecordingDockOpened) {
-          showRegionSelector(selectedMonitor.position, selectedMonitor.size);
-        } else hideRegionSelector();
-        break;
-      case RecordingType.Window:
-      case RecordingType.Screen:
-        hideRegionSelector();
-        return;
+    if (
+      startRecordingDockOpened &&
+      selectedMonitor &&
+      recordingType === RecordingType.Region
+    ) {
+      showRegionSelector(selectedMonitor.position, selectedMonitor.size);
+    } else {
+      hideRegionSelector();
     }
   }, [recordingType, startRecordingDockOpened, selectedMonitor]);
 

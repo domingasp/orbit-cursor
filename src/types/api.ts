@@ -23,4 +23,5 @@ export enum Commands {
   ExpandRecordingSourceSelector = "expand_recording_source_selector",
   CollapseRecordingSourceSelector = "collapse_recording_source_selector",
   ListMonitors = "list_monitors",
+  ResetPanels = "reset_panels",
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { HandleStyles, Rnd } from "react-rnd";
 import { useShallow } from "zustand/react/shallow";
 
+import { resetPanels } from "../../api/windows";
 import {
   RecordingType,
   useRecordingPreferencesStore,
@@ -140,7 +141,9 @@ const RegionSelector = () => {
       <Rnd
         bounds="parent"
         className="border-white border-2 border-dashed"
+        onDragStart={resetPanels}
         onDragStop={persist}
+        onResizeStart={resetPanels}
         onResizeStop={persist}
         position={{ x: position.x, y: position.y }}
         resizeHandleStyles={handleStyles}

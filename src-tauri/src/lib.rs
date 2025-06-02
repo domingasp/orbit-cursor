@@ -39,8 +39,8 @@ use windows::{
     collapse_recording_source_selector, expand_recording_source_selector, hide_region_selector,
     hide_start_recording_dock, init_recording_input_options, init_recording_source_selector,
     init_region_selector, init_standalone_listbox, is_recording_input_options_open,
-    is_start_recording_dock_open, quit_app, show_recording_input_options, show_region_selector,
-    show_standalone_listbox, show_start_recording_dock,
+    is_start_recording_dock_open, quit_app, reset_panels, show_recording_input_options,
+    show_region_selector, show_standalone_listbox, show_start_recording_dock,
   },
   service::{
     add_animation, add_border, convert_to_stationary_panel, handle_dock_positioning,
@@ -120,7 +120,8 @@ pub fn run() {
       list_cameras,
       start_camera_stream,
       stop_camera_stream,
-      list_monitors
+      list_monitors,
+      reset_panels
     ])
     .manage(Mutex::new(AppState {
       open_windows: HashMap::from([

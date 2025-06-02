@@ -57,10 +57,6 @@ pub fn add_close_panel_listener<F>(
   F: Fn(&AppHandle) + Send + Sync + 'static,
 {
   fn hide_panel(app_handle: &AppHandle, window_label: WindowLabel) {
-    if check_orbit_cursor_frontmost() {
-      return;
-    }
-
     if let Ok(panel) = app_handle.get_webview_panel(window_label.as_ref()) {
       panel.order_out(None);
     }
@@ -215,23 +211,6 @@ pub fn add_animation(window: &WebviewWindow, animation_behaviour: u32) {
     let ns_window: id = window.ns_window().unwrap() as id;
     let _: () = msg_send![ns_window, setAnimationBehavior: animation_behaviour];
   }
-}
-
-fn app_pid() -> i32 {
-  let process_info: id = unsafe { msg_send![class!(NSProcessInfo), processInfo] };
-  let pid: i32 = unsafe { msg_send![process_info, processIdentifier] };
-  pid
-}
-
-fn get_frontmost_app_pid() -> i32 {
-  let workspace: id = unsafe { msg_send![class!(NSWorkspace), sharedWorkspace] };
-  let frontmost_application: id = unsafe { msg_send![workspace, frontmostApplication] };
-  let pid: i32 = unsafe { msg_send![frontmost_application, processIdentifier] };
-  pid
-}
-
-pub fn check_orbit_cursor_frontmost() -> bool {
-  get_frontmost_app_pid() == app_pid()
 }
 
 pub fn is_coordinate_in_window(x: f64, y: f64, window: &WebviewWindow) -> bool {

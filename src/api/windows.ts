@@ -66,3 +66,7 @@ export const showRegionSelector = (
 export const hideRegionSelector = () => {
   void invoke(Commands.HideRegionSelector);
 };
+
+export const resetPanels = () => {
+  void invoke(Commands.ResetPanels);
+};

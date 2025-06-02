@@ -220,6 +220,7 @@ pub fn show_region_selector(
     .get_webview_panel(WindowLabel::RegionSelector.as_ref())
     .unwrap();
   panel.make_key_and_order_front(None);
+  let _ = window.set_focus();
 }
 
 #[tauri::command]
@@ -294,4 +295,20 @@ pub fn collapse_recording_source_selector(app_handle: AppHandle) {
     height: 40.0,
   };
   animate_resize(window, size, Some(Anchor::Bottom));
+}
+
+/// Reset panels to default state.
+#[tauri::command]
+pub fn reset_panels(app_handle: AppHandle) {
+  collapse_recording_source_selector(app_handle.clone());
+
+  app_handle
+    .get_webview_panel(WindowLabel::RecordingInputOptions.as_ref())
+    .unwrap()
+    .order_out(None);
+
+  app_handle
+    .get_webview_panel(WindowLabel::StandaloneListbox.as_ref())
+    .unwrap()
+    .order_out(None);
 }
