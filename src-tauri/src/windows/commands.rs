@@ -8,9 +8,13 @@ use crate::{
   AppState,
 };
 
-use super::service::{
-  add_animation, add_border, add_close_panel_listener, animate_resize, convert_to_stationary_panel,
-  position_recording_source_selector, position_window_above_dock, Anchor,
+use super::{
+  models::Bounds,
+  service::{
+    add_animation, add_border, add_close_panel_listener, animate_resize,
+    convert_to_stationary_panel, position_recording_source_selector, position_window_above_dock,
+    Anchor,
+  },
 };
 
 static INIT_STANDALONE_LISTBOX: Once = Once::new();
@@ -311,4 +315,53 @@ pub fn reset_panels(app_handle: AppHandle) {
     .get_webview_panel(WindowLabel::StandaloneListbox.as_ref())
     .unwrap()
     .order_out(None);
+}
+
+#[tauri::command]
+pub fn get_dock_bounds(app_handle: AppHandle) -> Bounds {
+  let dock = app_handle
+    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
+    .unwrap();
+  let source_selector = app_handle
+    .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
+    .unwrap();
+
+  let scale_factor = dock.scale_factor().unwrap();
+  let dock_position = dock
+    .outer_position()
+    .unwrap()
+    .to_logical::<f64>(scale_factor);
+  let dock_size = dock.outer_size().unwrap().to_logical::<f64>(scale_factor);
+
+  let source_selector_position = source_selector
+    .outer_position()
+    .unwrap()
+    .to_logical::<f64>(scale_factor);
+
+  let start_point = LogicalPosition {
+    x: dock_position.x,
+    y: source_selector_position.y,
+  };
+  let end_point = LogicalPosition {
+    x: dock_position.x + dock_size.width,
+    y: dock_position.y + dock_size.height,
+  };
+
+  Bounds {
+    start_point,
+    end_point,
+  }
+}
+
+#[tauri::command]
+pub fn update_dock_opacity(app_handle: AppHandle, opacity: f64) {
+  let dock = app_handle
+    .get_webview_panel(WindowLabel::StartRecordingDock.as_ref())
+    .unwrap();
+  let source_selector = app_handle
+    .get_webview_panel(WindowLabel::RecordingSourceSelector.as_ref())
+    .unwrap();
+
+  dock.set_alpha_value(opacity);
+  source_selector.set_alpha_value(opacity);
 }

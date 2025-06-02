@@ -70,3 +70,12 @@ export const hideRegionSelector = () => {
 export const resetPanels = () => {
   void invoke(Commands.ResetPanels);
 };
+
+export const getDockBounds = async (): Promise<{
+  endPoint: LogicalPosition;
+  startPoint: LogicalPosition;
+}> => await invoke(Commands.GetDockBounds);
+
+export const updateDockOpacity = (opacity: number) => {
+  void invoke(Commands.UpdateDockOpacity, { opacity });
+};

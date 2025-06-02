@@ -24,4 +24,6 @@ export enum Commands {
   CollapseRecordingSourceSelector = "collapse_recording_source_selector",
   ListMonitors = "list_monitors",
   ResetPanels = "reset_panels",
+  GetDockBounds = "get_dock_bounds",
+  UpdateDockOpacity = "update_dock_opacity",
 }
