@@ -5,12 +5,13 @@ mod global_inputs;
 #[cfg(target_os = "macos")]
 mod permissions;
 mod recording_sources;
+mod screen_capture;
 mod system_tray;
 mod windows;
 
 use std::{
   collections::HashMap,
-  sync::{Arc, Mutex, OnceLock},
+  sync::{atomic::AtomicBool, Arc, Mutex, OnceLock},
 };
 
 use audio::{
@@ -30,6 +31,7 @@ use permissions::{
 };
 use rdev::listen;
 use recording_sources::commands::list_monitors;
+use scap::capturer::Capturer;
 use serde_json::{json, Value};
 use system_tray::service::create_system_tray;
 use tauri::{App, AppHandle, Manager, Wry};
@@ -49,12 +51,16 @@ use windows::{
   },
 };
 
+use crate::screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture};
+
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
 struct AppState {
   open_windows: HashMap<WindowLabel, bool>,
   audio_streams: HashMap<AudioStream, Stream>,
   camera_stream: Option<CallbackCamera>,
+  magnifier_capturer: Option<Capturer>,
+  magnifier_running: Arc<AtomicBool>,
 }
 
 async fn setup_store(app: &App) -> Arc<Store<Wry>> {
@@ -124,7 +130,9 @@ pub fn run() {
       list_monitors,
       reset_panels,
       get_dock_bounds,
-      update_dock_opacity
+      update_dock_opacity,
+      start_magnifier_capture,
+      stop_magnifier_capture,
     ])
     .manage(Mutex::new(AppState {
       open_windows: HashMap::from([
@@ -134,6 +142,8 @@ pub fn run() {
       ]),
       audio_streams: HashMap::new(),
       camera_stream: None,
+      magnifier_capturer: None,
+      magnifier_running: Arc::new(AtomicBool::new(false)),
     }))
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_macos_permissions::init())

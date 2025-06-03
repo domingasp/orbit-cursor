@@ -5,6 +5,7 @@ use tauri_nspanel::{panel_delegate, ManagerExt};
 
 use crate::{
   constants::{Events, PanelLevel, WindowLabel},
+  screen_capture::service::init_magnifier_capturer,
   AppState,
 };
 
@@ -88,6 +89,8 @@ pub fn init_region_selector(app_handle: AppHandle) {
       .get_webview_window(WindowLabel::RegionSelector.as_ref())
       .unwrap();
     let _ = convert_to_stationary_panel(&window, PanelLevel::RegionSelector);
+
+    init_magnifier_capturer(app_handle.state());
   });
 }
 

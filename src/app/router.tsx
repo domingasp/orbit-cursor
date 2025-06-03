@@ -2,8 +2,8 @@ import { createBrowserRouter, RouterProvider } from "react-router";
 
 import StandaloneListBox from "./pages/listbox-standalone";
 import RecordingInputOptions from "./pages/recording-input-options";
-import RegionSelector from "./pages/region-selector";
 import RecordingSourceSelector from "./pages/recording-source-selector";
+import Region from "./pages/region";
 import RequestPermissions from "./pages/request-permissions/request-permissions";
 import StartRecordingDock from "./pages/start-recording-dock";
 
@@ -25,7 +25,7 @@ const router = createBrowserRouter([
     path: "/recording-input-options",
   },
   {
-    element: <RegionSelector />,
+    element: <Region />,
     path: "/region-selector",
   },
   {

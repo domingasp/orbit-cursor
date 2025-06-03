@@ -1,0 +1,49 @@
+use std::{
+  sync::{atomic::Ordering, Arc, Mutex},
+  thread,
+};
+
+use scap::frame::Frame;
+use tauri::{ipc::Channel, Manager, State};
+
+use crate::{AppState, APP_HANDLE};
+
+#[tauri::command]
+pub fn start_magnifier_capture(channel: Channel) {
+  let app_state = APP_HANDLE.get().unwrap().state::<Mutex<AppState>>().inner();
+
+  let (mut capturer, running_flag) = if let Ok(mut state) = app_state.lock() {
+    if let Some(c) = state.magnifier_capturer.take() {
+      let running_flag = Arc::clone(&state.magnifier_running);
+      running_flag.store(true, Ordering::SeqCst);
+      (c, running_flag)
+    } else {
+      return;
+    }
+  } else {
+    return;
+  };
+
+  thread::spawn(move || {
+    capturer.start_capture();
+    while running_flag.load(Ordering::SeqCst) {
+      if let Ok(frame) = capturer.get_next_frame() {
+        if let Frame::BGRA(bgra_frame) = frame {
+          let _ = channel.send(tauri::ipc::InvokeResponseBody::Raw(bgra_frame.data));
+        }
+      }
+    }
+    capturer.stop_capture();
+
+    if let Ok(mut state) = app_state.lock() {
+      state.magnifier_capturer = Some(capturer);
+    }
+  });
+}
+
+#[tauri::command]
+pub fn stop_magnifier_capture(state: State<'_, Mutex<AppState>>) {
+  if let Ok(state) = state.lock() {
+    state.magnifier_running.store(false, Ordering::SeqCst);
+  }
+}

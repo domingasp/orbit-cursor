@@ -26,4 +26,6 @@ export enum Commands {
   ResetPanels = "reset_panels",
   GetDockBounds = "get_dock_bounds",
   UpdateDockOpacity = "update_dock_opacity",
+  StartMagnifierCapture = "start_magnifier_capture",
+  StopMagnifierCapture = "stop_magnifier_capture",
 }

@@ -1,21 +1,23 @@
-import { LogicalPosition } from "@tauri-apps/api/dpi";
-import { useEffect, useRef, useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { HandleStyles, Rnd } from "react-rnd";
 import { useShallow } from "zustand/react/shallow";
 
 import {
   getDockBounds,
-  resetPanels,
   updateDockOpacity,
-} from "../../api/windows";
+  resetPanels,
+} from "../../../api/windows";
 import {
-  RecordingType,
   useRecordingPreferencesStore,
-} from "../../stores/recording-preferences.store";
+  RecordingType,
+} from "../../../stores/recording-preferences.store";
 import {
   AppWindow,
   useWindowReopenStore,
-} from "../../stores/window-open-state.store";
+} from "../../../stores/window-open-state.store";
+import getRectProximity from "../utils/rect-proximity";
+
+import Magnifier from "./magnifier";
 
 const handleStyle: React.CSSProperties = {
   background: "var(--color-content)",
@@ -71,66 +73,6 @@ const handleStyles: HandleStyles = {
   },
 };
 
-/**
- * Return a proximity value from 0 to 1 on how close two rects are.
- *
- * - Return 0 when intersecting,
- * - Return 1 when distance more than `maxProximity`,
- * - Return between 0 and 1 when distance is less then `maxProximity`
- * but not intersecting.
- *
- * @param rect1 Position and size of rect.
- * @param rect2 Start and end position of rect.
- * @param maxProximity Distance from which to calculate value between 0 and 1.
- * Any distance more than this will return 1.
- * @returns Value between 0 and 1 - 0 meaning intersecting and 1 meaning further
- * than `maxProximity`
- */
-const getRectProximity = (
-  rect1: {
-    position: { x: number; y: number };
-    size: { height: number; width: number };
-  },
-  rect2: {
-    endPoint: LogicalPosition;
-    startPoint: LogicalPosition;
-  },
-  maxProximity = 25
-) => {
-  const r1Left = rect1.position.x;
-  const r1Top = rect1.position.y;
-  const r1Right = r1Left + rect1.size.width;
-  const r1Bottom = r1Top + rect1.size.height;
-
-  const r2Left = rect2.startPoint.x;
-  const r2Top = rect2.startPoint.y;
-  const r2Right = rect2.endPoint.x;
-  const r2Bottom = rect2.endPoint.y;
-
-  // Minimum distance between rectangles
-  const dx = Math.max(r2Left - r1Right, r1Left - r2Right, 0);
-  const dy = Math.max(r2Top - r1Bottom, r1Top - r2Bottom, 0);
-
-  const distance = Math.hypot(dx, dy);
-
-  // When dock inside region
-  if (
-    r2Left >= r1Left &&
-    r2Right <= r1Right &&
-    r2Top >= r1Top &&
-    r2Bottom <= r1Bottom
-  ) {
-    const toLeft = r2Left - r1Left;
-    const toRight = r1Right - r2Right;
-    const toTop = r2Top - r1Top;
-    const toBottom = r1Bottom - r2Bottom;
-    const minEdgeDist = Math.min(toLeft, toRight, toTop, toBottom);
-    return Math.min(1, minEdgeDist / maxProximity);
-  }
-
-  return Math.min(1, distance / maxProximity);
-};
-
 const RegionSelector = () => {
   const startRecordingDockOpened = useWindowReopenStore(
     useShallow((state) => state.windows[AppWindow.StartRecordingDock])
@@ -145,6 +87,8 @@ const RegionSelector = () => {
       ])
     );
 
+  const [isResizing, setIsResizing] = useState(false);
+
   const [dockBounds, setDockBounds] =
     useState<Awaited<ReturnType<typeof getDockBounds>>>();
   const [position, setPosition] = useState(region.position);
@@ -152,10 +96,20 @@ const RegionSelector = () => {
   const previousProximity = useRef(0);
 
   // To avoid too many storage updates we only update store at the end
-  const persist = () => {
+  const onEnd = () => {
     setRegion({ position, size });
     updateDockOpacity(1);
     previousProximity.current = -1; // ensure calculation happens
+  };
+
+  const onResizeStart = () => {
+    resetPanels();
+    setIsResizing(true);
+  };
+
+  const onResizeEnd = () => {
+    onEnd();
+    setIsResizing(false);
   };
 
   useEffect(() => {
@@ -194,7 +148,7 @@ const RegionSelector = () => {
       setSize({ height: clampedHeight, width: clampedWidth });
     }
 
-    persist();
+    onEnd();
   }, [selectedMonitor]);
 
   useEffect(() => {
@@ -245,9 +199,9 @@ const RegionSelector = () => {
         bounds="parent"
         className="border-white border-2 border-dashed"
         onDragStart={resetPanels}
-        onDragStop={persist}
-        onResizeStart={resetPanels}
-        onResizeStop={persist}
+        onDragStop={onEnd}
+        onResizeStart={onResizeStart}
+        onResizeStop={onResizeEnd}
         position={{ x: position.x, y: position.y }}
         resizeHandleStyles={handleStyles}
         size={{ height: size.height, width: size.width }}
@@ -263,6 +217,8 @@ const RegionSelector = () => {
           setPosition(position);
         }}
       />
+
+      <Magnifier isVisible={isResizing} />
     </div>
   );
 };
