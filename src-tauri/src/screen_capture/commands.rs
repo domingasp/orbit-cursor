@@ -5,6 +5,7 @@ use std::{
 
 use scap::frame::Frame;
 use tauri::{ipc::Channel, Manager, State};
+use yuv::bgra_to_rgba;
 
 use crate::{AppState, APP_HANDLE};
 
@@ -29,7 +30,23 @@ pub fn start_magnifier_capture(channel: Channel) {
     while running_flag.load(Ordering::SeqCst) {
       if let Ok(frame) = capturer.get_next_frame() {
         if let Frame::BGRA(bgra_frame) = frame {
-          let _ = channel.send(tauri::ipc::InvokeResponseBody::Raw(bgra_frame.data));
+          let width = bgra_frame.width as u32;
+          let height = bgra_frame.height as u32;
+
+          let mut rgba_buffer = vec![0u8; (width * height * 4) as usize];
+          if let Err(e) = bgra_to_rgba(
+            &bgra_frame.data,
+            width * 4,
+            &mut rgba_buffer,
+            width * 4,
+            width,
+            height,
+          ) {
+            eprintln!("Failed to convert BGRA to RGBA: {:?}", e);
+            continue; // skip this frame
+          }
+
+          let _ = channel.send(tauri::ipc::InvokeResponseBody::Raw(rgba_buffer));
         }
       }
     }

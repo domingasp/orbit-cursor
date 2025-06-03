@@ -1,5 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { HandleStyles, Rnd } from "react-rnd";
+import {
+  HandleClasses,
+  HandleStyles,
+  Rnd,
+  RndResizeStartCallback,
+} from "react-rnd";
 import { useShallow } from "zustand/react/shallow";
 
 import {
@@ -7,6 +12,7 @@ import {
   updateDockOpacity,
   resetPanels,
 } from "../../../api/windows";
+import { cn } from "../../../lib/styling";
 import {
   useRecordingPreferencesStore,
   RecordingType,
@@ -15,6 +21,7 @@ import {
   AppWindow,
   useWindowReopenStore,
 } from "../../../stores/window-open-state.store";
+import { ResizeDirection } from "../types";
 import getRectProximity from "../utils/rect-proximity";
 
 import Magnifier from "./magnifier";
@@ -73,6 +80,18 @@ const handleStyles: HandleStyles = {
   },
 };
 
+// Classes to allow querying for element
+const handleClasses: HandleClasses = {
+  bottom: "bottom",
+  bottomLeft: "bottomLeft",
+  bottomRight: "bottomRight",
+  left: "left",
+  right: "right",
+  top: "top",
+  topLeft: "topLeft",
+  topRight: "topRight",
+};
+
 const RegionSelector = () => {
   const startRecordingDockOpened = useWindowReopenStore(
     useShallow((state) => state.windows[AppWindow.StartRecordingDock])
@@ -87,7 +106,10 @@ const RegionSelector = () => {
       ])
     );
 
-  const [isResizing, setIsResizing] = useState(false);
+  const [resizeDirection, setResizeDirection] = useState<
+    ResizeDirection | undefined
+  >(undefined);
+  const activeResizeHandleRef = useRef<HTMLElement>(null);
 
   const [dockBounds, setDockBounds] =
     useState<Awaited<ReturnType<typeof getDockBounds>>>();
@@ -102,14 +124,19 @@ const RegionSelector = () => {
     previousProximity.current = -1; // ensure calculation happens
   };
 
-  const onResizeStart = () => {
+  const onResizeStart: RndResizeStartCallback = (_e, dir, _elementRef) => {
     resetPanels();
-    setIsResizing(true);
+    setResizeDirection(dir);
+
+    activeResizeHandleRef.current = document.getElementsByClassName(
+      dir
+    )[0] as HTMLElement;
   };
 
   const onResizeEnd = () => {
     onEnd();
-    setIsResizing(false);
+    setResizeDirection(undefined);
+    activeResizeHandleRef.current = null;
   };
 
   useEffect(() => {
@@ -172,7 +199,12 @@ const RegionSelector = () => {
   if (recordingType !== RecordingType.Region) return;
 
   return (
-    <div className="relative w-[100vw] h-[100vh] overflow-hidden">
+    <div
+      className={cn(
+        "relative w-[100vw] h-[100vh] overflow-hidden",
+        resizeDirection && "cursor-none [&_*]:cursor-none!"
+      )}
+    >
       <svg className="absolute w-full h-full pointer-events-none">
         <defs>
           <mask id="cutout">
@@ -203,6 +235,7 @@ const RegionSelector = () => {
         onResizeStart={onResizeStart}
         onResizeStop={onResizeEnd}
         position={{ x: position.x, y: position.y }}
+        resizeHandleClasses={handleClasses}
         resizeHandleStyles={handleStyles}
         size={{ height: size.height, width: size.width }}
         onDrag={(_e, d) => {
@@ -218,7 +251,10 @@ const RegionSelector = () => {
         }}
       />
 
-      <Magnifier isVisible={isResizing} />
+      <Magnifier
+        activeHandle={activeResizeHandleRef}
+        resizeDirection={resizeDirection}
+      />
     </div>
   );
 };
