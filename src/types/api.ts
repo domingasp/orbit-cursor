@@ -28,4 +28,5 @@ export enum Commands {
   UpdateDockOpacity = "update_dock_opacity",
   StartMagnifierCapture = "start_magnifier_capture",
   StopMagnifierCapture = "stop_magnifier_capture",
+  InitMagnifierCapturer = "init_magnifier_capturer",
 }

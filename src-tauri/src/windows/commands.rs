@@ -5,7 +5,6 @@ use tauri_nspanel::{panel_delegate, ManagerExt};
 
 use crate::{
   constants::{Events, PanelLevel, WindowLabel},
-  screen_capture::service::init_magnifier_capturer,
   AppState,
 };
 
@@ -89,8 +88,6 @@ pub fn init_region_selector(app_handle: AppHandle) {
       .get_webview_window(WindowLabel::RegionSelector.as_ref())
       .unwrap();
     let _ = convert_to_stationary_panel(&window, PanelLevel::RegionSelector);
-
-    init_magnifier_capturer(app_handle.state());
   });
 }
 
@@ -350,9 +347,14 @@ pub fn get_dock_bounds(app_handle: AppHandle) -> Bounds {
     y: dock_position.y + dock_size.height,
   };
 
+  let display_id = match dock.current_monitor() {
+    Ok(Some(monitor)) => monitor.name().cloned(),
+    _ => None,
+  };
   Bounds {
     start_point,
     end_point,
+    display_id,
   }
 }
 

@@ -5,9 +5,15 @@ import { AnimatePresence, motion } from "motion/react";
 import { RefObject, useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { useRecordingPreferencesStore } from "../../../stores/recording-preferences.store";
-import { startMagnifierCapture, stopMagnifierCapture } from "../api/magnifier";
-import { ResizeDirection } from "../types";
+import { useRecordingPreferencesStore } from "../../../../stores/recording-preferences.store";
+import {
+  initMagnifierCapturer,
+  startMagnifierCapture,
+  stopMagnifierCapture,
+} from "../../api/magnifier";
+import { ResizeDirection } from "../../types";
+
+import Boundary from "./boundary";
 
 type MagnifierProps = {
   activeHandle: RefObject<HTMLElement | null>;
@@ -122,6 +128,7 @@ const Magnifier = ({
 
     if (selectedMonitor) {
       void toPhysical(selectedMonitor.size);
+      initMagnifierCapturer(selectedMonitor.name);
     }
   }, [selectedMonitor]);
 
@@ -143,17 +150,8 @@ const Magnifier = ({
       }
 
       const { x, y } = handlePosition.physical;
-      const cropSize = 20;
+      const cropSize = 40;
       const zoomedSize = cropSize * zoomFactor;
-
-      const clampedX = Math.max(
-        0,
-        Math.min(x - cropSize / 2, width - cropSize)
-      );
-      const clampedY = Math.max(
-        0,
-        Math.min(y - cropSize / 2, height - cropSize)
-      );
 
       // Draw the last image frame to the fullsize canvas for extraction
       const fullsizeCtx = fullsizeCanvasRef.current.getContext("2d");
@@ -174,8 +172,8 @@ const Magnifier = ({
       magnifiedCtx.drawImage(
         // Source
         fullsizeCanvasRef.current,
-        clampedX,
-        clampedY,
+        x - cropSize / 2,
+        y - cropSize / 2,
         cropSize,
         cropSize,
         // Destination
@@ -197,18 +195,21 @@ const Magnifier = ({
   return (
     <AnimatePresence>
       {resizeDirection && (
-        <motion.canvas
-          ref={magnifiedCanvasRef}
+        <motion.div
           animate={{ opacity: 1, scale: 1 }}
-          className="absolute max-h-[100px] pointer-events-none shadow-md rounded-sm"
+          className="absolute pointer-events-none shadow-md rounded-sm overflow-hidden border-1 border-content-fg/10"
           exit={{ opacity: 0, scale: 0 }}
-          initial={{ opacity: 0, scale: 0 }}
+          initial={{ opacity: 0, scale: 0, x: "-50%", y: "-50%" }}
           style={{
             left: `${handlePosition.logical.x.toString()}px`,
             position: "fixed",
             top: `${handlePosition.logical.y.toString()}px`,
           }}
-        />
+        >
+          <canvas ref={magnifiedCanvasRef} className="max-h-[100px]" />
+
+          <Boundary direction={resizeDirection} />
+        </motion.div>
       )}
     </AnimatePresence>
   );

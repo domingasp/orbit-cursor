@@ -32,6 +32,7 @@ use permissions::{
 use rdev::listen;
 use recording_sources::commands::list_monitors;
 use scap::capturer::Capturer;
+use screen_capture::commands::init_magnifier_capturer;
 use serde_json::{json, Value};
 use system_tray::service::create_system_tray;
 use tauri::{App, AppHandle, Manager, Wry};
@@ -131,6 +132,7 @@ pub fn run() {
       reset_panels,
       get_dock_bounds,
       update_dock_opacity,
+      init_magnifier_capturer,
       start_magnifier_capture,
       stop_magnifier_capture,
     ])

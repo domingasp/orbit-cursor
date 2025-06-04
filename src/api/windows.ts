@@ -72,6 +72,7 @@ export const resetPanels = () => {
 };
 
 export const getDockBounds = async (): Promise<{
+  displayId: string | undefined;
   endPoint: LogicalPosition;
   startPoint: LogicalPosition;
 }> => await invoke(Commands.GetDockBounds);

@@ -24,7 +24,7 @@ import {
 import { ResizeDirection } from "../types";
 import getRectProximity from "../utils/rect-proximity";
 
-import Magnifier from "./magnifier";
+import Magnifier from "./magnifier/magnifier";
 
 const handleStyle: React.CSSProperties = {
   background: "var(--color-content)",
@@ -111,6 +111,7 @@ const RegionSelector = () => {
   >(undefined);
   const activeResizeHandleRef = useRef<HTMLElement>(null);
 
+  const [ignoreDockBounds, setIgnoreDockBounds] = useState(false);
   const [dockBounds, setDockBounds] =
     useState<Awaited<ReturnType<typeof getDockBounds>>>();
   const [position, setPosition] = useState(region.position);
@@ -142,15 +143,21 @@ const RegionSelector = () => {
   useEffect(() => {
     if (startRecordingDockOpened) {
       void getDockBounds().then((bounds) => {
-        setDockBounds(bounds);
+        if (dockBounds === undefined) setDockBounds(bounds);
+
+        // Dock bounds not relevant when region selector on monitor 2
+        setIgnoreDockBounds(
+          selectedMonitor !== null && selectedMonitor.id !== bounds.displayId
+        );
       });
     }
-  }, [startRecordingDockOpened]);
+  }, [startRecordingDockOpened, selectedMonitor]);
 
   // Fits region into monitor
   useEffect(() => {
     if (!selectedMonitor) return;
 
+    // Make region fit into new monitor
     const maxX = selectedMonitor.size.width - size.width;
     const maxY = selectedMonitor.size.height - size.height;
 
@@ -179,7 +186,7 @@ const RegionSelector = () => {
   }, [selectedMonitor]);
 
   useEffect(() => {
-    if (dockBounds) {
+    if (!ignoreDockBounds && dockBounds) {
       const proximity = getRectProximity(
         {
           position,
