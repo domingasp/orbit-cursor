@@ -5,12 +5,13 @@ mod global_inputs;
 #[cfg(target_os = "macos")]
 mod permissions;
 mod recording_sources;
+mod screen_capture;
 mod system_tray;
 mod windows;
 
 use std::{
   collections::HashMap,
-  sync::{Arc, Mutex, OnceLock},
+  sync::{atomic::AtomicBool, Arc, Mutex, OnceLock},
 };
 
 use audio::{
@@ -30,16 +31,20 @@ use permissions::{
 };
 use rdev::listen;
 use recording_sources::commands::list_monitors;
+use scap::capturer::Capturer;
+use screen_capture::commands::init_magnifier_capturer;
 use serde_json::{json, Value};
 use system_tray::service::create_system_tray;
 use tauri::{App, AppHandle, Manager, Wry};
 use tauri_plugin_store::{Store, StoreExt};
 use windows::{
   commands::{
-    collapse_recording_source_selector, expand_recording_source_selector,
-    hide_start_recording_dock, init_recording_input_options, init_recording_source_selector,
-    init_standalone_listbox, is_recording_input_options_open, is_start_recording_dock_open,
-    quit_app, show_recording_input_options, show_standalone_listbox, show_start_recording_dock,
+    collapse_recording_source_selector, expand_recording_source_selector, get_dock_bounds,
+    hide_region_selector, hide_start_recording_dock, init_recording_input_options,
+    init_recording_source_selector, init_region_selector, init_standalone_listbox,
+    is_recording_input_options_open, is_start_recording_dock_open, quit_app, reset_panels,
+    show_recording_input_options, show_region_selector, show_standalone_listbox,
+    show_start_recording_dock, update_dock_opacity,
   },
   service::{
     add_animation, add_border, convert_to_stationary_panel, handle_dock_positioning,
@@ -47,13 +52,16 @@ use windows::{
   },
 };
 
+use crate::screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture};
+
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
 struct AppState {
-  start_recording_dock_opened: bool,
-  recording_input_options_opened: bool,
+  open_windows: HashMap<WindowLabel, bool>,
   audio_streams: HashMap<AudioStream, Stream>,
   camera_stream: Option<CallbackCamera>,
+  magnifier_capturer: Option<Capturer>,
+  magnifier_running: Arc<AtomicBool>,
 }
 
 async fn setup_store(app: &App) -> Arc<Store<Wry>> {
@@ -105,6 +113,9 @@ pub fn run() {
       show_standalone_listbox,
       init_recording_input_options,
       show_recording_input_options,
+      init_region_selector,
+      show_region_selector,
+      hide_region_selector,
       hide_start_recording_dock,
       init_recording_source_selector,
       expand_recording_source_selector,
@@ -117,13 +128,24 @@ pub fn run() {
       list_cameras,
       start_camera_stream,
       stop_camera_stream,
-      list_monitors
+      list_monitors,
+      reset_panels,
+      get_dock_bounds,
+      update_dock_opacity,
+      init_magnifier_capturer,
+      start_magnifier_capture,
+      stop_magnifier_capture,
     ])
     .manage(Mutex::new(AppState {
-      start_recording_dock_opened: false,
-      recording_input_options_opened: false,
+      open_windows: HashMap::from([
+        (WindowLabel::StartRecordingDock, false),
+        (WindowLabel::RecordingInputOptions, false),
+        (WindowLabel::RecordingSourceSelector, false),
+      ]),
       audio_streams: HashMap::new(),
       camera_stream: None,
+      magnifier_capturer: None,
+      magnifier_running: Arc::new(AtomicBool::new(false)),
     }))
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_macos_permissions::init())

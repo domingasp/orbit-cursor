@@ -20,7 +20,6 @@ pub fn global_input_event_handler(event: Event) {
     }
     EventType::ButtonRelease(Button::Left) => {
       let app_handle = APP_HANDLE.get().unwrap();
-      let _ = app_handle.emit(Events::StandaloneListboxDidResignKey.as_ref(), ());
 
       // Handle recording input options popover
       let pos = LAST_MOUSE_POS.lock().unwrap();
@@ -32,15 +31,17 @@ pub fn global_input_event_handler(event: Event) {
         .get_webview_window(WindowLabel::StandaloneListbox.as_ref())
         .unwrap();
 
-      let recording_source_selector = app_handle
-        .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
-        .unwrap();
+      let _ = app_handle.emit(Events::StandaloneListboxDidResignKey.as_ref(), ());
 
       if !is_coordinate_in_window(pos.0, pos.1, &recording_input_options_window)
         && !is_coordinate_in_window(pos.0, pos.1, &standalone_listbox_window)
       {
         let _ = app_handle.emit(Events::RecordingInputOptionsDidResignKey.as_ref(), ());
       }
+
+      let recording_source_selector = app_handle
+        .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
+        .unwrap();
 
       if !is_coordinate_in_window(pos.0, pos.1, &recording_source_selector) {
         collapse_recording_source_selector(app_handle.clone());

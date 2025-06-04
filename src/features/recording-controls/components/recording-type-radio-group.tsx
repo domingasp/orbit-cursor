@@ -1,13 +1,18 @@
 import { AppWindowMac, Monitor, SquareDashed } from "lucide-react";
-import { ComponentProps } from "react";
+import { ComponentProps, useEffect } from "react";
 import { useShallow } from "zustand/react/shallow";
 
+import { hideRegionSelector, showRegionSelector } from "../../../api/windows";
 import Keyboard from "../../../components/keyboard/keyboard";
 import RadioGroup from "../../../components/radio-group/radio-group";
 import {
   RecordingType,
   useRecordingPreferencesStore,
 } from "../../../stores/recording-preferences.store";
+import {
+  AppWindow,
+  useWindowReopenStore,
+} from "../../../stores/window-open-state.store";
 
 import IconRadio from "./icon-radio";
 
@@ -17,9 +22,30 @@ const KEYBOARD_STYLE: ComponentProps<typeof Keyboard> = {
 };
 
 const RecordingTypeRadioGroup = () => {
-  const [recordingType, setRecordingType] = useRecordingPreferencesStore(
-    useShallow((state) => [state.recordingType, state.setRecordingType])
+  const startRecordingDockOpened = useWindowReopenStore(
+    useShallow((state) => state.windows[AppWindow.StartRecordingDock])
   );
+
+  const [recordingType, setRecordingType, selectedMonitor] =
+    useRecordingPreferencesStore(
+      useShallow((state) => [
+        state.recordingType,
+        state.setRecordingType,
+        state.selectedMonitor,
+      ])
+    );
+
+  useEffect(() => {
+    if (
+      startRecordingDockOpened &&
+      selectedMonitor &&
+      recordingType === RecordingType.Region
+    ) {
+      showRegionSelector(selectedMonitor.position, selectedMonitor.size);
+    } else {
+      hideRegionSelector();
+    }
+  }, [recordingType, startRecordingDockOpened, selectedMonitor]);
 
   return (
     <RadioGroup

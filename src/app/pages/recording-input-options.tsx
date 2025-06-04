@@ -8,17 +8,14 @@ import CameraSelect from "../../features/camera-select/components/camera-select"
 import { clearInteractionAttributes } from "../../lib/styling";
 import {
   AppWindow,
+  rehydrateWindowReopenState,
   useWindowReopenStore,
 } from "../../stores/window-open-state.store";
 import { Events } from "../../types/events";
 
 const RecordingInputOptions = () => {
   const [addWindow, setWindowOpenState] = useWindowReopenStore(
-    useShallow((state) => [
-      state.addWindow,
-      state.setWindowOpenState,
-      state.windows,
-    ])
+    useShallow((state) => [state.addWindow, state.setWindowOpenState])
   );
 
   useEffect(() => {
@@ -45,6 +42,17 @@ const RecordingInputOptions = () => {
       void unlistenClose.then((f) => {
         f();
       });
+    };
+  }, []);
+
+  const rehydrateStores = (e: StorageEvent) => {
+    rehydrateWindowReopenState(e);
+  };
+
+  useEffect(() => {
+    window.addEventListener("storage", rehydrateStores);
+    return () => {
+      window.removeEventListener("storage", rehydrateStores);
     };
   }, []);
 

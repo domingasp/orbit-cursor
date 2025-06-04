@@ -8,13 +8,18 @@ use crate::{
   AppState,
 };
 
-use super::service::{
-  add_animation, add_border, add_close_panel_listener, animate_resize, convert_to_stationary_panel,
-  position_recording_source_selector, position_window_above_dock, Anchor,
+use super::{
+  models::Bounds,
+  service::{
+    add_animation, add_border, add_close_panel_listener, animate_resize,
+    convert_to_stationary_panel, position_recording_source_selector, position_window_above_dock,
+    Anchor,
+  },
 };
 
 static INIT_STANDALONE_LISTBOX: Once = Once::new();
 static INIT_RECORDING_OPTIONS_PANEL: Once = Once::new();
+static INIT_REGION_SELECTOR: Once = Once::new();
 static INIT_RECORDING_SOURCE_SELECTOR: Once = Once::new();
 
 #[tauri::command]
@@ -66,10 +71,23 @@ pub fn init_recording_input_options(app_handle: AppHandle) {
       move |app_handle| {
         let _ = app_handle.emit(Events::ClosedRecordingInputOptions.as_ref(), ());
 
-        let state: State<'_, Mutex<AppState>> = app_handle.state();
-        state.lock().unwrap().recording_input_options_opened = false;
+        let app_state: State<'_, Mutex<AppState>> = app_handle.state();
+        let mut state = app_state.lock().unwrap();
+        state
+          .open_windows
+          .insert(WindowLabel::RecordingInputOptions, false);
       },
     );
+  });
+}
+
+#[tauri::command]
+pub fn init_region_selector(app_handle: AppHandle) {
+  INIT_REGION_SELECTOR.call_once(|| {
+    let window = app_handle
+      .get_webview_window(WindowLabel::RegionSelector.as_ref())
+      .unwrap();
+    let _ = convert_to_stationary_panel(&window, PanelLevel::RegionSelector);
   });
 }
 
@@ -131,7 +149,9 @@ pub fn show_recording_input_options(
   x: f64,
 ) {
   let mut state = state.lock().unwrap();
-  state.recording_input_options_opened = true;
+  state
+    .open_windows
+    .insert(WindowLabel::RecordingInputOptions, true);
 
   let panel = app_handle
     .get_webview_panel(WindowLabel::RecordingInputOptions.as_ref())
@@ -153,7 +173,9 @@ pub fn show_recording_input_options(
 #[tauri::command]
 pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<AppState>>) {
   let mut state = state.lock().unwrap();
-  state.start_recording_dock_opened = true;
+  state
+    .open_windows
+    .insert(WindowLabel::StartRecordingDock, true);
 
   let panel = app_handle
     .get_webview_panel(WindowLabel::StartRecordingDock.as_ref())
@@ -174,6 +196,10 @@ pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<
   if let Ok(recording_source_selector) =
     app_handle.get_webview_panel(WindowLabel::RecordingSourceSelector.as_ref())
   {
+    state
+      .open_windows
+      .insert(WindowLabel::RecordingSourceSelector, true);
+
     let recording_source_selector_window = app_handle
       .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
       .unwrap();
@@ -183,9 +209,30 @@ pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<
 }
 
 #[tauri::command]
+pub fn show_region_selector(
+  app_handle: AppHandle,
+  size: LogicalSize<f64>,
+  position: LogicalPosition<f64>,
+) {
+  let window = app_handle
+    .get_webview_window(WindowLabel::RegionSelector.as_ref())
+    .unwrap();
+  let _ = window.set_size(size);
+  let _ = window.set_position(position);
+
+  let panel = app_handle
+    .get_webview_panel(WindowLabel::RegionSelector.as_ref())
+    .unwrap();
+  panel.make_key_and_order_front(None);
+  let _ = window.set_focus();
+}
+
+#[tauri::command]
 pub fn hide_start_recording_dock(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) {
   let mut state = state.lock().unwrap();
-  state.start_recording_dock_opened = false;
+  state
+    .open_windows
+    .insert(WindowLabel::StartRecordingDock, false);
   state.audio_streams.clear();
 
   let panel = app_handle
@@ -201,15 +248,31 @@ pub fn hide_start_recording_dock(app_handle: AppHandle, state: State<'_, Mutex<A
 }
 
 #[tauri::command]
+pub fn hide_region_selector(app_handle: AppHandle) {
+  let panel = app_handle
+    .get_webview_panel(WindowLabel::RegionSelector.as_ref())
+    .unwrap();
+  panel.order_out(None);
+}
+
+#[tauri::command]
 pub fn is_start_recording_dock_open(state: State<'_, Mutex<AppState>>) -> bool {
   let state = state.lock().unwrap();
-  state.start_recording_dock_opened
+  state
+    .open_windows
+    .get(&WindowLabel::StartRecordingDock)
+    .copied()
+    .unwrap_or(false)
 }
 
 #[tauri::command]
 pub fn is_recording_input_options_open(state: State<'_, Mutex<AppState>>) -> bool {
   let state = state.lock().unwrap();
-  state.recording_input_options_opened
+  state
+    .open_windows
+    .get(&WindowLabel::RecordingInputOptions)
+    .copied()
+    .unwrap_or(false)
 }
 
 #[tauri::command]
@@ -236,4 +299,74 @@ pub fn collapse_recording_source_selector(app_handle: AppHandle) {
     height: 40.0,
   };
   animate_resize(window, size, Some(Anchor::Bottom));
+}
+
+/// Reset panels to default state.
+#[tauri::command]
+pub fn reset_panels(app_handle: AppHandle) {
+  collapse_recording_source_selector(app_handle.clone());
+
+  app_handle
+    .get_webview_panel(WindowLabel::RecordingInputOptions.as_ref())
+    .unwrap()
+    .order_out(None);
+
+  app_handle
+    .get_webview_panel(WindowLabel::StandaloneListbox.as_ref())
+    .unwrap()
+    .order_out(None);
+}
+
+#[tauri::command]
+pub fn get_dock_bounds(app_handle: AppHandle) -> Bounds {
+  let dock = app_handle
+    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
+    .unwrap();
+  let source_selector = app_handle
+    .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
+    .unwrap();
+
+  let scale_factor = dock.scale_factor().unwrap();
+  let dock_position = dock
+    .outer_position()
+    .unwrap()
+    .to_logical::<f64>(scale_factor);
+  let dock_size = dock.outer_size().unwrap().to_logical::<f64>(scale_factor);
+
+  let source_selector_position = source_selector
+    .outer_position()
+    .unwrap()
+    .to_logical::<f64>(scale_factor);
+
+  let start_point = LogicalPosition {
+    x: dock_position.x,
+    y: source_selector_position.y,
+  };
+  let end_point = LogicalPosition {
+    x: dock_position.x + dock_size.width,
+    y: dock_position.y + dock_size.height,
+  };
+
+  let display_id = match dock.current_monitor() {
+    Ok(Some(monitor)) => monitor.name().cloned(),
+    _ => None,
+  };
+  Bounds {
+    start_point,
+    end_point,
+    display_id,
+  }
+}
+
+#[tauri::command]
+pub fn update_dock_opacity(app_handle: AppHandle, opacity: f64) {
+  let dock = app_handle
+    .get_webview_panel(WindowLabel::StartRecordingDock.as_ref())
+    .unwrap();
+  let source_selector = app_handle
+    .get_webview_panel(WindowLabel::RecordingSourceSelector.as_ref())
+    .unwrap();
+
+  dock.set_alpha_value(opacity);
+  source_selector.set_alpha_value(opacity);
 }

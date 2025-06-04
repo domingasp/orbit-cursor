@@ -55,6 +55,17 @@
         }
       },
       {
+        "title": "Region Selector",
+        "label": "region_selector",
+        "url": "/region-selector",
+        "decorations": false,
+        "resizable": false,
+        "fullscreen": false,
+        "shadow": false,
+        "transparent": true,
+        "acceptFirstMouse": true
+      },
+      {
         "title": "Recording Source Selector",
         "label": "recording_source_selector",
         "url": "/recording-source-selector",

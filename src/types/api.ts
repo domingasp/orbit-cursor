@@ -1,6 +1,7 @@
 export enum Commands {
   InitStandaloneListBox = "init_standalone_listbox",
   InitRecordingInputOptions = "init_recording_input_options",
+  InitRegionSelector = "init_region_selector",
   InitRecordingSourceSelector = "init_recording_source_selector",
   CheckPermissions = "check_permissions",
   RequestPermission = "request_permission",
@@ -17,7 +18,15 @@ export enum Commands {
   ListCameras = "list_cameras",
   StartCameraStream = "start_camera_stream",
   StopCameraStream = "stop_camera_stream",
+  ShowRegionSelector = "show_region_selector",
+  HideRegionSelector = "hide_region_selector",
   ExpandRecordingSourceSelector = "expand_recording_source_selector",
   CollapseRecordingSourceSelector = "collapse_recording_source_selector",
   ListMonitors = "list_monitors",
+  ResetPanels = "reset_panels",
+  GetDockBounds = "get_dock_bounds",
+  UpdateDockOpacity = "update_dock_opacity",
+  StartMagnifierCapture = "start_magnifier_capture",
+  StopMagnifierCapture = "stop_magnifier_capture",
+  InitMagnifierCapturer = "init_magnifier_capturer",
 }

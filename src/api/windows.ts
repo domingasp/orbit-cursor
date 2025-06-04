@@ -11,8 +11,12 @@ export const initRecordingInputOptions = () => {
   void invoke(Commands.InitRecordingInputOptions);
 };
 
-export const InitRecordingSourceSelector = () => {
+export const initRecordingSourceSelector = () => {
   void invoke(Commands.InitRecordingSourceSelector);
+};
+
+export const initRegionSelector = () => {
+  void invoke(Commands.InitRegionSelector);
 };
 
 export const hideStartRecordingDock = () => {
@@ -50,4 +54,29 @@ export const expandRecordingSourceSelector = () => {
 
 export const collapseRecordingSourceSelector = () => {
   void invoke(Commands.CollapseRecordingSourceSelector);
+};
+
+export const showRegionSelector = (
+  position: LogicalPosition,
+  size: LogicalSize
+) => {
+  void invoke(Commands.ShowRegionSelector, { position, size });
+};
+
+export const hideRegionSelector = () => {
+  void invoke(Commands.HideRegionSelector);
+};
+
+export const resetPanels = () => {
+  void invoke(Commands.ResetPanels);
+};
+
+export const getDockBounds = async (): Promise<{
+  displayId: string | undefined;
+  endPoint: LogicalPosition;
+  startPoint: LogicalPosition;
+}> => await invoke(Commands.GetDockBounds);
+
+export const updateDockOpacity = (opacity: number) => {
+  void invoke(Commands.UpdateDockOpacity, { opacity });
 };
