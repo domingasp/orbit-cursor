@@ -1,3 +1,4 @@
+import { LogicalSize } from "@tauri-apps/api/dpi";
 import { listen } from "@tauri-apps/api/event";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
@@ -9,7 +10,9 @@ import {
 } from "../../api/windows";
 import {
   listMonitors,
+  listWindows,
   MonitorDetails,
+  WindowDetails,
 } from "../../features/recording-source/api/recording-sources";
 import MonitorSelector from "../../features/recording-source/components/monitor-selector";
 import RecordingSource from "../../features/recording-source/components/recording-source";
@@ -29,27 +32,45 @@ const RecordingSourceSelector = () => {
   const startRecordingDockOpened = useWindowReopenStore(
     useShallow((state) => state.windows[AppWindow.StartRecordingDock])
   );
-  const [selectedMonitor, setSelectedMonitor, recordingType] =
-    useRecordingPreferencesStore(
-      useShallow((state) => [
-        state.selectedMonitor,
-        state.setSelectedMonitor,
-        state.recordingType,
-      ])
-    );
+  const [
+    selectedMonitor,
+    setSelectedMonitor,
+    selectedWindow,
+    setSelectedWindow,
+    recordingType,
+  ] = useRecordingPreferencesStore(
+    useShallow((state) => [
+      state.selectedMonitor,
+      state.setSelectedMonitor,
+      state.selectedWindow,
+      state.setSelectedWindow,
+      state.recordingType,
+    ])
+  );
 
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const onSelect = (monitor: MonitorDetails) => {
-    setSelectedMonitor(monitor);
-    setIsExpanded(false);
-    collapseRecordingSourceSelector();
+  const onSelect = (source: MonitorDetails | WindowDetails | null) => {
+    if (source === null || "thumbnailPath" in source) {
+      setSelectedWindow(source);
+    } else {
+      setSelectedMonitor(source);
+    }
+    if (source !== null) {
+      setIsExpanded(false);
+      collapseRecordingSourceSelector();
+    }
   };
 
   const onToggle = () => {
     // Invert the state
     if (isExpanded) collapseRecordingSourceSelector();
-    else expandRecordingSourceSelector();
+    else
+      expandRecordingSourceSelector(
+        recordingType === RecordingType.Window
+          ? new LogicalSize(750, 500)
+          : undefined
+      );
     setIsExpanded((prev) => !prev);
   };
 
@@ -63,7 +84,15 @@ const RecordingSourceSelector = () => {
         setSelectedMonitor(monitors[0]);
       }
     });
-  }, [isExpanded]);
+
+    if (selectedWindow !== null) {
+      void listWindows().then((windows) => {
+        const doesSelectedExist =
+          windows.findIndex((x) => x.id === selectedWindow.id) > -1;
+        if (!doesSelectedExist) setSelectedWindow(null);
+      });
+    }
+  }, [startRecordingDockOpened, isExpanded]);
 
   useEffect(() => {
     const unlisten = listen(Events.CollapsedRecordingSourceSelector, () => {
@@ -88,18 +117,22 @@ const RecordingSourceSelector = () => {
         isExpanded && "gap-2"
       )}
     >
-      {isExpanded && (
-        <SelectorWrapper>
-          {recordingType === RecordingType.Window ? (
-            <WindowSelector />
-          ) : (
+      {isExpanded &&
+        (recordingType === RecordingType.Window ? (
+          <SelectorWrapper className="overflow-auto items-start">
+            <WindowSelector
+              onSelect={onSelect}
+              selectedWindow={selectedWindow}
+            />
+          </SelectorWrapper>
+        ) : (
+          <SelectorWrapper>
             <MonitorSelector
               onSelect={onSelect}
               selectedMonitor={selectedMonitor}
             />
-          )}
-        </SelectorWrapper>
-      )}
+          </SelectorWrapper>
+        ))}
 
       {startRecordingDockOpened && <RecordingSource onPress={onToggle} />}
     </div>

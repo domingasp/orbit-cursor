@@ -1,7 +1,10 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 
-import { MonitorDetails } from "../features/recording-source/api/recording-sources";
+import {
+  MonitorDetails,
+  WindowDetails,
+} from "../features/recording-source/api/recording-sources";
 
 const STORE_NAME = "recordingPreferences";
 
@@ -22,11 +25,13 @@ type RecordingPreferencesState = {
   recordingType: RecordingType;
   region: Region;
   selectedMonitor: MonitorDetails | null;
+  selectedWindow: WindowDetails | null;
   setCamera: (camera: boolean) => void;
   setMicrophone: (microphone: boolean) => void;
   setRecordingType: (recordingType: RecordingType) => void;
   setRegion: (region: Region) => void;
   setSelectedMonitor: (selectedMonitor: MonitorDetails) => void;
+  setSelectedWindow: (selectedWindow: WindowDetails | null) => void;
   setSystemAudio: (systemAudio: boolean) => void;
   systemAudio: boolean;
 };
@@ -43,6 +48,7 @@ export const useRecordingPreferencesStore = create<RecordingPreferencesState>()(
           size: { height: 300, width: 300 },
         },
         selectedMonitor: null,
+        selectedWindow: null,
         setCamera: (camera) => {
           set({ camera });
         },
@@ -57,6 +63,9 @@ export const useRecordingPreferencesStore = create<RecordingPreferencesState>()(
         },
         setSelectedMonitor: (selectedMonitor) => {
           set({ selectedMonitor });
+        },
+        setSelectedWindow: (selectedWindow) => {
+          set({ selectedWindow });
         },
         setSystemAudio: (systemAudio) => {
           set({ systemAudio });

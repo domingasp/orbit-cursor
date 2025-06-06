@@ -41,6 +41,7 @@ pub async fn get_visible_windows(app_temp_dir: PathBuf) -> Vec<WindowDetails> {
       if !title.is_empty() && window.window_layer() == 0 && window.is_on_screen() {
         let title = title.to_string();
         let app_pid = window.owning_app().unwrap().process_id();
+        let window_id = window.id();
         let targets = Arc::clone(&targets);
         let window_selector_folder = window_selector_folder.clone();
 
@@ -48,11 +49,7 @@ pub async fn get_visible_windows(app_temp_dir: PathBuf) -> Vec<WindowDetails> {
         futures.push(async move {
           let app_icon_path = get_app_icon(window_selector_folder.clone(), app_pid);
           let thumbnail_path = tokio::task::spawn_blocking(move || {
-            create_and_save_thumbnail(
-              window_selector_folder,
-              app_pid as u32,
-              windows_for_thumbnail,
-            )
+            create_and_save_thumbnail(window_selector_folder, window_id, windows_for_thumbnail)
           })
           .await
           .unwrap();
@@ -152,12 +149,12 @@ fn get_app_icon(dir_path: PathBuf, pid: i32) -> Option<PathBuf> {
 /// Save screenshot of app with `app_pid`
 fn create_and_save_thumbnail(
   dir_path: PathBuf,
-  app_pid: u32,
+  window_id: u32,
   windows_for_thumbnail: Arc<Vec<Window>>,
 ) -> Option<PathBuf> {
   if let Some(window_for_thumbnail) = windows_for_thumbnail
     .iter()
-    .find(|w| w.pid().unwrap_or_default() == app_pid)
+    .find(|w| w.id().unwrap_or_default() == window_id)
   {
     let thumbnail = window_for_thumbnail.capture_image().unwrap();
     let (width, height) = thumbnail.dimensions();
