@@ -13,7 +13,12 @@ import {
 } from "../../features/recording-source/api/recording-sources";
 import MonitorSelector from "../../features/recording-source/components/monitor-selector";
 import RecordingSource from "../../features/recording-source/components/recording-source";
-import { useRecordingPreferencesStore } from "../../stores/recording-preferences.store";
+import SelectorWrapper from "../../features/recording-source/components/selector-wrapper";
+import WindowSelector from "../../features/recording-source/components/window-selector";
+import {
+  RecordingType,
+  useRecordingPreferencesStore,
+} from "../../stores/recording-preferences.store";
 import {
   AppWindow,
   useWindowReopenStore,
@@ -24,9 +29,14 @@ const RecordingSourceSelector = () => {
   const startRecordingDockOpened = useWindowReopenStore(
     useShallow((state) => state.windows[AppWindow.StartRecordingDock])
   );
-  const [selectedMonitor, setSelectedMonitor] = useRecordingPreferencesStore(
-    useShallow((state) => [state.selectedMonitor, state.setSelectedMonitor])
-  );
+  const [selectedMonitor, setSelectedMonitor, recordingType] =
+    useRecordingPreferencesStore(
+      useShallow((state) => [
+        state.selectedMonitor,
+        state.setSelectedMonitor,
+        state.recordingType,
+      ])
+    );
 
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -79,10 +89,16 @@ const RecordingSourceSelector = () => {
       )}
     >
       {isExpanded && (
-        <MonitorSelector
-          onSelect={onSelect}
-          selectedMonitor={selectedMonitor}
-        />
+        <SelectorWrapper>
+          {recordingType === RecordingType.Window ? (
+            <WindowSelector />
+          ) : (
+            <MonitorSelector
+              onSelect={onSelect}
+              selectedMonitor={selectedMonitor}
+            />
+          )}
+        </SelectorWrapper>
       )}
 
       {startRecordingDockOpened && <RecordingSource onPress={onToggle} />}

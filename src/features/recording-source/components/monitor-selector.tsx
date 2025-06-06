@@ -39,49 +39,47 @@ const MonitorSelector = ({
   }, []);
 
   return (
-    <div className="flex justify-center items-center w-full h-full inset-shadow-full rounded-md relative overflow-hidden">
-      <div
-        className="relative"
-        style={{
-          aspectRatio,
-          // Calculate width/height due to aspect ratio and absolute child
-          height: `min(80%, 80vw / (${aspectRatio.toString()}))`,
-          width: `min(80%, 80vh * (${aspectRatio.toString()}))`,
-        }}
-      >
-        <div className="absolute inset-0">
-          {monitors.map((monitor) => {
-            const { id, name, position, size } = monitor;
-            const left = ((position.x - bounds.minX) / layoutWidth) * 100;
-            const top = ((position.y - bounds.minY) / layoutHeight) * 100;
-            const width = (size.width / layoutWidth) * 100;
-            const height = (size.height / layoutHeight) * 100;
+    <div
+      className="relative"
+      style={{
+        aspectRatio,
+        // Calculate width/height due to aspect ratio and absolute child
+        height: `min(80%, 80vw / (${aspectRatio.toString()}))`,
+        width: `min(80%, 80vh * (${aspectRatio.toString()}))`,
+      }}
+    >
+      <div className="absolute inset-0">
+        {monitors.map((monitor) => {
+          const { id, name, position, size } = monitor;
+          const left = ((position.x - bounds.minX) / layoutWidth) * 100;
+          const top = ((position.y - bounds.minY) / layoutHeight) * 100;
+          const width = (size.width / layoutWidth) * 100;
+          const height = (size.height / layoutHeight) * 100;
 
-            return (
-              <Button
-                key={id}
-                className="absolute justify-center shadow-md text-xxs"
-                variant="soft"
-                color={
-                  selectedMonitor && selectedMonitor.id === id
-                    ? "info"
-                    : "neutral"
-                }
-                onPress={() => {
-                  onSelect(monitor);
-                }}
-                style={{
-                  height: `${height.toString()}%`,
-                  left: `${left.toString()}%`,
-                  top: `${top.toString()}%`,
-                  width: `${width.toString()}%`,
-                }}
-              >
-                <span className="truncate w-full">{name}</span>
-              </Button>
-            );
-          })}
-        </div>
+          return (
+            <Button
+              key={id}
+              className="absolute justify-center shadow-md text-xxs"
+              variant="soft"
+              color={
+                selectedMonitor && selectedMonitor.id === id
+                  ? "info"
+                  : "neutral"
+              }
+              onPress={() => {
+                onSelect(monitor);
+              }}
+              style={{
+                height: `${height.toString()}%`,
+                left: `${left.toString()}%`,
+                top: `${top.toString()}%`,
+                width: `${width.toString()}%`,
+              }}
+            >
+              <span className="truncate w-full">{name}</span>
+            </Button>
+          );
+        })}
       </div>
     </div>
   );

@@ -2,9 +2,11 @@ use std::sync::Mutex;
 
 use scap::{
   capturer::{Capturer, Options},
+  frame::BGRAFrame,
   get_all_targets, Target,
 };
 use tauri::State;
+use yuv::bgra_to_rgba;
 
 use crate::AppState;
 
@@ -64,4 +66,20 @@ fn get_display(display_name: String) -> Option<Target> {
       false
     }
   })
+}
+
+pub fn bgra_frame_to_rgba_buffer(bgra_frame: BGRAFrame) -> Vec<u8> {
+  let width = bgra_frame.width as u32;
+  let height = bgra_frame.height as u32;
+  let mut rgba_buffer = vec![0u8; (width * height * 4) as usize];
+  if let Err(_e) = bgra_to_rgba(
+    &bgra_frame.data,
+    width * 4,
+    &mut rgba_buffer,
+    width * 4,
+    width,
+    height,
+  ) {}
+
+  rgba_buffer
 }

@@ -30,7 +30,7 @@ use permissions::{
   service::{ensure_permissions, monitor_permissions},
 };
 use rdev::listen;
-use recording_sources::commands::list_monitors;
+use recording_sources::commands::{list_monitors, list_windows};
 use scap::capturer::Capturer;
 use screen_capture::commands::init_magnifier_capturer;
 use serde_json::{json, Value};
@@ -135,6 +135,7 @@ pub fn run() {
       init_magnifier_capturer,
       start_magnifier_capture,
       stop_magnifier_capture,
+      list_windows
     ])
     .manage(Mutex::new(AppState {
       open_windows: HashMap::from([
