@@ -84,7 +84,11 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "http://asset.localhost",
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$TEMP/**"]
+      }
     },
     "trayIcon": {
       "id": "tray_icon",

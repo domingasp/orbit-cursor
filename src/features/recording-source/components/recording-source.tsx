@@ -1,4 +1,6 @@
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { AppWindowMac, Monitor } from "lucide-react";
+import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import Button from "../../../components/button/button";
@@ -12,8 +14,18 @@ type RecordingSourceProps = {
   onPress: () => void;
 };
 const RecordingSource = ({ onPress }: RecordingSourceProps) => {
-  const [recordingType, selectedMonitor] = useRecordingPreferencesStore(
-    useShallow((state) => [state.recordingType, state.selectedMonitor])
+  const [recordingType, selectedMonitor, selectedWindow] =
+    useRecordingPreferencesStore(
+      useShallow((state) => [
+        state.recordingType,
+        state.selectedMonitor,
+        state.selectedWindow,
+      ])
+    );
+
+  const isWindowSelector = useMemo(
+    () => recordingType === RecordingType.Window,
+    [recordingType]
   );
 
   return (
@@ -38,16 +50,35 @@ const RecordingSource = ({ onPress }: RecordingSourceProps) => {
       </ContentRotate>
 
       <Button
-        className="w-36 justify-center"
+        className="w-36 justify-center p-1"
         onPress={onPress}
         showFocus={false}
         size="sm"
       >
         <ContentRotate
           className="truncate"
-          contentKey={selectedMonitor?.id ?? ""}
+          contentKey={
+            (isWindowSelector
+              ? selectedWindow?.id.toString()
+              : selectedMonitor?.id) ?? ""
+          }
         >
-          {selectedMonitor?.name ?? "None"}
+          {isWindowSelector &&
+            (selectedWindow?.id ? (
+              <div className="flex flex-row items-center gap-1">
+                {selectedWindow.appIconPath && (
+                  <img
+                    src={convertFileSrc(selectedWindow.appIconPath)}
+                    width={16}
+                  />
+                )}
+                <span className="truncate">{selectedWindow.title}</span>
+              </div>
+            ) : (
+              "None"
+            ))}
+
+          {!isWindowSelector && (selectedMonitor?.name ?? "None")}
         </ContentRotate>
       </Button>
     </div>

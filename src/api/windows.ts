@@ -48,8 +48,8 @@ export const isRecordingInputOptionsOpen = async (): Promise<boolean> => {
   return await invoke(Commands.IsRecordingInputOptionsOpen);
 };
 
-export const expandRecordingSourceSelector = () => {
-  void invoke(Commands.ExpandRecordingSourceSelector);
+export const expandRecordingSourceSelector = (size?: LogicalSize) => {
+  void invoke(Commands.ExpandRecordingSourceSelector, { size });
 };
 
 export const collapseRecordingSourceSelector = () => {

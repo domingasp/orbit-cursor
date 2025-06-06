@@ -1,5 +1,9 @@
+use std::path::PathBuf;
+
 use serde::Serialize;
-use tauri::{AppHandle, LogicalPosition, LogicalSize};
+use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager};
+
+use super::service::get_visible_windows;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -8,6 +12,15 @@ pub struct MonitorDetails {
   pub name: String,
   pub position: LogicalPosition<f64>,
   pub size: LogicalSize<f64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WindowDetails {
+  pub id: u32,
+  pub title: String,
+  pub app_icon_path: Option<PathBuf>,
+  pub thumbnail_path: Option<PathBuf>,
 }
 
 #[tauri::command]
@@ -28,4 +41,10 @@ pub fn list_monitors(app_handle: AppHandle) -> Vec<MonitorDetails> {
   }
 
   monitor_details
+}
+
+#[tauri::command]
+pub async fn list_windows(app_handle: AppHandle) -> Vec<WindowDetails> {
+  let app_temp_dir = app_handle.path().temp_dir().unwrap().join("OrbitCursor");
+  get_visible_windows(app_temp_dir).await
 }

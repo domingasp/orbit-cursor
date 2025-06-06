@@ -276,15 +276,20 @@ pub fn is_recording_input_options_open(state: State<'_, Mutex<AppState>>) -> boo
 }
 
 #[tauri::command]
-pub fn expand_recording_source_selector(app_handle: AppHandle) {
+pub fn expand_recording_source_selector(app_handle: AppHandle, size: Option<LogicalSize<f64>>) {
   let window = app_handle
     .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
     .unwrap();
 
-  let size = LogicalSize {
-    width: 500.0,
-    height: 250.0,
+  let size = if let Some(has_size) = size {
+    has_size
+  } else {
+    LogicalSize {
+      width: 500.0,
+      height: 250.0,
+    }
   };
+
   animate_resize(window, size, Some(Anchor::Bottom));
 }
 
