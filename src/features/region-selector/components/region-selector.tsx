@@ -14,9 +14,9 @@ import {
 } from "../../../api/windows";
 import { cn } from "../../../lib/styling";
 import {
-  useRecordingPreferencesStore,
+  useRecordingStateStore,
   RecordingType,
-} from "../../../stores/recording-preferences.store";
+} from "../../../stores/recording-state.store";
 import {
   AppWindow,
   useWindowReopenStore,
@@ -97,7 +97,7 @@ const RegionSelector = () => {
     useShallow((state) => state.windows[AppWindow.StartRecordingDock])
   );
   const [region, setRegion, recordingType, selectedMonitor] =
-    useRecordingPreferencesStore(
+    useRecordingStateStore(
       useShallow((state) => [
         state.region,
         state.setRegion,

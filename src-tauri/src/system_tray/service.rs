@@ -1,13 +1,13 @@
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconEvent};
-use tauri::{App, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::windows::commands::show_start_recording_dock;
 
-pub fn create_system_tray(app: &App) -> tauri::Result<()> {
-  let quit_i = MenuItem::with_id(app, "quit", "Quit Orbit Cursor", true, None::<&str>)?;
-  let menu = Menu::with_items(app, &[&quit_i])?;
-  let tray = app.tray_by_id("tray_icon").unwrap();
+pub fn init_system_tray(app_handle: AppHandle) -> tauri::Result<()> {
+  let quit_i = MenuItem::with_id(&app_handle, "quit", "Quit Orbit Cursor", true, None::<&str>)?;
+  let menu = Menu::with_items(&app_handle, &[&quit_i])?;
+  let tray = app_handle.tray_by_id("tray_icon").unwrap();
   tray.on_menu_event(|app, event| match event.id.as_ref() {
     "quit" => {
       app.exit(0);

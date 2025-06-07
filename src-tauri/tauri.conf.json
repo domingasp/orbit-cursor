@@ -81,6 +81,23 @@
           "radius": 10,
           "state": "active"
         }
+      },
+      {
+        "title": "Recording Dock",
+        "label": "recording_dock",
+        "url": "/recording-dock",
+        "width": 130,
+        "height": 40,
+        "decorations": false,
+        "resizable": false,
+        "shadow": true,
+        "transparent": true,
+        "visible": false,
+        "windowEffects": {
+          "effects": ["underWindowBackground"],
+          "radius": 10,
+          "state": "active"
+        }
       }
     ],
     "security": {

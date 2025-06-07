@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 import { checkPermissions } from "../api/permissions";
 import { Permissions, usePermissionsStore } from "../stores/permissions.store";
-import { rehydrateRecordingPreferencesStore } from "../stores/recording-preferences.store";
+import { rehydrateRecordingStateStore } from "../stores/recording-state.store";
 import { updateStandaloneListBoxStore } from "../stores/standalone-listbox.store";
 import { rehydrateWindowReopenState } from "../stores/window-open-state.store";
 import { Events } from "../types/events";
@@ -35,7 +35,7 @@ export const App = () => {
   // Ensure stores are kept to date for all windows
   const rehydrateStores = (e: StorageEvent) => {
     updateStandaloneListBoxStore(e);
-    rehydrateRecordingPreferencesStore(e);
+    rehydrateRecordingStateStore(e);
     rehydrateWindowReopenState(e);
   };
 

@@ -8,6 +8,7 @@ import { isStartRecordingDockOpen } from "../../api/windows";
 import Overlay from "../../components/overlay/overlay";
 import RecordingControls from "../../features/recording-controls/components/recording-controls";
 import { usePermissionsStore } from "../../stores/permissions.store";
+import { useRecordingStateStore } from "../../stores/recording-state.store";
 import {
   AppWindow,
   useWindowReopenStore,
@@ -23,6 +24,10 @@ const StartRecordingDock = () => {
     useShallow((state) => [state.addWindow, state.setWindowOpenState])
   );
 
+  const setIsRecording = useRecordingStateStore(
+    useShallow((state) => state.setIsRecording)
+  );
+
   const noPermissions =
     !accessibility?.hasAccess || !screen?.hasAccess || !canUnlock;
 
@@ -34,6 +39,7 @@ const StartRecordingDock = () => {
 
     const unlisten = listen(Events.StartRecordingDockOpened, () => {
       setWindowOpenState(AppWindow.StartRecordingDock, true);
+      setIsRecording(false);
     });
 
     return () => {

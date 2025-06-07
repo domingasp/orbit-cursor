@@ -12,8 +12,8 @@ use super::{
   models::Bounds,
   service::{
     add_animation, add_border, add_close_panel_listener, animate_resize,
-    convert_to_stationary_panel, position_recording_source_selector, position_window_above_dock,
-    Anchor,
+    convert_to_stationary_panel, position_recording_dock, position_recording_source_selector,
+    position_window_above_dock, Anchor,
   },
 };
 
@@ -21,6 +21,7 @@ static INIT_STANDALONE_LISTBOX: Once = Once::new();
 static INIT_RECORDING_OPTIONS_PANEL: Once = Once::new();
 static INIT_REGION_SELECTOR: Once = Once::new();
 static INIT_RECORDING_SOURCE_SELECTOR: Once = Once::new();
+static INIT_RECORDING_DOCK: Once = Once::new();
 
 #[tauri::command]
 pub fn init_standalone_listbox(app_handle: AppHandle) {
@@ -107,6 +108,21 @@ pub fn init_recording_source_selector(app_handle: AppHandle) {
 }
 
 #[tauri::command]
+pub fn init_recording_dock(app_handle: AppHandle) {
+  INIT_RECORDING_DOCK.call_once(|| {
+    let window = app_handle
+      .get_webview_window(WindowLabel::RecordingDock.as_ref())
+      .unwrap();
+    add_border(&window);
+    add_animation(&window, 3);
+
+    position_recording_dock(&window);
+
+    let _ = convert_to_stationary_panel(&window, PanelLevel::RecordingDock);
+  });
+}
+
+#[tauri::command]
 pub fn quit_app(app_handle: AppHandle) {
   app_handle.exit(0);
 }
@@ -173,6 +189,12 @@ pub fn show_recording_input_options(
 #[tauri::command]
 pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<AppState>>) {
   let mut state = state.lock().unwrap();
+
+  // Only allow showing when not recording
+  if state.is_recording {
+    return;
+  }
+
   state
     .open_windows
     .insert(WindowLabel::StartRecordingDock, true);

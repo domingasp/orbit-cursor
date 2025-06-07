@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import { usePermissionsStore } from "../../../stores/permissions.store";
-import { useRecordingPreferencesStore } from "../../../stores/recording-preferences.store";
+import { useRecordingStateStore } from "../../../stores/recording-state.store";
 import {
   selectedItem,
   StandaloneListBoxes,
@@ -70,7 +70,7 @@ const InputToggleGroup = ({
     setMicrophone,
     systemAudio,
     setSystemAudio,
-  ] = useRecordingPreferencesStore(
+  ] = useRecordingStateStore(
     useShallow((state) => [
       state.camera,
       state.setCamera,

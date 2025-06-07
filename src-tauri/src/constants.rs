@@ -58,6 +58,9 @@ pub enum WindowLabel {
 
   #[strum(serialize = "recording_source_selector")]
   RecordingSourceSelector,
+
+  #[strum(serialize = "recording_dock")]
+  RecordingDock,
 }
 
 #[repr(i32)]
@@ -68,6 +71,7 @@ pub enum PanelLevel {
   RecordingSourceSelector = 3,
   RecordingInputOptions = 4,
   StandaloneListBox = 5,
+  RecordingDock = 6,
 }
 
 impl PanelLevel {
