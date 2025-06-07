@@ -5,6 +5,7 @@ mod global_inputs;
 #[cfg(target_os = "macos")]
 mod permissions;
 mod recording_sources;
+mod recording_state;
 mod screen_capture;
 mod system_tray;
 mod windows;
@@ -31,20 +32,21 @@ use permissions::{
 };
 use rdev::listen;
 use recording_sources::commands::{list_monitors, list_windows};
+use recording_state::commands::{start_recording, stop_recording};
 use scap::capturer::Capturer;
 use screen_capture::commands::init_magnifier_capturer;
 use serde_json::{json, Value};
-use system_tray::service::create_system_tray;
+use system_tray::service::init_system_tray;
 use tauri::{App, AppHandle, Manager, Wry};
 use tauri_plugin_store::{Store, StoreExt};
 use windows::{
   commands::{
     collapse_recording_source_selector, expand_recording_source_selector, get_dock_bounds,
-    hide_region_selector, hide_start_recording_dock, init_recording_input_options,
-    init_recording_source_selector, init_region_selector, init_standalone_listbox,
-    is_recording_input_options_open, is_start_recording_dock_open, quit_app, reset_panels,
-    show_recording_input_options, show_region_selector, show_standalone_listbox,
-    show_start_recording_dock, update_dock_opacity,
+    hide_region_selector, hide_start_recording_dock, init_recording_dock,
+    init_recording_input_options, init_recording_source_selector, init_region_selector,
+    init_standalone_listbox, is_recording_input_options_open, is_start_recording_dock_open,
+    quit_app, reset_panels, show_recording_input_options, show_region_selector,
+    show_standalone_listbox, show_start_recording_dock, update_dock_opacity,
   },
   service::{
     add_animation, add_border, convert_to_stationary_panel, handle_dock_positioning,
@@ -57,6 +59,7 @@ use crate::screen_capture::commands::{start_magnifier_capture, stop_magnifier_ca
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
 struct AppState {
+  is_recording: bool,
   open_windows: HashMap<WindowLabel, bool>,
   audio_streams: HashMap<AudioStream, Stream>,
   camera_stream: Option<CallbackCamera>,
@@ -135,9 +138,13 @@ pub fn run() {
       init_magnifier_capturer,
       start_magnifier_capture,
       stop_magnifier_capture,
-      list_windows
+      list_windows,
+      init_recording_dock,
+      start_recording,
+      stop_recording,
     ])
     .manage(Mutex::new(AppState {
+      is_recording: false,
       open_windows: HashMap::from([
         (WindowLabel::StartRecordingDock, false),
         (WindowLabel::RecordingInputOptions, false),
@@ -159,7 +166,7 @@ pub fn run() {
       let app_handle = app.handle();
       let app_handle_clone = Arc::new(app_handle.clone());
 
-      create_system_tray(app)?;
+      init_system_tray(app_handle.clone())?;
       init_start_recording_dock(app_handle);
 
       #[cfg(target_os = "macos")]

@@ -12,10 +12,12 @@ import Keyboard from "../../../components/keyboard/keyboard";
 import Separator from "../../../components/separator/separator";
 import Sparkles from "../../../components/sparkles/sparkles";
 import { clearInteractionAttributes } from "../../../lib/styling";
+import { useRecordingStateStore } from "../../../stores/recording-state.store";
 import {
   AppWindow,
   useWindowReopenStore,
 } from "../../../stores/window-open-state.store";
+import { startRecording } from "../api/recording-state";
 
 import InputToggleGroup from "./input-toggle-groups";
 import RecordingTypeRadioGroup from "./recording-type-radio-group";
@@ -29,6 +31,10 @@ const RecordingControls = () => {
   const optionsButtonRef = useRef<HTMLButtonElement>(null);
   const setWindowOpenState = useWindowReopenStore(
     useShallow((state) => state.setWindowOpenState)
+  );
+
+  const setIsRecording = useRecordingStateStore(
+    useShallow((state) => state.setIsRecording)
   );
 
   const onCancel = () => {
@@ -48,6 +54,12 @@ const RecordingControls = () => {
 
     // Position at center x of options button,
     showRecordingInputOptions(x + (left + width / 2));
+  };
+
+  const onStartRecording = () => {
+    onCancel(); // Closes dock
+    startRecording();
+    setIsRecording(true);
   };
 
   return (
@@ -99,6 +111,9 @@ const RecordingControls = () => {
           className="self-stretch cursor-default group"
           showFocus={false}
           variant="ghost"
+          onPress={() => {
+            onStartRecording();
+          }}
         >
           <div className="flex flex-col gap-1 items-center">
             <Circle

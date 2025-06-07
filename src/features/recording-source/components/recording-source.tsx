@@ -7,15 +7,15 @@ import Button from "../../../components/button/button";
 import ContentRotate from "../../../components/content-rotate/content-rotate";
 import {
   RecordingType,
-  useRecordingPreferencesStore,
-} from "../../../stores/recording-preferences.store";
+  useRecordingStateStore,
+} from "../../../stores/recording-state.store";
 
 type RecordingSourceProps = {
   onPress: () => void;
 };
 const RecordingSource = ({ onPress }: RecordingSourceProps) => {
   const [recordingType, selectedMonitor, selectedWindow] =
-    useRecordingPreferencesStore(
+    useRecordingStateStore(
       useShallow((state) => [
         state.recordingType,
         state.selectedMonitor,

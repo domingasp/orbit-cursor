@@ -30,4 +30,7 @@ export enum Commands {
   StopMagnifierCapture = "stop_magnifier_capture",
   InitMagnifierCapturer = "init_magnifier_capturer",
   ListWindows = "list_windows",
+  InitRecordingDock = "init_recording_dock",
+  StartRecording = "start_recording",
+  StopRecording = "stop_recording",
 }

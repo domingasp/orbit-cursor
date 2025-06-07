@@ -5,13 +5,17 @@ use scap::{
   frame::BGRAFrame,
   get_all_targets, Target,
 };
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
 use yuv::bgra_to_rgba;
 
 use crate::AppState;
 
-pub fn init_magnifier_capturer(state: State<'_, Mutex<AppState>>, display_name: String) {
-  let targets_to_exclude = get_app_targets();
+pub fn init_magnifier_capturer(
+  app_handle: AppHandle,
+  state: State<'_, Mutex<AppState>>,
+  display_name: String,
+) {
+  let targets_to_exclude = get_app_targets(app_handle);
   let display = get_display(display_name);
 
   let options = Options {
@@ -33,16 +37,14 @@ pub fn init_magnifier_capturer(state: State<'_, Mutex<AppState>>, display_name: 
 }
 
 /// Return targets which are part of the app
-fn get_app_targets() -> Vec<Target> {
+fn get_app_targets(app_handle: AppHandle) -> Vec<Target> {
   let targets = get_all_targets();
 
-  let app_window_titles_to_exclude = [
-    "Start Recording Dock",
-    "Recording Source Selector",
-    "Region Selector",
-    "Standalone ListBox",
-    "Recording Input Options",
-  ];
+  let app_window_titles_to_exclude: Vec<String> = app_handle
+    .webview_windows()
+    .iter()
+    .map(|w| w.1.title().unwrap())
+    .collect();
 
   targets
     .into_iter()

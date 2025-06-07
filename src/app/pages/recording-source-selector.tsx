@@ -20,8 +20,8 @@ import SelectorWrapper from "../../features/recording-source/components/selector
 import WindowSelector from "../../features/recording-source/components/window-selector";
 import {
   RecordingType,
-  useRecordingPreferencesStore,
-} from "../../stores/recording-preferences.store";
+  useRecordingStateStore,
+} from "../../stores/recording-state.store";
 import {
   AppWindow,
   useWindowReopenStore,
@@ -38,7 +38,7 @@ const RecordingSourceSelector = () => {
     selectedWindow,
     setSelectedWindow,
     recordingType,
-  ] = useRecordingPreferencesStore(
+  ] = useRecordingStateStore(
     useShallow((state) => [
       state.selectedMonitor,
       state.setSelectedMonitor,

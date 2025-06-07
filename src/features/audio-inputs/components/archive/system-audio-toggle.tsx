@@ -6,7 +6,7 @@ import { useShallow } from "zustand/react/shallow";
 
 import Switch from "../../../../components/switch/switch";
 import { cn } from "../../../../lib/styling";
-import { useRecordingPreferencesStore } from "../../../../stores/recording-preferences.store";
+import { useRecordingStateStore } from "../../../../stores/recording-state.store";
 import {
   AppWindow,
   useWindowReopenStore,
@@ -27,7 +27,7 @@ const SystemAudioToggle = () => {
     useShallow((state) => state.windows[AppWindow.StartRecordingDock])
   );
 
-  const [systemAudio, setSystemAudio] = useRecordingPreferencesStore(
+  const [systemAudio, setSystemAudio] = useRecordingStateStore(
     useShallow((state) => [state.systemAudio, state.setSystemAudio])
   );
 

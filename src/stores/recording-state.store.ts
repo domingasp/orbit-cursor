@@ -6,7 +6,7 @@ import {
   WindowDetails,
 } from "../features/recording-source/api/recording-sources";
 
-const STORE_NAME = "recordingPreferences";
+const STORE_NAME = "recordingState";
 
 export enum RecordingType {
   Region = "region",
@@ -19,14 +19,16 @@ export type Region = {
   size: { height: number; width: number };
 };
 
-type RecordingPreferencesState = {
+type RecordingStateProps = {
   camera: boolean;
+  isRecording: boolean;
   microphone: boolean;
   recordingType: RecordingType;
   region: Region;
   selectedMonitor: MonitorDetails | null;
   selectedWindow: WindowDetails | null;
   setCamera: (camera: boolean) => void;
+  setIsRecording: (isRecording: boolean) => void;
   setMicrophone: (microphone: boolean) => void;
   setRecordingType: (recordingType: RecordingType) => void;
   setRegion: (region: Region) => void;
@@ -36,11 +38,12 @@ type RecordingPreferencesState = {
   systemAudio: boolean;
 };
 
-export const useRecordingPreferencesStore = create<RecordingPreferencesState>()(
+export const useRecordingStateStore = create<RecordingStateProps>()(
   devtools(
     persist(
       (set) => ({
         camera: false,
+        isRecording: false,
         microphone: false,
         recordingType: RecordingType.Region,
         region: {
@@ -51,6 +54,9 @@ export const useRecordingPreferencesStore = create<RecordingPreferencesState>()(
         selectedWindow: null,
         setCamera: (camera) => {
           set({ camera });
+        },
+        setIsRecording: (isRecording) => {
+          set({ isRecording });
         },
         setMicrophone: (microphone) => {
           set({ microphone });
@@ -77,9 +83,9 @@ export const useRecordingPreferencesStore = create<RecordingPreferencesState>()(
   )
 );
 
-export const rehydrateRecordingPreferencesStore = (e: StorageEvent) => {
+export const rehydrateRecordingStateStore = (e: StorageEvent) => {
   const { key } = e;
   if (key === STORE_NAME) {
-    void useRecordingPreferencesStore.persist.rehydrate();
+    void useRecordingStateStore.persist.rehydrate();
   }
 };

@@ -2,18 +2,12 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for windows",
-  "windows": [
-    "start_recording_dock",
-    "request_permissions",
-    "standalone_listbox",
-    "recording_input_options",
-    "region_selector",
-    "recording_source_selector"
-  ],
+  "windows": ["*"],
   "permissions": [
     "core:default",
     "opener:default",
     "core:window:allow-set-size",
+    "core:window:allow-start-dragging",
     "macos-permissions:default",
     {
       "identifier": "shell:allow-execute",

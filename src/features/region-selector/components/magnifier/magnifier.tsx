@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { RefObject, useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { useRecordingPreferencesStore } from "../../../../stores/recording-preferences.store";
+import { useRecordingStateStore } from "../../../../stores/recording-state.store";
 import {
   initMagnifierCapturer,
   startMagnifierCapture,
@@ -25,7 +25,7 @@ const Magnifier = ({
   resizeDirection,
   zoomFactor = 5,
 }: MagnifierProps) => {
-  const selectedMonitor = useRecordingPreferencesStore(
+  const selectedMonitor = useRecordingStateStore(
     useShallow((state) => state.selectedMonitor)
   );
 

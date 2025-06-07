@@ -7,8 +7,8 @@ import Keyboard from "../../../components/keyboard/keyboard";
 import RadioGroup from "../../../components/radio-group/radio-group";
 import {
   RecordingType,
-  useRecordingPreferencesStore,
-} from "../../../stores/recording-preferences.store";
+  useRecordingStateStore,
+} from "../../../stores/recording-state.store";
 import {
   AppWindow,
   useWindowReopenStore,
@@ -27,7 +27,7 @@ const RecordingTypeRadioGroup = () => {
   );
 
   const [recordingType, setRecordingType, selectedMonitor] =
-    useRecordingPreferencesStore(
+    useRecordingStateStore(
       useShallow((state) => [
         state.recordingType,
         state.setRecordingType,
