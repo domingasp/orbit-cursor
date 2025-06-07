@@ -4,8 +4,8 @@ mod constants;
 mod global_inputs;
 #[cfg(target_os = "macos")]
 mod permissions;
+mod recording;
 mod recording_sources;
-mod recording_state;
 mod screen_capture;
 mod system_tray;
 mod windows;
@@ -31,8 +31,8 @@ use permissions::{
   service::{ensure_permissions, monitor_permissions},
 };
 use rdev::listen;
+use recording::commands::{start_recording, stop_recording};
 use recording_sources::commands::{list_monitors, list_windows};
-use recording_state::commands::{start_recording, stop_recording};
 use scap::capturer::Capturer;
 use screen_capture::commands::init_magnifier_capturer;
 use serde_json::{json, Value};
@@ -54,9 +54,21 @@ use windows::{
   },
 };
 
-use crate::screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture};
+use crate::{
+  audio::models::SharedWavWriter,
+  screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
+};
 
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
+
+struct AudioRecordingDetails {
+  #[allow(dead_code)] // Keeps stream alive, when set to None cpal stream is dropped and cleaned
+  stream: Stream,
+  wav_writer: SharedWavWriter,
+}
+struct RecordingStreams {
+  system_audio: Option<AudioRecordingDetails>,
+}
 
 struct AppState {
   is_recording: bool,
@@ -65,6 +77,7 @@ struct AppState {
   camera_stream: Option<CallbackCamera>,
   magnifier_capturer: Option<Capturer>,
   magnifier_running: Arc<AtomicBool>,
+  recording_streams: RecordingStreams,
 }
 
 async fn setup_store(app: &App) -> Arc<Store<Wry>> {
@@ -154,6 +167,7 @@ pub fn run() {
       camera_stream: None,
       magnifier_capturer: None,
       magnifier_running: Arc::new(AtomicBool::new(false)),
+      recording_streams: RecordingStreams { system_audio: None },
     }))
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_macos_permissions::init())

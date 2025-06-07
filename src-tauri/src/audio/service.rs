@@ -1,12 +1,17 @@
-use std::collections::VecDeque;
+use std::{
+  collections::VecDeque,
+  path::PathBuf,
+  sync::{Arc, Mutex},
+};
 
 use cpal::{
   traits::{DeviceTrait, HostTrait},
   Device, Stream, StreamConfig,
 };
+use hound::{WavSpec, WavWriter};
 use tauri::{ipc::Channel, Emitter};
 
-use crate::APP_HANDLE;
+use crate::{audio::models::SharedWavWriter, APP_HANDLE};
 
 use super::commands::AudioStreamChannel;
 
@@ -55,6 +60,46 @@ pub fn build_audio_live_monitoring_stream(
       None,
     )
     .expect("Error creating stream")
+}
+
+pub fn build_audio_into_file_stream(
+  device: &Device,
+  config: &StreamConfig,
+  recording_dir: PathBuf,
+) -> (Stream, SharedWavWriter) {
+  let wav_spec = WavSpec {
+    channels: config.channels,
+    sample_rate: config.sample_rate.0,
+    bits_per_sample: 16,
+    sample_format: hound::SampleFormat::Int,
+  };
+
+  let wav_writer = WavWriter::create(recording_dir.join("system-audio.wav"), wav_spec).unwrap();
+  let wav_writer = Arc::new(Mutex::new(Some(wav_writer)));
+
+  let writer_clone = Arc::clone(&wav_writer);
+
+  let stream = device
+    .build_input_stream(
+      config,
+      move |data: &[f32], _: &cpal::InputCallbackInfo| {
+        println!("{:?}", data);
+        let mut writer_lock = writer_clone.lock().unwrap();
+        if let Some(ref mut writer) = *writer_lock {
+          for &sample in data {
+            let clamped = (sample * i16::MAX as f32).clamp(i16::MIN as f32, i16::MAX as f32);
+            writer.write_sample(clamped as i16).unwrap();
+          }
+        }
+      },
+      move |err| {
+        eprintln!("Stream error: {}", err);
+      },
+      None,
+    )
+    .expect("Error creating stream");
+
+  (stream, wav_writer)
 }
 
 /// Return system audio device and config

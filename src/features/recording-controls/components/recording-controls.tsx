@@ -33,8 +33,8 @@ const RecordingControls = () => {
     useShallow((state) => state.setWindowOpenState)
   );
 
-  const setIsRecording = useRecordingStateStore(
-    useShallow((state) => state.setIsRecording)
+  const [setIsRecording, systemAudio] = useRecordingStateStore(
+    useShallow((state) => [state.setIsRecording, state.systemAudio])
   );
 
   const onCancel = () => {
@@ -58,7 +58,7 @@ const RecordingControls = () => {
 
   const onStartRecording = () => {
     onCancel(); // Closes dock
-    startRecording();
+    startRecording(systemAudio);
     setIsRecording(true);
   };
 
