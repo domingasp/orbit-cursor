@@ -1,10 +1,13 @@
 use std::sync::Mutex;
 
-use super::{
-  models::AudioStream,
-  service::{create_input_audio_stream, create_system_audio_stream},
+use super::models::AudioStream;
+use crate::{
+  audio::service::{
+    build_audio_live_monitoring_stream, get_input_audio_device, get_system_audio_device,
+  },
+  constants::Events,
+  AppState,
 };
-use crate::AppState;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use serde::Serialize;
 use tauri::{ipc::Channel, State};
@@ -30,9 +33,25 @@ pub fn start_audio_listener(
   let mut state = state.lock().unwrap();
 
   let maybe_stream = match &stream_to_start {
-    AudioStream::System => Some(create_system_audio_stream(on_event)),
+    AudioStream::System => {
+      let (device, config) = get_system_audio_device();
+      Some(build_audio_live_monitoring_stream(
+        &device,
+        &config,
+        on_event,
+        Some(Events::SystemAudioStreamError.to_string()),
+      ))
+    }
     AudioStream::Input => match device_name {
-      Some(name) => create_input_audio_stream(name.clone(), on_event),
+      Some(name) => {
+        let (device, config) = get_input_audio_device(name);
+        Some(build_audio_live_monitoring_stream(
+          &device,
+          &config,
+          on_event,
+          Some(Events::InputAudioStreamError.to_string()),
+        ))
+      }
       _ => None,
     },
   };
