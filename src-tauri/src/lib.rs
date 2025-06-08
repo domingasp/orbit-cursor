@@ -68,6 +68,7 @@ struct AudioRecordingDetails {
 }
 struct RecordingStreams {
   system_audio: Option<AudioRecordingDetails>,
+  input_audio: Option<AudioRecordingDetails>,
 }
 
 struct AppState {
@@ -167,7 +168,10 @@ pub fn run() {
       camera_stream: None,
       magnifier_capturer: None,
       magnifier_running: Arc::new(AtomicBool::new(false)),
-      recording_streams: RecordingStreams { system_audio: None },
+      recording_streams: RecordingStreams {
+        system_audio: None,
+        input_audio: None,
+      },
     }))
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_macos_permissions::init())

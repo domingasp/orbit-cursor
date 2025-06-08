@@ -14,6 +14,11 @@ import Sparkles from "../../../components/sparkles/sparkles";
 import { clearInteractionAttributes } from "../../../lib/styling";
 import { useRecordingStateStore } from "../../../stores/recording-state.store";
 import {
+  selectedItem,
+  StandaloneListBoxes,
+  useStandaloneListBoxStore,
+} from "../../../stores/standalone-listbox.store";
+import {
   AppWindow,
   useWindowReopenStore,
 } from "../../../stores/window-open-state.store";
@@ -33,8 +38,16 @@ const RecordingControls = () => {
     useShallow((state) => state.setWindowOpenState)
   );
 
-  const [setIsRecording, systemAudio] = useRecordingStateStore(
-    useShallow((state) => [state.setIsRecording, state.systemAudio])
+  const [setIsRecording, systemAudio, microphone] = useRecordingStateStore(
+    useShallow((state) => [
+      state.setIsRecording,
+      state.systemAudio,
+      state.microphone,
+    ])
+  );
+
+  const microphoneListBox = useStandaloneListBoxStore((state) =>
+    state.getListBox(StandaloneListBoxes.MicrophoneAudio)
   );
 
   const onCancel = () => {
@@ -58,8 +71,16 @@ const RecordingControls = () => {
 
   const onStartRecording = () => {
     onCancel(); // Closes dock
-    startRecording(systemAudio);
     setIsRecording(true);
+
+    startRecording({
+      deviceName: microphone
+        ? selectedItem(
+            microphoneListBox?.selectedItems ?? []
+          )?.id?.toString() ?? undefined
+        : undefined,
+      systemAudio,
+    });
   };
 
   return (

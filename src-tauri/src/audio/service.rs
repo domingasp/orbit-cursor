@@ -1,6 +1,6 @@
 use std::{
   collections::VecDeque,
-  path::PathBuf,
+  path::Path,
   sync::{Arc, Mutex},
 };
 
@@ -65,7 +65,8 @@ pub fn build_audio_live_monitoring_stream(
 pub fn build_audio_into_file_stream(
   device: &Device,
   config: &StreamConfig,
-  recording_dir: PathBuf,
+  recording_dir: &Path,
+  file_name: String,
 ) -> (Stream, SharedWavWriter) {
   let wav_spec = WavSpec {
     channels: config.channels,
@@ -74,7 +75,8 @@ pub fn build_audio_into_file_stream(
     sample_format: hound::SampleFormat::Int,
   };
 
-  let wav_writer = WavWriter::create(recording_dir.join("system-audio.wav"), wav_spec).unwrap();
+  let wav_writer =
+    WavWriter::create(recording_dir.join(format!("{}.wav", file_name)), wav_spec).unwrap();
   let wav_writer = Arc::new(Mutex::new(Some(wav_writer)));
 
   let writer_clone = Arc::clone(&wav_writer);
@@ -83,7 +85,6 @@ pub fn build_audio_into_file_stream(
     .build_input_stream(
       config,
       move |data: &[f32], _: &cpal::InputCallbackInfo| {
-        println!("{:?}", data);
         let mut writer_lock = writer_clone.lock().unwrap();
         if let Some(ref mut writer) = *writer_lock {
           for &sample in data {
