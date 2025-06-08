@@ -1,6 +1,8 @@
+use std::{io::Write, process::ChildStdin};
+
 use nokhwa::{
   pixel_format::RgbAFormat,
-  utils::{CameraIndex, FrameFormat, RequestedFormat, RequestedFormatType},
+  utils::{CameraIndex, FrameFormat, RequestedFormat, RequestedFormatType, Resolution},
   Buffer, CallbackCamera,
 };
 use tauri::ipc::Channel;
@@ -27,7 +29,7 @@ fn yuyv_to_rgba(buffer: &[u8], width: u32, height: u32) -> Vec<u8> {
   rgba_buffer
 }
 
-fn live_frame_callback(frame: Buffer, channel: &Channel) {
+pub fn live_frame_callback(frame: Buffer, channel: &Channel) {
   let (width, height) = {
     let r = frame.resolution();
     (r.width(), r.height())
@@ -51,15 +53,28 @@ fn live_frame_callback(frame: Buffer, channel: &Channel) {
   let _ = channel.send(tauri::ipc::InvokeResponseBody::Raw(combined));
 }
 
+pub fn capture_to_file_callback(frame: Buffer, ffmpeg_stdin: &mut ChildStdin) {
+  let (width, height) = {
+    let r = frame.resolution();
+    (r.width(), r.height())
+  };
+
+  let buffer = if frame.source_frame_format() == FrameFormat::YUYV {
+    yuyv_to_rgba(frame.buffer(), width, height)
+  } else {
+    frame.buffer().to_vec()
+  };
+
+  let _ = ffmpeg_stdin.write_all(&buffer);
+}
+
 pub fn create_and_start_camera(
   camera_index: CameraIndex,
-  channel: Channel,
+  callback: impl FnMut(Buffer) + Send + 'static,
 ) -> Option<CallbackCamera> {
   let requested = RequestedFormat::new::<RgbAFormat>(RequestedFormatType::AbsoluteHighestFrameRate);
 
-  match CallbackCamera::new(camera_index, requested, move |frame| {
-    live_frame_callback(frame, &channel)
-  }) {
+  match CallbackCamera::new(camera_index, requested, callback) {
     Ok(mut camera) => {
       let _ = camera.open_stream();
       Some(camera)
@@ -69,4 +84,31 @@ pub fn create_and_start_camera(
       None
     }
   }
+}
+
+pub struct CameraDetails {
+  pub resolution: Resolution,
+  pub frame_rate: u32,
+}
+/// Temporarily opens a camera to get the resolution.
+pub fn probe_camera_details(camera_index: &CameraIndex) -> Option<CameraDetails> {
+  let requested = RequestedFormat::new::<RgbAFormat>(RequestedFormatType::AbsoluteHighestFrameRate);
+
+  if let Ok(mut camera) = CallbackCamera::new(camera_index.clone(), requested, |_| {}) {
+    if camera.open_stream().is_ok() {
+      let resolution = camera.resolution().unwrap();
+      let frame_rate = camera.frame_rate().unwrap();
+
+      std::thread::spawn(move || {
+        // Need a thread to stop stream otherwise freezes main thread
+        let _ = camera.stop_stream();
+      });
+
+      return Some(CameraDetails {
+        resolution,
+        frame_rate,
+      });
+    }
+  }
+  None
 }

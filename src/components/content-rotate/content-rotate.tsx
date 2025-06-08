@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, MotionProps } from "motion/react";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 
 type ContentRotateProps = MotionProps & {
   children: ReactNode;
@@ -12,6 +12,12 @@ const ContentRotate = ({
   contentKey,
   ...props
 }: ContentRotateProps) => {
+  const [isFirstMount, setIsFirstMount] = useState(true);
+
+  useEffect(() => {
+    setIsFirstMount(false);
+  }, []);
+
   return (
     <div className="overflow-hidden">
       <AnimatePresence mode="wait">
@@ -20,7 +26,7 @@ const ContentRotate = ({
           animate={{ opacity: 1, y: 0 }}
           className={className}
           exit={{ opacity: 0, y: 25 }}
-          initial={{ opacity: 0, y: -25 }}
+          initial={isFirstMount ? false : { opacity: 0, y: -25 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
           {...props}
         >

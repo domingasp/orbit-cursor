@@ -12,6 +12,7 @@ mod windows;
 
 use std::{
   collections::HashMap,
+  process::ChildStdin,
   sync::{atomic::AtomicBool, Arc, Mutex, OnceLock},
 };
 
@@ -25,6 +26,7 @@ use constants::{
   WindowLabel,
 };
 use cpal::Stream;
+use ffmpeg_sidecar::child::FfmpegChild;
 use nokhwa::CallbackCamera;
 use permissions::{
   commands::{check_permissions, open_system_settings, request_permission},
@@ -66,9 +68,18 @@ struct AudioRecordingDetails {
   stream: Stream,
   wav_writer: SharedWavWriter,
 }
+
+struct CameraRecordingDetails {
+  stream: CallbackCamera,
+  ffmpeg: FfmpegChild,
+  stdin: Arc<Mutex<Option<ChildStdin>>>,
+}
+
 struct RecordingStreams {
+  stop_recording_flag: Arc<AtomicBool>,
   system_audio: Option<AudioRecordingDetails>,
   input_audio: Option<AudioRecordingDetails>,
+  camera: Option<CameraRecordingDetails>,
 }
 
 struct AppState {
@@ -118,6 +129,8 @@ fn init_start_recording_dock(app_handle: &AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  ffmpeg_sidecar::download::auto_download().unwrap();
+
   let context = tauri::generate_context!();
 
   let app = tauri::Builder::default()
@@ -169,8 +182,10 @@ pub fn run() {
       magnifier_capturer: None,
       magnifier_running: Arc::new(AtomicBool::new(false)),
       recording_streams: RecordingStreams {
+        stop_recording_flag: Arc::new(AtomicBool::new(false)),
         system_audio: None,
         input_audio: None,
+        camera: None,
       },
     }))
     .plugin(tauri_plugin_opener::init())

@@ -41,6 +41,7 @@ xcap = "0.6.0"
 uuid = { version = "1.17.0", features = ["v4"] }
 chrono = "0.4.41"
 hound = "3.5.1"
+ffmpeg-sidecar = "2.0.6"
 
 [dependencies.nokhwa]
 git = "https://github.com/l1npengtul/nokhwa.git"

@@ -38,16 +38,21 @@ const RecordingControls = () => {
     useShallow((state) => state.setWindowOpenState)
   );
 
-  const [setIsRecording, systemAudio, microphone] = useRecordingStateStore(
-    useShallow((state) => [
-      state.setIsRecording,
-      state.systemAudio,
-      state.microphone,
-    ])
-  );
+  const [setIsRecording, systemAudio, microphone, camera] =
+    useRecordingStateStore(
+      useShallow((state) => [
+        state.setIsRecording,
+        state.systemAudio,
+        state.microphone,
+        state.camera,
+      ])
+    );
 
-  const microphoneListBox = useStandaloneListBoxStore((state) =>
-    state.getListBox(StandaloneListBoxes.MicrophoneAudio)
+  const [microphoneListBox, cameraListBox] = useStandaloneListBoxStore(
+    useShallow((state) => [
+      state.getListBox(StandaloneListBoxes.MicrophoneAudio),
+      state.getListBox(StandaloneListBoxes.Camera),
+    ])
   );
 
   const onCancel = () => {
@@ -74,6 +79,10 @@ const RecordingControls = () => {
     setIsRecording(true);
 
     startRecording({
+      cameraName: camera
+        ? selectedItem(cameraListBox?.selectedItems ?? [])?.id?.toString() ??
+          undefined
+        : undefined,
       deviceName: microphone
         ? selectedItem(
             microphoneListBox?.selectedItems ?? []
