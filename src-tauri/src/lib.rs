@@ -12,7 +12,6 @@ mod windows;
 
 use std::{
   collections::HashMap,
-  process::ChildStdin,
   sync::{atomic::AtomicBool, Arc, Mutex, OnceLock},
 };
 
@@ -26,7 +25,7 @@ use constants::{
   WindowLabel,
 };
 use cpal::Stream;
-use ffmpeg_sidecar::child::FfmpegChild;
+
 use nokhwa::CallbackCamera;
 use permissions::{
   commands::{check_permissions, open_system_settings, request_permission},
@@ -57,30 +56,11 @@ use windows::{
 };
 
 use crate::{
-  audio::models::SharedWavWriter,
+  recording::models::RecordingStreams,
   screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
 };
 
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
-
-struct AudioRecordingDetails {
-  #[allow(dead_code)] // Keeps stream alive, when set to None cpal stream is dropped and cleaned
-  stream: Stream,
-  wav_writer: SharedWavWriter,
-}
-
-struct CameraRecordingDetails {
-  stream: CallbackCamera,
-  ffmpeg: FfmpegChild,
-  stdin: Arc<Mutex<Option<ChildStdin>>>,
-}
-
-struct RecordingStreams {
-  stop_recording_flag: Arc<AtomicBool>,
-  system_audio: Option<AudioRecordingDetails>,
-  input_audio: Option<AudioRecordingDetails>,
-  camera: Option<CameraRecordingDetails>,
-}
 
 struct AppState {
   is_recording: bool,

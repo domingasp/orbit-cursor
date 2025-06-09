@@ -83,7 +83,7 @@ const RecordingControls = () => {
         ? selectedItem(cameraListBox?.selectedItems ?? [])?.id?.toString() ??
           undefined
         : undefined,
-      deviceName: microphone
+      inputAudioName: microphone
         ? selectedItem(
             microphoneListBox?.selectedItems ?? []
           )?.id?.toString() ?? undefined

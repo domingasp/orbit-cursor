@@ -1,15 +1,87 @@
+use std::sync::atomic::AtomicBool;
 use std::{
   fs::create_dir_all,
-  path::{Path, PathBuf},
-  sync::Arc,
+  path::PathBuf,
+  sync::{Arc, Mutex},
 };
 
 use chrono::Local;
+use cpal::traits::StreamTrait;
 use ffmpeg_sidecar::{child::FfmpegChild, command::FfmpegCommand};
-use nokhwa::utils::CameraIndex;
 use tauri::{AppHandle, Manager};
 
-use crate::{camera::service::probe_camera_details, AudioRecordingDetails, CameraRecordingDetails};
+use crate::camera::service::get_camera_dimensions;
+use crate::{
+  audio::service::{build_audio_into_file_stream, get_input_audio_device, get_system_audio_device},
+  camera::service::{capture_to_file_callback, create_and_start_camera},
+  recording::models::{AudioRecordingDetails, CameraRecordingDetails},
+};
+
+// region: Recording stream setup
+
+/// Create and start system audio recording
+pub fn start_system_audio_recording(file_path: PathBuf) -> Option<AudioRecordingDetails> {
+  let (device, config) = get_system_audio_device();
+  let (stream, wav_writer) = build_audio_into_file_stream(&device, &config, &file_path);
+
+  stream.play().expect("Failed to start system audio stream");
+  Some(AudioRecordingDetails { stream, wav_writer })
+}
+
+/// Create and start audio input recording
+pub fn start_input_audio_recording(
+  device_name: Option<String>,
+  file_path: PathBuf,
+) -> Option<AudioRecordingDetails> {
+  let device_name = device_name?;
+
+  let (device, config) = get_input_audio_device(device_name);
+  let (stream, wav_writer) = build_audio_into_file_stream(&device, &config, &file_path);
+
+  stream.play().expect("Failed to start input audio stream");
+  Some(AudioRecordingDetails { stream, wav_writer })
+}
+
+/// Create and start camera recording
+pub fn start_camera_recording(
+  camera_name: Option<String>,
+  file_path: PathBuf,
+  stop_recording_flag: Arc<AtomicBool>,
+) -> Option<CameraRecordingDetails> {
+  let camera_name = camera_name?;
+  let available_cameras = nokhwa::query(nokhwa::utils::ApiBackend::Auto).unwrap();
+
+  let camera = available_cameras
+    .iter()
+    .find(|c| c.human_name() == camera_name)?;
+  let camera_index = camera.index();
+  let (width, height) = get_camera_dimensions(camera_index)?;
+
+  let mut ffmpeg_child = create_ffmpeg_writer(file_path, width, height, "rgba".to_string());
+  let ffmpeg_stdin = Arc::new(Mutex::new(ffmpeg_child.take_stdin()));
+  let ffmpeg_stdin_for_callback = ffmpeg_stdin.clone();
+
+  let stream = create_and_start_camera(camera_index.clone(), move |frame| {
+    if stop_recording_flag.load(std::sync::atomic::Ordering::SeqCst) {
+      // Flag required to correctly drop stdin when recording stopped to avoid
+      // ffmpeg hanging
+      *ffmpeg_stdin_for_callback.lock().unwrap() = None;
+      return;
+    }
+
+    if let Some(stdin) = ffmpeg_stdin_for_callback.lock().unwrap().as_mut() {
+      capture_to_file_callback(frame, stdin);
+    }
+  })?;
+
+  Some(CameraRecordingDetails {
+    stream,
+    ffmpeg: ffmpeg_child,
+    stdin: ffmpeg_stdin,
+  })
+}
+
+// endregion
 
 pub fn create_recording_directory(app_handle: &AppHandle) -> PathBuf {
   let recordings_dir = app_handle.path().app_data_dir().unwrap().join("Recordings");
@@ -20,20 +92,20 @@ pub fn create_recording_directory(app_handle: &AppHandle) -> PathBuf {
   session_dir
 }
 
-pub fn create_ffmpeg_writer(camera_index: &CameraIndex, recording_dir: &Path) -> FfmpegChild {
-  let camera_details = probe_camera_details(camera_index).unwrap();
-  let resolution = camera_details.resolution;
-  let frame_rate = camera_details.frame_rate;
-
+pub fn create_ffmpeg_writer(
+  file_path: PathBuf,
+  width: u32,
+  height: u32,
+  pixel_format: String,
+) -> FfmpegChild {
   let child = FfmpegCommand::new()
     .format("rawvideo")
-    .pix_fmt("rgba")
-    .size(resolution.width(), resolution.height())
-    .rate(frame_rate as f32)
+    .pix_fmt(pixel_format)
+    .size(width, height)
     .input("-")
     .codec_video("libx264")
     .format("matroska")
-    .output(recording_dir.join("camera.mkv").to_string_lossy())
+    .output(file_path.to_string_lossy())
     .spawn()
     .unwrap();
 
@@ -56,14 +128,11 @@ pub fn stop_audio_writer(recording_details: Option<&AudioRecordingDetails>) {
 pub fn stop_camera_writer(camera_details: Option<CameraRecordingDetails>) {
   if let Some(mut details) = camera_details {
     std::thread::spawn(move || {
-      {
-        let mut stdin_lock = details.stdin.lock().unwrap();
-        *stdin_lock = None;
-      }
+      // Ensure ffmpeg knows its EOF
+      *details.stdin.lock().unwrap() = None;
 
       // Need a thread to stop stream otherwise freezes main thread
       let _ = details.stream.stop_stream();
-
       let _ = details.ffmpeg.wait();
     });
   }

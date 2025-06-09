@@ -2,7 +2,7 @@ use std::{io::Write, process::ChildStdin};
 
 use nokhwa::{
   pixel_format::RgbAFormat,
-  utils::{CameraIndex, FrameFormat, RequestedFormat, RequestedFormatType, Resolution},
+  utils::{CameraIndex, FrameFormat, RequestedFormat, RequestedFormatType},
   Buffer, CallbackCamera,
 };
 use tauri::ipc::Channel;
@@ -86,28 +86,24 @@ pub fn create_and_start_camera(
   }
 }
 
-pub struct CameraDetails {
-  pub resolution: Resolution,
-  pub frame_rate: u32,
-}
-/// Temporarily opens a camera to get the resolution.
-pub fn probe_camera_details(camera_index: &CameraIndex) -> Option<CameraDetails> {
+/// Temporarily opens a camera to get dimensions
+///
+/// Returns `(width, height)`
+pub fn get_camera_dimensions(camera_index: &CameraIndex) -> Option<(u32, u32)> {
   let requested = RequestedFormat::new::<RgbAFormat>(RequestedFormatType::AbsoluteHighestFrameRate);
 
   if let Ok(mut camera) = CallbackCamera::new(camera_index.clone(), requested, |_| {}) {
     if camera.open_stream().is_ok() {
       let resolution = camera.resolution().unwrap();
-      let frame_rate = camera.frame_rate().unwrap();
+      let width = resolution.width();
+      let height = resolution.height();
 
       std::thread::spawn(move || {
         // Need a thread to stop stream otherwise freezes main thread
         let _ = camera.stop_stream();
       });
 
-      return Some(CameraDetails {
-        resolution,
-        frame_rate,
-      });
+      return Some((width, height));
     }
   }
   None
