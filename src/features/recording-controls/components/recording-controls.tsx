@@ -38,15 +38,23 @@ const RecordingControls = () => {
     useShallow((state) => state.setWindowOpenState)
   );
 
-  const [setIsRecording, systemAudio, microphone, camera] =
-    useRecordingStateStore(
-      useShallow((state) => [
-        state.setIsRecording,
-        state.systemAudio,
-        state.microphone,
-        state.camera,
-      ])
-    );
+  const [
+    setIsRecording,
+    recordingType,
+    selectedMonitor,
+    systemAudio,
+    microphone,
+    camera,
+  ] = useRecordingStateStore(
+    useShallow((state) => [
+      state.setIsRecording,
+      state.recordingType,
+      state.selectedMonitor,
+      state.systemAudio,
+      state.microphone,
+      state.camera,
+    ])
+  );
 
   const [microphoneListBox, cameraListBox] = useStandaloneListBoxStore(
     useShallow((state) => [
@@ -75,6 +83,8 @@ const RecordingControls = () => {
   };
 
   const onStartRecording = () => {
+    if (!selectedMonitor) return;
+
     onCancel(); // Closes dock
     setIsRecording(true);
 
@@ -88,6 +98,8 @@ const RecordingControls = () => {
             microphoneListBox?.selectedItems ?? []
           )?.id?.toString() ?? undefined
         : undefined,
+      monitorName: selectedMonitor.name,
+      recordingType,
       systemAudio,
     });
   };

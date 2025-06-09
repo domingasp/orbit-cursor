@@ -12,7 +12,7 @@ use crate::{
     models::StartRecordingOptions,
     service::{
       create_recording_directory, start_camera_recording, start_input_audio_recording,
-      start_system_audio_recording, stop_audio_writer, stop_camera_writer,
+      start_screen_recording, start_system_audio_recording, stop_audio_writer, stop_camera_writer,
     },
   },
   AppState, RecordingStreams,
@@ -25,6 +25,7 @@ pub fn start_recording(
   options: StartRecordingOptions,
 ) {
   let stop_recording_flag = Arc::new(AtomicBool::new(false));
+  let stop_recording_flag_for_screen = stop_recording_flag.clone();
   let stop_recording_flag_for_camera = stop_recording_flag.clone();
 
   if let Ok(mut state) = state.lock() {
@@ -33,6 +34,13 @@ pub fn start_recording(
     state.is_recording = true;
     state.recording_streams = RecordingStreams {
       stop_recording_flag,
+      screen_capture: start_screen_recording(
+        options.recording_type,
+        options.monitor_name,
+        app_handle.clone(),
+        recording_dir.join("screen.mkv"),
+        stop_recording_flag_for_screen,
+      ),
       system_audio: if options.system_audio {
         start_system_audio_recording(recording_dir.join("system_audio.wav"))
       } else {
@@ -63,6 +71,7 @@ pub fn stop_recording(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) 
     // cpal and hound automatically clean up on Drop
     let recording_streams = RecordingStreams {
       stop_recording_flag: Arc::new(AtomicBool::new(false)),
+      screen_capture: None, // drops ffmpeg
       system_audio: None,
       input_audio: None,
       camera: None,

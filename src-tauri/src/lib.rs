@@ -163,6 +163,7 @@ pub fn run() {
       magnifier_running: Arc::new(AtomicBool::new(false)),
       recording_streams: RecordingStreams {
         stop_recording_flag: Arc::new(AtomicBool::new(false)),
+        screen_capture: None,
         system_audio: None,
         input_audio: None,
         camera: None,

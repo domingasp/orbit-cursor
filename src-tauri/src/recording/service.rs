@@ -1,4 +1,6 @@
+use std::io::Write;
 use std::sync::atomic::AtomicBool;
+use std::thread;
 use std::{
   fs::create_dir_all,
   path::PathBuf,
@@ -11,6 +13,9 @@ use ffmpeg_sidecar::{child::FfmpegChild, command::FfmpegCommand};
 use tauri::{AppHandle, Manager};
 
 use crate::camera::service::get_camera_dimensions;
+use crate::recording::models::{RecordingType, ScreenCaptureRecordingDetails};
+use crate::recording_sources::commands::list_monitors;
+use crate::screen_capture::service::create_screen_recording_capturer;
 use crate::{
   audio::service::{build_audio_into_file_stream, get_input_audio_device, get_system_audio_device},
   camera::service::{capture_to_file_callback, create_and_start_camera},
@@ -18,6 +23,56 @@ use crate::{
 };
 
 // region: Recording stream setup
+
+pub fn start_screen_recording(
+  recording_type: RecordingType,
+  monitor_name: String,
+  app_handle: AppHandle,
+  file_path: PathBuf,
+  stop_recording_flag: Arc<AtomicBool>,
+) -> Option<ScreenCaptureRecordingDetails> {
+  let (mut capturer, width, height) = match recording_type {
+    RecordingType::Screen => {
+      let monitors = list_monitors(app_handle.clone());
+      let monitor = monitors
+        .iter()
+        .find(|m| m.name == monitor_name)
+        .or_else(|| monitors.first())
+        .unwrap();
+
+      let monitor_size = monitor.physical_size;
+
+      Some((
+        create_screen_recording_capturer(app_handle.clone(), monitor.name.clone()),
+        monitor_size.width as u32,
+        monitor_size.height as u32,
+      ))
+    }
+    RecordingType::Region => None,
+    RecordingType::Window => None,
+  }?;
+
+  let mut ffmpeg_child = create_ffmpeg_writer(file_path, width, height, "bgra".to_string());
+  let ffmpeg_stdin = Arc::new(Mutex::new(ffmpeg_child.take_stdin()));
+  let ffmpeg_stdin_for_callback = ffmpeg_stdin.clone();
+
+  thread::spawn(move || {
+    capturer.start_capture();
+    while !stop_recording_flag.load(std::sync::atomic::Ordering::SeqCst) {
+      if let Ok(scap::frame::Frame::BGRA(frame)) = capturer.get_next_frame() {
+        if let Some(stdin) = ffmpeg_stdin_for_callback.lock().unwrap().as_mut() {
+          let _ = stdin.write_all(&frame.data);
+        }
+      }
+    }
+    capturer.stop_capture();
+  });
+
+  Some(ScreenCaptureRecordingDetails {
+    ffmpeg: ffmpeg_child,
+    stdin: ffmpeg_stdin,
+  })
+}
 
 /// Create and start system audio recording
 pub fn start_system_audio_recording(file_path: PathBuf) -> Option<AudioRecordingDetails> {
@@ -99,12 +154,16 @@ pub fn create_ffmpeg_writer(
   pixel_format: String,
 ) -> FfmpegChild {
   let child = FfmpegCommand::new()
+    .args(["-use_wallclock_as_timestamps", "1"])
+    .realtime()
     .format("rawvideo")
     .pix_fmt(pixel_format)
     .size(width, height)
     .input("-")
+    .args(["-vsync", "vfr"])
     .codec_video("libx264")
-    .format("matroska")
+    .preset("faster")
+    .crf(18)
     .output(file_path.to_string_lossy())
     .spawn()
     .unwrap();
