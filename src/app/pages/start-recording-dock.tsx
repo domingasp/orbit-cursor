@@ -32,6 +32,7 @@ const StartRecordingDock = () => {
     !accessibility?.hasAccess || !screen?.hasAccess || !canUnlock;
 
   useEffect(() => {
+    setIsRecording(false); // On first mount reset recording state
     const addWindowToStore = async () => {
       addWindow(AppWindow.StartRecordingDock, await isStartRecordingDockOpen());
     };

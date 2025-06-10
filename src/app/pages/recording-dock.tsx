@@ -7,8 +7,8 @@ import { stopRecording } from "../../features/recording-controls/api/recording-s
 import { useRecordingStateStore } from "../../stores/recording-state.store";
 
 const RecordingDock = () => {
-  const isRecording = useRecordingStateStore(
-    useShallow((state) => state.isRecording)
+  const [isRecording, setIsRecording] = useRecordingStateStore(
+    useShallow((state) => [state.isRecording, state.setIsRecording])
   );
 
   return (
@@ -26,6 +26,7 @@ const RecordingDock = () => {
         showFocus={false}
         variant="soft"
         onPress={() => {
+          setIsRecording(false);
           stopRecording();
         }}
       >

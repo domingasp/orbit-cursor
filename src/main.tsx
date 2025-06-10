@@ -11,6 +11,7 @@ import {
 import { App } from "./app";
 import "./index.css";
 
+// Ensures backend is ready
 initStandaloneListBox();
 initRecordingInputOptions();
 initRegionSelector();
