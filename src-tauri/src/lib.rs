@@ -40,6 +40,7 @@ use serde_json::{json, Value};
 use system_tray::service::init_system_tray;
 use tauri::{App, AppHandle, Manager, Wry};
 use tauri_plugin_store::{Store, StoreExt};
+use tokio::sync::broadcast;
 use windows::{
   commands::{
     collapse_recording_source_selector, expand_recording_source_selector, get_dock_bounds,
@@ -55,10 +56,7 @@ use windows::{
   },
 };
 
-use crate::{
-  recording::models::RecordingStreams,
-  screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
-};
+use crate::screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture};
 
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
@@ -69,7 +67,7 @@ struct AppState {
   camera_stream: Option<CallbackCamera>,
   magnifier_capturer: Option<Capturer>,
   magnifier_running: Arc<AtomicBool>,
-  recording_streams: RecordingStreams,
+  stop_recording_tx: Option<broadcast::Sender<()>>,
 }
 
 async fn setup_store(app: &App) -> Arc<Store<Wry>> {
@@ -152,6 +150,7 @@ pub fn run() {
     ])
     .manage(Mutex::new(AppState {
       is_recording: false,
+      stop_recording_tx: None,
       open_windows: HashMap::from([
         (WindowLabel::StartRecordingDock, false),
         (WindowLabel::RecordingInputOptions, false),
@@ -161,13 +160,6 @@ pub fn run() {
       camera_stream: None,
       magnifier_capturer: None,
       magnifier_running: Arc::new(AtomicBool::new(false)),
-      recording_streams: RecordingStreams {
-        stop_recording_flag: Arc::new(AtomicBool::new(false)),
-        screen_capture: None,
-        system_audio: None,
-        input_audio: None,
-        camera: None,
-      },
     }))
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_macos_permissions::init())
