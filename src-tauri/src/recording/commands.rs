@@ -12,7 +12,8 @@ use crate::{
   recording::{
     models::StartRecordingOptions,
     service::{
-      create_recording_directory, start_input_audio_recording, start_system_audio_recording,
+      create_recording_directory, start_camera_recording, start_input_audio_recording,
+      start_system_audio_recording,
     },
   },
   AppState,
@@ -36,6 +37,9 @@ pub fn start_recording(
   if options.input_audio_name.is_some() {
     barrier_count += 1;
   }
+  if options.camera_name.is_some() {
+    barrier_count += 1;
+  }
 
   let start_writing = Arc::new(AtomicBool::new(false));
   let barrier = Arc::new(Barrier::new(barrier_count + 1));
@@ -56,6 +60,16 @@ pub fn start_recording(
       stop_tx.subscribe(),
       recording_dir.join("microphone.wav"),
       device_name,
+    );
+  }
+
+  if let Some(camera_name) = options.camera_name {
+    start_camera_recording(
+      start_writing.clone(),
+      barrier.clone(),
+      stop_tx.subscribe(),
+      recording_dir.join("camera.mkv"),
+      camera_name,
     );
   }
 
@@ -97,6 +111,9 @@ pub fn start_recording(
     .get_webview_panel(WindowLabel::RecordingDock.as_ref())
     .unwrap();
   recording_dock.order_front_regardless();
+
+  // TODO return value to method - this way the elapsed time
+  // is accurate
 }
 
 #[tauri::command]

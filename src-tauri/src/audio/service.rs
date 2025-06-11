@@ -2,7 +2,6 @@ use std::{
   collections::VecDeque,
   path::Path,
   sync::{atomic::AtomicBool, Arc, Mutex},
-  time::Instant,
 };
 
 use cpal::{
@@ -68,7 +67,7 @@ pub fn build_audio_into_file_stream(
   config: &StreamConfig,
   file_path: &Path,
   start_writing: Arc<AtomicBool>,
-) -> (Stream, SharedWavWriter, Arc<Mutex<Option<Instant>>>) {
+) -> (Stream, SharedWavWriter) {
   let wav_spec = WavSpec {
     channels: config.channels,
     sample_rate: config.sample_rate.0,
@@ -81,9 +80,6 @@ pub fn build_audio_into_file_stream(
 
   let writer_clone = Arc::clone(&wav_writer);
 
-  let first_sample_time: Arc<Mutex<Option<Instant>>> = Arc::new(Mutex::new(None));
-  let first_sample_time_clone = Arc::clone(&first_sample_time);
-
   let stream = device
     .build_input_stream(
       config,
@@ -91,11 +87,6 @@ pub fn build_audio_into_file_stream(
         let mut writer_lock = writer_clone.lock().unwrap();
         if let Some(ref mut writer) = *writer_lock {
           if start_writing.load(std::sync::atomic::Ordering::SeqCst) {
-            let mut first = first_sample_time_clone.lock().unwrap();
-            if first.is_none() {
-              *first = Some(Instant::now());
-            }
-
             for &sample in data {
               let clamped = (sample * i16::MAX as f32).clamp(i16::MIN as f32, i16::MAX as f32);
               writer.write_sample(clamped as i16).unwrap();
@@ -110,7 +101,7 @@ pub fn build_audio_into_file_stream(
     )
     .expect("Error creating stream");
 
-  (stream, wav_writer, first_sample_time)
+  (stream, wav_writer)
 }
 
 /// Return system audio device and config

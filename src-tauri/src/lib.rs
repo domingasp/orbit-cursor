@@ -61,12 +61,13 @@ use crate::screen_capture::commands::{start_magnifier_capture, stop_magnifier_ca
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
 struct AppState {
-  is_recording: bool,
   open_windows: HashMap<WindowLabel, bool>,
   audio_streams: HashMap<AudioStream, Stream>,
   camera_stream: Option<CallbackCamera>,
   magnifier_capturer: Option<Capturer>,
   magnifier_running: Arc<AtomicBool>,
+  // Recording related
+  is_recording: bool,
   stop_recording_tx: Option<broadcast::Sender<()>>,
 }
 
@@ -149,8 +150,6 @@ pub fn run() {
       stop_recording,
     ])
     .manage(Mutex::new(AppState {
-      is_recording: false,
-      stop_recording_tx: None,
       open_windows: HashMap::from([
         (WindowLabel::StartRecordingDock, false),
         (WindowLabel::RecordingInputOptions, false),
@@ -160,6 +159,8 @@ pub fn run() {
       camera_stream: None,
       magnifier_capturer: None,
       magnifier_running: Arc::new(AtomicBool::new(false)),
+      is_recording: false,
+      stop_recording_tx: None,
     }))
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_macos_permissions::init())
