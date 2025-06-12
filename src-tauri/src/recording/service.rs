@@ -19,6 +19,7 @@ use crate::audio::service::{
   build_audio_into_file_stream, get_input_audio_device, get_system_audio_device,
 };
 use crate::camera::service::{create_camera, frame_to_rgba};
+use crate::recording::models::{RecordingType, StreamSynchronization};
 
 // region: Recording stream setup
 
@@ -72,52 +73,60 @@ use crate::camera::service::{create_camera, frame_to_rgba};
 //   })
 // }
 
+pub fn start_screen_recording(
+  mut synchronization: StreamSynchronization,
+  file_path: PathBuf,
+  recording_type: RecordingType,
+  monitor_name: String,
+) {
+  tauri::async_runtime::spawn(async move {
+    // Spin up
+
+    synchronization.barrier.wait().await;
+
+    let _ = synchronization.stop_rx.recv().await;
+
+    // Teardown
+  });
+}
+
 /// Create and start system audio recording thread
 ///
 /// Message received in `stop_rx` will finalize the recording.
-pub fn start_system_audio_recording(
-  start_writing: Arc<AtomicBool>,
-  barrier: Arc<Barrier>,
-  stop_rx: Receiver<()>,
-  file_path: PathBuf,
-) {
+pub fn start_system_audio_recording(synchronization: StreamSynchronization, file_path: PathBuf) {
   let (device, config) = get_system_audio_device();
-  start_audio_recording(start_writing, barrier, stop_rx, file_path, device, config);
+  start_audio_recording(synchronization, file_path, device, config);
 }
 
 /// Create and start audio input recording
 ///
 /// Message received in `stop_rx` will finalize the recording.
 pub fn start_input_audio_recording(
-  start_writing: Arc<AtomicBool>,
-  barrier: Arc<Barrier>,
-  stop_rx: Receiver<()>,
+  mut synchronization: StreamSynchronization,
   file_path: PathBuf,
   device_name: String,
 ) {
   if let Some((device, config)) = get_input_audio_device(device_name.clone()) {
-    start_audio_recording(start_writing, barrier, stop_rx, file_path, device, config);
+    start_audio_recording(synchronization, file_path, device, config);
   } else {
     eprintln!("Failed to get input audio device: {}", device_name);
   }
 }
 
 fn start_audio_recording(
-  start_writing: Arc<AtomicBool>,
-  barrier: Arc<Barrier>,
-  mut stop_rx: Receiver<()>,
+  mut synchronization: StreamSynchronization,
   file_path: PathBuf,
   device: Device,
   config: StreamConfig,
 ) {
   tauri::async_runtime::spawn(async move {
     let (stream, wav_writer) =
-      build_audio_into_file_stream(&device, &config, &file_path, start_writing);
+      build_audio_into_file_stream(&device, &config, &file_path, synchronization.start_writing);
     stream.play().expect("Failed to start system audio stream");
 
-    barrier.wait().await;
+    synchronization.barrier.wait().await;
 
-    let _ = stop_rx.recv().await;
+    let _ = synchronization.stop_rx.recv().await;
     drop(stream); // cpal has no stop capability, stream cleaned on drop
 
     let mut writer_lock = wav_writer.lock().unwrap();
@@ -129,9 +138,7 @@ fn start_audio_recording(
 
 /// Create and start camera recording
 pub fn start_camera_recording(
-  start_writing: Arc<AtomicBool>,
-  barrier: Arc<Barrier>,
-  mut stop_rx: Receiver<()>,
+  mut synchronization: StreamSynchronization,
   file_path: PathBuf,
   camera_name: String,
 ) {
@@ -142,7 +149,7 @@ pub fn start_camera_recording(
     .unwrap();
   let camera_index = camera_info.index().clone();
 
-  let start_writing_for_callback = start_writing.clone();
+  let start_writing_for_callback = synchronization.start_writing.clone();
   tauri::async_runtime::spawn(async move {
     // Some cameras (like Macbook webcam) have a warmup period.
     // Once camera starts sending first frame one shot is sent and
@@ -168,14 +175,14 @@ pub fn start_camera_recording(
     );
     let ffmpeg_stdin = ffmpeg_child.take_stdin().unwrap();
 
-    let writer = spawn_ffmpeg_frame_writer(frame_rx, ffmpeg_stdin, start_writing);
+    let writer = spawn_ffmpeg_frame_writer(frame_rx, ffmpeg_stdin, synchronization.start_writing);
 
     let _ = camera.open_stream();
     let _ = camera_ready_rx.await;
 
-    barrier.wait().await; // Signal this thread is ready
+    synchronization.barrier.wait().await; // Signal this thread is ready
 
-    let _ = stop_rx.recv().await;
+    let _ = synchronization.stop_rx.recv().await;
     start_writing_for_callback.store(false, std::sync::atomic::Ordering::SeqCst);
 
     {

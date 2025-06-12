@@ -5,15 +5,18 @@ use std::sync::{
 
 use tauri::{AppHandle, State};
 use tauri_nspanel::ManagerExt;
-use tokio::sync::{broadcast, Barrier};
+use tokio::sync::{
+  broadcast::{self, Sender},
+  Barrier,
+};
 
 use crate::{
   constants::WindowLabel,
   recording::{
-    models::StartRecordingOptions,
+    models::{StartRecordingOptions, StreamSynchronization},
     service::{
       create_recording_directory, start_camera_recording, start_input_audio_recording,
-      start_system_audio_recording,
+      start_screen_recording, start_system_audio_recording,
     },
   },
   AppState,
@@ -30,7 +33,7 @@ pub fn start_recording(
 
   let (stop_tx, _) = broadcast::channel::<()>(1);
 
-  let mut barrier_count = 0;
+  let mut barrier_count = 1; // Screen recording always happens
   if options.system_audio {
     barrier_count += 1;
   }
@@ -44,20 +47,23 @@ pub fn start_recording(
   let start_writing = Arc::new(AtomicBool::new(false));
   let barrier = Arc::new(Barrier::new(barrier_count + 1));
 
+  start_screen_recording(
+    create_stream_sync(&start_writing, &barrier, &stop_tx),
+    recording_dir.join("screen.mkv"),
+    options.recording_type,
+    options.monitor_name,
+  );
+
   if options.system_audio {
     start_system_audio_recording(
-      start_writing.clone(),
-      barrier.clone(),
-      stop_tx.subscribe(),
+      create_stream_sync(&start_writing, &barrier, &stop_tx),
       recording_dir.join("system_audio.wav"),
     );
   }
 
   if let Some(device_name) = options.input_audio_name {
     start_input_audio_recording(
-      start_writing.clone(),
-      barrier.clone(),
-      stop_tx.subscribe(),
+      create_stream_sync(&start_writing, &barrier, &stop_tx),
       recording_dir.join("microphone.wav"),
       device_name,
     );
@@ -65,9 +71,7 @@ pub fn start_recording(
 
   if let Some(camera_name) = options.camera_name {
     start_camera_recording(
-      start_writing.clone(),
-      barrier.clone(),
-      stop_tx.subscribe(),
+      create_stream_sync(&start_writing, &barrier, &stop_tx),
       recording_dir.join("camera.mkv"),
       camera_name,
     );
@@ -149,4 +153,16 @@ pub fn stop_recording(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) 
   // stop_camera_writer(state.recording_streams.camera.take());
 
   // state.recording_streams = recording_streams;
+}
+
+fn create_stream_sync(
+  start_writing: &Arc<AtomicBool>,
+  barrier: &Arc<Barrier>,
+  stop_tx: &Sender<()>,
+) -> StreamSynchronization {
+  StreamSynchronization {
+    start_writing: start_writing.clone(),
+    barrier: barrier.clone(),
+    stop_rx: stop_tx.subscribe(),
+  }
 }
