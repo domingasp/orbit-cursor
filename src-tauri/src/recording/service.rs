@@ -87,7 +87,7 @@ pub fn start_system_audio_recording(
 
 /// Create and start audio input recording
 ///
-/// /// Message received in `stop_rx` will finalize the recording.
+/// Message received in `stop_rx` will finalize the recording.
 pub fn start_input_audio_recording(
   start_writing: Arc<AtomicBool>,
   barrier: Arc<Barrier>,
@@ -95,8 +95,11 @@ pub fn start_input_audio_recording(
   file_path: PathBuf,
   device_name: String,
 ) {
-  let (device, config) = get_input_audio_device(device_name);
-  start_audio_recording(start_writing, barrier, stop_rx, file_path, device, config);
+  if let Some((device, config)) = get_input_audio_device(device_name.clone()) {
+    start_audio_recording(start_writing, barrier, stop_rx, file_path, device, config);
+  } else {
+    eprintln!("Failed to get input audio device: {}", device_name);
+  }
 }
 
 fn start_audio_recording(

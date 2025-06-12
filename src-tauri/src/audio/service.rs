@@ -117,14 +117,13 @@ pub fn get_system_audio_device() -> (Device, StreamConfig) {
   (device, config.into())
 }
 
-pub fn get_input_audio_device(device_name: String) -> (Device, StreamConfig) {
+pub fn get_input_audio_device(device_name: String) -> Option<(Device, StreamConfig)> {
   let host = cpal::default_host();
   let device = host
     .input_devices()
     .unwrap()
-    .find(|device| device.name().unwrap() == device_name.as_str())
-    .unwrap();
+    .find(|device| device.name().unwrap() == device_name.as_str())?;
   let config = device.default_input_config().unwrap();
 
-  (device, config.into())
+  Some((device, config.into()))
 }

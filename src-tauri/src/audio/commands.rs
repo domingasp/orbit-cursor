@@ -44,13 +44,16 @@ pub fn start_audio_listener(
     }
     AudioStream::Input => match device_name {
       Some(name) => {
-        let (device, config) = get_input_audio_device(name);
-        Some(build_audio_live_monitoring_stream(
-          &device,
-          &config,
-          on_event,
-          Some(Events::InputAudioStreamError.to_string()),
-        ))
+        if let Some((device, config)) = get_input_audio_device(name) {
+          Some(build_audio_live_monitoring_stream(
+            &device,
+            &config,
+            on_event,
+            Some(Events::InputAudioStreamError.to_string()),
+          ))
+        } else {
+          None
+        }
       }
       _ => None,
     },
