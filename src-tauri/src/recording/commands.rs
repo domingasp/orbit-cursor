@@ -34,23 +34,24 @@ pub fn start_recording(
   let (stop_tx, _) = broadcast::channel::<()>(1);
 
   let mut barrier_count = 1; // Screen recording always happens
-  if options.system_audio {
-    barrier_count += 1;
-  }
-  if options.input_audio_name.is_some() {
-    barrier_count += 1;
-  }
-  if options.camera_name.is_some() {
-    barrier_count += 1;
-  }
+  let conditions = [
+    options.system_audio,
+    options.input_audio_name.is_some(),
+    options.camera_name.is_some(),
+  ];
+
+  barrier_count += conditions.iter().filter(|&&condition| condition).count();
 
   let start_writing = Arc::new(AtomicBool::new(false));
+  // +1 is for this thread, making sure writing switch flipped when all
+  // streams are ready
   let barrier = Arc::new(Barrier::new(barrier_count + 1));
 
   start_screen_recording(
     create_stream_sync(&start_writing, &barrier, &stop_tx),
     recording_dir.join("screen.mkv"),
     options.recording_type,
+    app_handle.clone(),
     options.monitor_name,
   );
 
@@ -83,31 +84,6 @@ pub fn start_recording(
     start_writing.store(true, Ordering::SeqCst);
   });
 
-  // state.recording_streams = RecordingStreams {
-  //   stop_recording_flag,
-  //   screen_capture: start_screen_recording(
-  //     options.recording_type,
-  //     options.monitor_name,
-  //     app_handle.clone(),
-  //     recording_dir.join("screen.mkv"),
-  //     stop_recording_flag_for_screen,
-  //   ),
-  //   system_audio: if options.system_audio {
-  //     start_system_audio_recording(recording_dir.join("system_audio.wav"))
-  //   } else {
-  //     None
-  //   },
-  //   input_audio: start_input_audio_recording(
-  //     options.input_audio_name,
-  //     recording_dir.join("microphone.wav"),
-  //   ),
-  //   camera: start_camera_recording(
-  //     options.camera_name,
-  //     recording_dir.join("camera.mkv"),
-  //     stop_recording_flag_for_camera,
-  //   ),
-  // };
-
   state.is_recording = true;
   state.stop_recording_tx = Some(stop_tx);
 
@@ -116,7 +92,7 @@ pub fn start_recording(
     .unwrap();
   recording_dock.order_front_regardless();
 
-  // TODO return value to method - this way the elapsed time
+  // TODO return empty response to UI - this way the elapsed time
   // is accurate
 }
 
@@ -134,25 +110,9 @@ pub fn stop_recording(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) 
     let _ = stop_tx.send(());
   }
 
-  // // cpal and hound automatically clean up on Drop
-  // let recording_streams = RecordingStreams {
-  //   stop_recording_flag: Arc::new(AtomicBool::new(false)),
-  //   screen_capture: None, // drops ffmpeg
-  //   system_audio: None,
-  //   input_audio: None,
-  //   camera: None,
-  // };
-
-  // state
-  //   .recording_streams
-  //   .stop_recording_flag
-  //   .store(true, Ordering::SeqCst);
-
-  // stop_audio_writer(state.recording_streams.system_audio.as_ref());
-  // stop_audio_writer(state.recording_streams.input_audio.as_ref());
-  // stop_camera_writer(state.recording_streams.camera.take());
-
-  // state.recording_streams = recording_streams;
+  // TODO
+  // Once all files ready - via maybe a barrier
+  // trim them all to match the shortest length so they are all the same length
 }
 
 fn create_stream_sync(
