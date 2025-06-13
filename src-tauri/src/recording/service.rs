@@ -116,12 +116,12 @@ async fn create_screen_capturer(
   let mut crop_origin: Option<PhysicalPosition<f64>> = None;
 
   if let (RecordingType::Window, Some(window_id)) = (recording_type, window_id) {
-    let windows = get_visible_windows(None).await;
+    let windows = get_visible_windows(app_handle.clone().available_monitors().unwrap(), None).await;
     let window_details = windows.into_iter().find(|w| w.id == window_id);
 
     // Details are not the same as scap::Target
     if let Some(window_details) = window_details {
-      let window_size = window_details.size.to_physical(scale_factor);
+      let window_size = window_details.size.to_physical(window_details.scale_factor);
       let window_target = get_window(window_id);
 
       // Only if we can find the target will we use it, otherwise use default (screen)
@@ -323,7 +323,7 @@ fn spawn_capturer_with_send(
         if let Ok(Frame::BGRA(frame)) = capturer.get_next_frame() {
           if let Some(ref tx) = *tx.lock().unwrap() {
             if start_writing.load(std::sync::atomic::Ordering::SeqCst) {
-              if let Err(e) = tx.try_send(if frame.data.is_empty() {
+              if let Err(e) = tx.try_send(if frame.data.is_empty() && cached_frame.is_some() {
                 cached_frame.clone().unwrap().data
               } else {
                 cached_frame = Some(frame.clone());
@@ -413,8 +413,12 @@ async fn tear_down_ffmpeg_writer(
 
   {
     // Dropping sender to ensure writer drops ffmpeg_stdin, signalling end of recording
-    let mut locked_tx = tx_arc.lock().unwrap();
-    *locked_tx = None;
+    match tx_arc.lock() {
+      Ok(mut locked_tx) => {
+        *locked_tx = None;
+      }
+      Err(e) => eprintln!("Failed to lock frame sender: {}", e),
+    }
   }
   drop(tx);
 

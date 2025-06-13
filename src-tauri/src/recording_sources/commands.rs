@@ -24,6 +24,7 @@ pub struct WindowDetails {
   pub app_icon_path: Option<PathBuf>,
   pub thumbnail_path: Option<PathBuf>,
   pub size: LogicalSize<f64>,
+  pub scale_factor: f64,
 }
 
 #[tauri::command]
@@ -52,5 +53,5 @@ pub fn list_monitors(app_handle: AppHandle) -> Vec<MonitorDetails> {
 #[tauri::command]
 pub async fn list_windows(app_handle: AppHandle) -> Vec<WindowDetails> {
   let app_temp_dir = app_handle.path().temp_dir().unwrap().join("OrbitCursor");
-  get_visible_windows(Some(app_temp_dir)).await
+  get_visible_windows(app_handle.available_monitors().unwrap(), Some(app_temp_dir)).await
 }

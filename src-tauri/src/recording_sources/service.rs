@@ -6,7 +6,10 @@ use std::{
   sync::Arc,
 };
 
-use cidre::sc::{self};
+use cidre::{
+  ns::Array,
+  sc::{self, Display},
+};
 use cocoa::base::nil;
 
 use futures::{stream::FuturesUnordered, StreamExt};
@@ -17,7 +20,7 @@ use objc::{
   sel, sel_impl,
 };
 use scap::{get_all_targets, Target};
-use tauri::LogicalSize;
+use tauri::{LogicalSize, Monitor};
 use uuid::Uuid;
 use xcap::Window;
 
@@ -27,9 +30,13 @@ use super::commands::WindowDetails;
 ///
 /// Icons and preview thumbnails are saved under `{app_temp_dir}/window-selector`.
 /// If no dir provided no thumbnails will be generated.
-pub async fn get_visible_windows(app_temp_dir: Option<PathBuf>) -> Vec<WindowDetails> {
+pub async fn get_visible_windows(
+  monitors: Vec<Monitor>,
+  app_temp_dir: Option<PathBuf>,
+) -> Vec<WindowDetails> {
   let targets = Arc::new(get_all_targets());
   let shareable_content = sc::ShareableContent::current().await.unwrap();
+  let shareable_displays = shareable_content.displays();
   let shareable_windows = shareable_content.windows();
   let windows_for_thumbnail_arc = Arc::new(Window::all().unwrap());
 
@@ -52,6 +59,9 @@ pub async fn get_visible_windows(app_temp_dir: Option<PathBuf>) -> Vec<WindowDet
         let frame = window.frame();
         let targets = Arc::clone(&targets);
         let window_selector_folder = window_selector_folder.clone();
+
+        let window_display_index = get_window_display(&shareable_displays, frame);
+        let scale_factor = monitors[window_display_index].scale_factor();
 
         let windows_for_thumbnail = Arc::clone(&windows_for_thumbnail_arc);
         futures.push(async move {
@@ -78,6 +88,7 @@ pub async fn get_visible_windows(app_temp_dir: Option<PathBuf>) -> Vec<WindowDet
             app_icon_path,
             thumbnail_path,
             size: LogicalSize::new(frame.size.width, frame.size.height),
+            scale_factor,
           }
         });
       }
@@ -86,6 +97,35 @@ pub async fn get_visible_windows(app_temp_dir: Option<PathBuf>) -> Vec<WindowDet
 
   let results: Vec<WindowDetails> = futures.collect().await;
   results
+}
+
+#[link(name = "AppKit", kind = "framework")]
+extern "C" {
+  pub fn NSIntersectionRect(a: cidre::ns::Rect, b: cidre::ns::Rect) -> cidre::ns::Rect;
+}
+
+/// Estimates the display based on intersection size
+///
+/// Many edge cases not managed, down to the user to properly position their
+/// windows.
+fn get_window_display(shareable_displays: &Array<Display>, window_frame: cidre::ns::Rect) -> usize {
+  let mut display_index: usize = 0;
+
+  let mut largest_intersection_size: f64 = 0.0;
+  for (i, display) in shareable_displays.iter().enumerate() {
+    let display_frame = display.frame();
+    unsafe {
+      let intersection_rect = NSIntersectionRect(display_frame, window_frame);
+      let intersection_size = intersection_rect.size.width * intersection_rect.size.height;
+
+      if intersection_size > largest_intersection_size {
+        largest_intersection_size = intersection_size;
+        display_index = i;
+      }
+    }
+  }
+
+  display_index
 }
 
 /// [MacOS] Fetch app icon, save to file, and return path

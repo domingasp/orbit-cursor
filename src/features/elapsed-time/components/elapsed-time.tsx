@@ -30,6 +30,7 @@ const ElapsedTime = ({ isRecording }: ElapsedTimeProps) => {
 
     if (!isRecording) {
       if (interval.current) clearInterval(interval.current);
+      interval.current = null;
     } else if (!interval.current) {
       interval.current = setInterval(() => {
         setSecondsElapsed((prev) => prev + 1);

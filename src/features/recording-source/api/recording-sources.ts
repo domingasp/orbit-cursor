@@ -19,6 +19,7 @@ export type MonitorDetails = {
 export type WindowDetails = {
   appIconPath: string | null;
   id: number;
+  scaleFactor: number;
   size: LogicalSize;
   thumbnailPath: string | null;
   title: string;
