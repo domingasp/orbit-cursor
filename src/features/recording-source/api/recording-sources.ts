@@ -12,12 +12,14 @@ export type MonitorDetails = {
   name: string;
   physicalSize: PhysicalSize;
   position: LogicalPosition;
+  scaleFactor: number;
   size: LogicalSize;
 };
 
 export type WindowDetails = {
   appIconPath: string | null;
   id: number;
+  size: LogicalSize;
   thumbnailPath: string | null;
   title: string;
 };

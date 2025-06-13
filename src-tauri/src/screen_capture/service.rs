@@ -36,13 +36,13 @@ pub fn init_magnifier_capturer(
   }
 }
 
-pub fn create_screen_recording_capturer(app_handle: AppHandle, display_name: String) -> Capturer {
+/// Create and return a capturer with specified target (display, or window)
+pub fn create_screen_recording_capturer(app_handle: AppHandle, target: Option<Target>) -> Capturer {
   let targets_to_exclude = get_app_targets(app_handle);
-  let display = get_display(display_name);
 
   let options = Options {
     fps: 60,
-    target: display,
+    target,
     show_cursor: false,
     show_highlight: false,
     excluded_targets: Some(targets_to_exclude),
@@ -74,13 +74,26 @@ fn get_app_targets(app_handle: AppHandle) -> Vec<Target> {
     .collect()
 }
 
-/// Return display
-fn get_display(display_name: String) -> Option<Target> {
+/// Return display from name
+pub fn get_display(display_name: String) -> Option<Target> {
   let targets = get_all_targets();
 
   targets.into_iter().find(|t| {
     if let Target::Display(target) = t {
       target.title == display_name
+    } else {
+      false
+    }
+  })
+}
+
+/// Return window from id (scap::Target id)
+pub fn get_window(window_id: u32) -> Option<Target> {
+  let targets = get_all_targets();
+
+  targets.into_iter().find(|t| {
+    if let Target::Window(target) = t {
+      target.id == window_id
     } else {
       false
     }

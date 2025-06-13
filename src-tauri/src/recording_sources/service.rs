@@ -17,18 +17,17 @@ use objc::{
   sel, sel_impl,
 };
 use scap::{get_all_targets, Target};
+use tauri::LogicalSize;
 use uuid::Uuid;
 use xcap::Window;
 
 use super::commands::WindowDetails;
 
-/// Return data for visible windows.
+/// [MacOS] Return data for visible windows.
 ///
 /// Icons and preview thumbnails are saved under `{app_temp_dir}/window-selector`.
-pub async fn get_visible_windows(app_temp_dir: PathBuf) -> Vec<WindowDetails> {
-  let window_selector_folder = app_temp_dir.join("window-selector");
-  let _ = clear_folder_contents(&window_selector_folder);
-
+/// If no dir provided no thumbnails will be generated.
+pub async fn get_visible_windows(app_temp_dir: Option<PathBuf>) -> Vec<WindowDetails> {
   let targets = Arc::new(get_all_targets());
   let shareable_content = sc::ShareableContent::current().await.unwrap();
   let shareable_windows = shareable_content.windows();
@@ -36,23 +35,37 @@ pub async fn get_visible_windows(app_temp_dir: PathBuf) -> Vec<WindowDetails> {
 
   let futures = FuturesUnordered::new();
 
+  let window_selector_folder = if let Some(app_temp_dir) = app_temp_dir {
+    let dir = app_temp_dir.join("window-selector");
+    let _ = clear_folder_contents(&dir);
+    Some(dir)
+  } else {
+    None
+  };
+
   for window in shareable_windows.iter() {
     if let Some(title) = window.title() {
       if !title.is_empty() && window.window_layer() == 0 && window.is_on_screen() {
         let title = title.to_string();
         let app_pid = window.owning_app().unwrap().process_id();
         let window_id = window.id();
+        let frame = window.frame();
         let targets = Arc::clone(&targets);
         let window_selector_folder = window_selector_folder.clone();
 
         let windows_for_thumbnail = Arc::clone(&windows_for_thumbnail_arc);
         futures.push(async move {
-          let app_icon_path = get_app_icon(window_selector_folder.clone(), app_pid);
-          let thumbnail_path = tokio::task::spawn_blocking(move || {
-            create_and_save_thumbnail(window_selector_folder, window_id, windows_for_thumbnail)
-          })
-          .await
-          .unwrap();
+          let mut app_icon_path: Option<PathBuf> = None;
+          let mut thumbnail_path: Option<PathBuf> = None;
+
+          if let Some(thumbnail_folder) = window_selector_folder.clone() {
+            app_icon_path = get_app_icon(thumbnail_folder.clone(), app_pid);
+            thumbnail_path = tokio::task::spawn_blocking(move || {
+              create_and_save_thumbnail(thumbnail_folder, window_id, windows_for_thumbnail)
+            })
+            .await
+            .unwrap();
+          }
 
           let target_id = targets.iter().find_map(|t| match t {
             Target::Window(window_target) if window_target.title == title => Some(window_target.id),
@@ -64,6 +77,7 @@ pub async fn get_visible_windows(app_temp_dir: PathBuf) -> Vec<WindowDetails> {
             title,
             app_icon_path,
             thumbnail_path,
+            size: LogicalSize::new(frame.size.width, frame.size.height),
           }
         });
       }

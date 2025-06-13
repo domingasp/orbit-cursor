@@ -12,21 +12,29 @@ use ffmpeg_sidecar::{child::FfmpegChild, command::FfmpegCommand};
 use nokhwa::utils::CameraIndex;
 use nokhwa::CallbackCamera;
 use scap::capturer::Capturer;
-use scap::frame::Frame;
+use scap::frame::{BGRAFrame, Frame};
 use tauri::async_runtime::JoinHandle;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize};
 use tokio::sync::mpsc::{self};
 
 use crate::audio::service::{
   build_audio_into_file_stream, get_input_audio_device, get_system_audio_device,
 };
 use crate::camera::service::{create_camera, frame_to_rgba};
-use crate::recording::models::{RecordingType, StreamSynchronization};
+use crate::recording::models::{RecordingType, Region, StreamSynchronization};
 use crate::recording_sources::commands::list_monitors;
-use crate::screen_capture::service::create_screen_recording_capturer;
+use crate::recording_sources::service::get_visible_windows;
+use crate::screen_capture::service::{create_screen_recording_capturer, get_display, get_window};
 
 type ArcOneShotSender = Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>;
 type ArcSender = Arc<Mutex<Option<mpsc::Sender<Vec<u8>>>>>;
+type CapturerInfo = (
+  Arc<Mutex<Capturer>>,
+  u32,
+  u32,
+  Option<PhysicalSize<f64>>,
+  Option<PhysicalPosition<f64>>,
+);
 
 /// Create and start screen recording thread
 pub fn start_screen_recording(
@@ -35,20 +43,14 @@ pub fn start_screen_recording(
   recording_type: RecordingType,
   app_handle: AppHandle,
   monitor_name: String,
+  window_id: Option<u32>,
+  region: Region,
 ) {
-  let monitors = list_monitors(app_handle.clone());
-  let monitor = monitors
-    .iter()
-    .find(|m| m.name == monitor_name)
-    .or_else(|| monitors.first())
-    .unwrap();
-  let size = monitor.physical_size;
-
   tauri::async_runtime::spawn(async move {
-    let (frame_tx, frame_tx_arc, frame_rx) = create_frame_channel();
+    let (capturer, width, height, crop_size, crop_origin) =
+      create_screen_capturer(app_handle, recording_type, monitor_name, window_id, region).await;
 
-    let capturer = create_screen_recording_capturer(app_handle, monitor_name);
-    let capturer = Arc::new(Mutex::new(capturer));
+    let (frame_tx, frame_tx_arc, frame_rx) = create_frame_channel();
 
     spawn_capturer_with_send(
       capturer.clone(),
@@ -58,10 +60,12 @@ pub fn start_screen_recording(
 
     let mut ffmpeg_child = create_ffmpeg_writer(
       file_path,
-      size.width as u32,
-      size.height as u32,
+      width,
+      height,
       "bgra".to_string(),
       None,
+      crop_size,
+      crop_origin,
     );
     let ffmpeg_stdin = ffmpeg_child.take_stdin().unwrap();
 
@@ -72,7 +76,6 @@ pub fn start_screen_recording(
     );
 
     synchronization.barrier.wait().await;
-    println!("Start {}", Local::now());
     let _ = synchronization.stop_rx.recv().await;
 
     tear_down_ffmpeg_writer(
@@ -86,6 +89,65 @@ pub fn start_screen_recording(
 
     capturer.lock().unwrap().stop_capture();
   });
+}
+
+/// Create screen capturer based on recording type
+async fn create_screen_capturer(
+  app_handle: AppHandle,
+  recording_type: RecordingType,
+  monitor_name: String,
+  window_id: Option<u32>,
+  region: Region,
+) -> CapturerInfo {
+  let monitors = list_monitors(app_handle.clone());
+  let monitor = monitors
+    .iter()
+    .find(|m| m.name == monitor_name)
+    .or_else(|| monitors.first())
+    .unwrap();
+  let size = monitor.physical_size;
+  let scale_factor = monitor.scale_factor;
+
+  let mut target = get_display(monitor_name);
+  let mut width = size.width;
+  let mut height = size.height;
+
+  let mut crop_size: Option<PhysicalSize<f64>> = None;
+  let mut crop_origin: Option<PhysicalPosition<f64>> = None;
+
+  if let (RecordingType::Window, Some(window_id)) = (recording_type, window_id) {
+    let windows = get_visible_windows(None).await;
+    let window_details = windows.into_iter().find(|w| w.id == window_id);
+
+    // Details are not the same as scap::Target
+    if let Some(window_details) = window_details {
+      let window_size = window_details.size.to_physical(scale_factor);
+      let window_target = get_window(window_id);
+
+      // Only if we can find the target will we use it, otherwise use default (screen)
+      if let Some(window_target) = window_target {
+        target = Some(window_target);
+        width = window_size.width;
+        height = window_size.height;
+      }
+    }
+  } else if recording_type == RecordingType::Region {
+    crop_size = Some(region.size.to_physical(scale_factor));
+    crop_origin = Some(region.position.to_physical(scale_factor));
+  }
+
+  // We don't use scap crop area due to strange behaviour with ffmpeg, instead we crop directly
+  // in ffmpeg
+  let capturer = create_screen_recording_capturer(app_handle, target);
+  let capturer = Arc::new(Mutex::new(capturer));
+
+  (
+    capturer,
+    width as u32,
+    height as u32,
+    crop_size,
+    crop_origin,
+  )
 }
 
 /// Create and start system audio recording thread
@@ -174,6 +236,8 @@ pub fn start_camera_recording(
       resolution.height(),
       "rgba".to_string(),
       Some(frame_rate.to_string()),
+      None,
+      None,
     );
     let ffmpeg_stdin = ffmpeg_child.take_stdin().unwrap();
 
@@ -251,12 +315,20 @@ fn spawn_capturer_with_send(
   thread::spawn(move || {
     capturer.lock().unwrap().start_capture();
 
+    // We cache the last frame with data - ScreenCaptureKit sends empty frames when static
+    // this seems to only happen when recording windows rather than the screen
+    let mut cached_frame: Option<BGRAFrame> = None;
     loop {
       if let Ok(capturer) = capturer.lock() {
         if let Ok(Frame::BGRA(frame)) = capturer.get_next_frame() {
           if let Some(ref tx) = *tx.lock().unwrap() {
             if start_writing.load(std::sync::atomic::Ordering::SeqCst) {
-              if let Err(e) = tx.try_send(frame.data) {
+              if let Err(e) = tx.try_send(if frame.data.is_empty() {
+                cached_frame.clone().unwrap().data
+              } else {
+                cached_frame = Some(frame.clone());
+                frame.data
+              }) {
                 eprintln!("Failed to send frame to writer {}", e);
               }
             }
@@ -293,11 +365,13 @@ fn create_ffmpeg_writer(
   height: u32,
   pixel_format: String,
   frame_rate: Option<String>,
+  crop_size: Option<PhysicalSize<f64>>,
+  crop_origin: Option<PhysicalPosition<f64>>,
 ) -> FfmpegChild {
   let mut child = FfmpegCommand::new();
 
-  if let Some(frame_rate) = frame_rate {
-    child.args(["-framerate", &frame_rate]);
+  if let Some(ref frame_rate) = frame_rate {
+    child.args(["-framerate", frame_rate]);
   } else {
     child.args(["-use_wallclock_as_timestamps", "1"]);
   }
@@ -306,8 +380,22 @@ fn create_ffmpeg_writer(
     .format("rawvideo")
     .pix_fmt(pixel_format)
     .size(width, height)
-    .input("-")
+    .input("-");
+
+  if let (Some(crop_size), Some(crop_origin)) = (crop_size, crop_origin) {
+    // Crop
+    child.args([
+      "-vf",
+      &format!(
+        "crop={}:{}:{}:{}",
+        crop_size.width, crop_size.height, crop_origin.x, crop_origin.y
+      ),
+    ]);
+  }
+
+  child
     .codec_video("libx264")
+    .crf(20)
     .output(file_path.to_string_lossy());
 
   child.spawn().unwrap()

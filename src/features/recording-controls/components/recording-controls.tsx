@@ -1,4 +1,8 @@
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import {
+  getCurrentWindow,
+  LogicalPosition,
+  LogicalSize,
+} from "@tauri-apps/api/window";
 import { Circle, CircleX, Sparkle } from "lucide-react";
 import { ComponentProps, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -42,6 +46,8 @@ const RecordingControls = () => {
     setIsRecording,
     recordingType,
     selectedMonitor,
+    selectedWindow,
+    region,
     systemAudio,
     microphone,
     camera,
@@ -50,6 +56,8 @@ const RecordingControls = () => {
       state.setIsRecording,
       state.recordingType,
       state.selectedMonitor,
+      state.selectedWindow,
+      state.region,
       state.systemAudio,
       state.microphone,
       state.camera,
@@ -100,7 +108,12 @@ const RecordingControls = () => {
         : undefined,
       monitorName: selectedMonitor.name,
       recordingType,
+      region: {
+        position: new LogicalPosition({ ...region.position }),
+        size: new LogicalSize({ ...region.size }),
+      },
       systemAudio,
+      windowId: selectedWindow?.id,
     });
   };
 

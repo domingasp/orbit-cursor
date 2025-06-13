@@ -49,10 +49,12 @@ pub fn start_recording(
 
   start_screen_recording(
     create_stream_sync(&start_writing, &barrier, &stop_tx),
-    recording_dir.join("screen.mkv"),
+    recording_dir.join("screen.mp4"),
     options.recording_type,
     app_handle.clone(),
     options.monitor_name,
+    options.window_id,
+    options.region,
   );
 
   if options.system_audio {
@@ -73,7 +75,7 @@ pub fn start_recording(
   if let Some(camera_name) = options.camera_name {
     start_camera_recording(
       create_stream_sync(&start_writing, &barrier, &stop_tx),
-      recording_dir.join("camera.mkv"),
+      recording_dir.join("camera.mp4"),
       camera_name,
     );
   }
