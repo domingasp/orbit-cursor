@@ -3,7 +3,7 @@ use std::sync::{
   Arc, Mutex,
 };
 
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Emitter, State};
 use tauri_nspanel::ManagerExt;
 use tokio::sync::{
   broadcast::{self, Sender},
@@ -11,7 +11,7 @@ use tokio::sync::{
 };
 
 use crate::{
-  constants::WindowLabel,
+  constants::{Events, WindowLabel},
   recording::{
     models::{StartRecordingOptions, StreamSynchronization},
     service::{
@@ -80,22 +80,21 @@ pub fn start_recording(
     );
   }
 
-  tauri::async_runtime::spawn(async move {
-    // Ensures file writing starts at almost the same time
-    barrier.wait().await;
-    start_writing.store(true, Ordering::SeqCst);
-  });
-
-  state.is_recording = true;
-  state.stop_recording_tx = Some(stop_tx);
-
   let recording_dock = app_handle
     .get_webview_panel(WindowLabel::RecordingDock.as_ref())
     .unwrap();
   recording_dock.order_front_regardless();
 
-  // TODO return empty response to UI - this way the elapsed time
-  // is accurate
+  tauri::async_runtime::spawn(async move {
+    // Ensures file writing starts at almost the same time
+    barrier.wait().await;
+    start_writing.store(true, Ordering::SeqCst);
+
+    let _ = app_handle.emit(Events::RecordingStarted.as_ref(), ());
+  });
+
+  state.is_recording = true;
+  state.stop_recording_tx = Some(stop_tx);
 }
 
 #[tauri::command]
@@ -114,7 +113,7 @@ pub fn stop_recording(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) 
 
   // TODO
   // Once all files ready - via maybe a barrier
-  // trim them all to match the shortest length so they are all the same length
+  // trim them all to match the shortest length
 }
 
 fn create_stream_sync(

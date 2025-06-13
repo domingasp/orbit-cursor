@@ -43,7 +43,6 @@ const RecordingControls = () => {
   );
 
   const [
-    setIsRecording,
     recordingType,
     selectedMonitor,
     selectedWindow,
@@ -53,7 +52,6 @@ const RecordingControls = () => {
     camera,
   ] = useRecordingStateStore(
     useShallow((state) => [
-      state.setIsRecording,
       state.recordingType,
       state.selectedMonitor,
       state.selectedWindow,
@@ -94,7 +92,6 @@ const RecordingControls = () => {
     if (!selectedMonitor) return;
 
     onCancel(); // Closes dock
-    setIsRecording(true);
 
     startRecording({
       cameraName: camera

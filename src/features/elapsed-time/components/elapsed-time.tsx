@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import NumberRotate from "./number-rotate";
 
-const ElapsedTime = () => {
+type ElapsedTimeProps = {
+  isRecording: boolean;
+};
+const ElapsedTime = ({ isRecording }: ElapsedTimeProps) => {
+  const interval = useRef<NodeJS.Timeout>(null);
   const [secondsElapsed, setSecondsElapsed] = useState(0);
 
   const formatTime = (seconds: number) => {
@@ -16,19 +20,33 @@ const ElapsedTime = () => {
   const time = useMemo(() => formatTime(secondsElapsed), [secondsElapsed]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setSecondsElapsed((prev) => prev + 1);
-    }, 1000);
-
     return () => {
-      clearInterval(interval);
+      if (interval.current) clearInterval(interval.current);
     };
   }, []);
 
+  useEffect(() => {
+    setSecondsElapsed(0);
+
+    if (!isRecording) {
+      if (interval.current) clearInterval(interval.current);
+    } else if (!interval.current) {
+      interval.current = setInterval(() => {
+        setSecondsElapsed((prev) => prev + 1);
+      }, 1000);
+    }
+  }, [isRecording]);
+
   return (
-    <div className="flex flex-row items-center text-xs font-semibold w-14 tabular-nums">
-      <NumberRotate>{time.hrs}</NumberRotate>:
-      <NumberRotate>{time.mins}</NumberRotate>:{time.secs}
+    <div className="flex flex-row items-center text-xs font-semibold w-15 tabular-nums">
+      {isRecording && (
+        <>
+          <NumberRotate>{time.hrs}</NumberRotate>:
+          <NumberRotate>{time.mins}</NumberRotate>:{time.secs}
+        </>
+      )}
+
+      {!isRecording && "Starting..."}
     </div>
   );
 };
