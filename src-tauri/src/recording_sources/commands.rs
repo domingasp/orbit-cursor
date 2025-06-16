@@ -51,7 +51,15 @@ pub fn list_monitors(app_handle: AppHandle) -> Vec<MonitorDetails> {
 }
 
 #[tauri::command]
-pub async fn list_windows(app_handle: AppHandle) -> Vec<WindowDetails> {
+pub async fn list_windows(app_handle: AppHandle, generate_thumbnails: bool) -> Vec<WindowDetails> {
   let app_temp_dir = app_handle.path().temp_dir().unwrap().join("OrbitCursor");
-  get_visible_windows(app_handle.available_monitors().unwrap(), Some(app_temp_dir)).await
+  get_visible_windows(
+    app_handle.available_monitors().unwrap(),
+    if generate_thumbnails {
+      Some(app_temp_dir)
+    } else {
+      None
+    },
+  )
+  .await
 }
