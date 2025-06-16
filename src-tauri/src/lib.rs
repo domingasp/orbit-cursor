@@ -4,8 +4,8 @@ mod constants;
 mod global_inputs;
 #[cfg(target_os = "macos")]
 mod permissions;
+mod recording;
 mod recording_sources;
-mod recording_state;
 mod screen_capture;
 mod system_tray;
 mod windows;
@@ -25,20 +25,22 @@ use constants::{
   WindowLabel,
 };
 use cpal::Stream;
+
 use nokhwa::CallbackCamera;
 use permissions::{
   commands::{check_permissions, open_system_settings, request_permission},
   service::{ensure_permissions, monitor_permissions},
 };
 use rdev::listen;
+use recording::commands::{start_recording, stop_recording};
 use recording_sources::commands::{list_monitors, list_windows};
-use recording_state::commands::{start_recording, stop_recording};
 use scap::capturer::Capturer;
 use screen_capture::commands::init_magnifier_capturer;
 use serde_json::{json, Value};
 use system_tray::service::init_system_tray;
 use tauri::{App, AppHandle, Manager, Wry};
 use tauri_plugin_store::{Store, StoreExt};
+use tokio::sync::broadcast;
 use windows::{
   commands::{
     collapse_recording_source_selector, expand_recording_source_selector, get_dock_bounds,
@@ -54,17 +56,23 @@ use windows::{
   },
 };
 
-use crate::screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture};
+use crate::{
+  recording::models::RecordingState,
+  screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
+};
 
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
 struct AppState {
-  is_recording: bool,
   open_windows: HashMap<WindowLabel, bool>,
   audio_streams: HashMap<AudioStream, Stream>,
   camera_stream: Option<CallbackCamera>,
   magnifier_capturer: Option<Capturer>,
   magnifier_running: Arc<AtomicBool>,
+  // Recording related
+  is_recording: bool,
+  stop_recording_tx: Option<broadcast::Sender<()>>,
+  recording_state: Option<RecordingState>,
 }
 
 async fn setup_store(app: &App) -> Arc<Store<Wry>> {
@@ -104,6 +112,8 @@ fn init_start_recording_dock(app_handle: &AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  ffmpeg_sidecar::download::auto_download().unwrap();
+
   let context = tauri::generate_context!();
 
   let app = tauri::Builder::default()
@@ -144,7 +154,6 @@ pub fn run() {
       stop_recording,
     ])
     .manage(Mutex::new(AppState {
-      is_recording: false,
       open_windows: HashMap::from([
         (WindowLabel::StartRecordingDock, false),
         (WindowLabel::RecordingInputOptions, false),
@@ -154,6 +163,9 @@ pub fn run() {
       camera_stream: None,
       magnifier_capturer: None,
       magnifier_running: Arc::new(AtomicBool::new(false)),
+      is_recording: false,
+      stop_recording_tx: None,
+      recording_state: None,
     }))
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_macos_permissions::init())

@@ -27,17 +27,26 @@ fn yuyv_to_rgba(buffer: &[u8], width: u32, height: u32) -> Vec<u8> {
   rgba_buffer
 }
 
-fn live_frame_callback(frame: Buffer, channel: &Channel) {
+pub fn frame_to_rgba(frame: Buffer) -> Vec<u8> {
   let (width, height) = {
     let r = frame.resolution();
     (r.width(), r.height())
   };
 
-  let buffer = if frame.source_frame_format() == FrameFormat::YUYV {
+  if frame.source_frame_format() == FrameFormat::YUYV {
     yuyv_to_rgba(frame.buffer(), width, height)
   } else {
     frame.buffer().to_vec()
+  }
+}
+
+pub fn live_frame_callback(frame: Buffer, channel: &Channel) {
+  let (width, height) = {
+    let r = frame.resolution();
+    (r.width(), r.height())
   };
+
+  let buffer = frame_to_rgba(frame);
 
   // Encoding width and height into bytes - avoids heavy serialization
   let mut header = Vec::with_capacity(8);
@@ -51,19 +60,14 @@ fn live_frame_callback(frame: Buffer, channel: &Channel) {
   let _ = channel.send(tauri::ipc::InvokeResponseBody::Raw(combined));
 }
 
-pub fn create_and_start_camera(
+pub fn create_camera(
   camera_index: CameraIndex,
-  channel: Channel,
+  callback: impl FnMut(Buffer) + Send + 'static,
 ) -> Option<CallbackCamera> {
   let requested = RequestedFormat::new::<RgbAFormat>(RequestedFormatType::AbsoluteHighestFrameRate);
 
-  match CallbackCamera::new(camera_index, requested, move |frame| {
-    live_frame_callback(frame, &channel)
-  }) {
-    Ok(mut camera) => {
-      let _ = camera.open_stream();
-      Some(camera)
-    }
+  match CallbackCamera::new(camera_index, requested, callback) {
+    Ok(camera) => Some(camera),
     Err(e) => {
       eprintln!("Failed to initialize camera: {}", e);
       None

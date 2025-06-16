@@ -3,9 +3,10 @@ use std::sync::Mutex;
 use nokhwa::{query, utils::ApiBackend};
 use tauri::{ipc::Channel, State};
 
-use crate::AppState;
-
-use super::service::create_and_start_camera;
+use crate::{
+  camera::service::{create_camera, live_frame_callback},
+  AppState,
+};
 
 #[tauri::command]
 pub fn list_cameras() -> Vec<String> {
@@ -28,7 +29,10 @@ pub fn start_camera_stream(state: State<'_, Mutex<AppState>>, name: String, chan
     .iter()
     .find(|camera| camera.human_name() == name)
   {
-    if let Some(camera) = create_and_start_camera(camera_to_start.index().clone(), channel) {
+    if let Some(mut camera) = create_camera(camera_to_start.index().clone(), move |frame| {
+      live_frame_callback(frame, &channel);
+    }) {
+      let _ = camera.open_stream();
       state.camera_stream = Some(camera)
     }
   }

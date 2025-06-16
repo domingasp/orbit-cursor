@@ -29,6 +29,9 @@ pub enum Events {
   #[strum(serialize = "recording_input_options_opened")]
   RecordingInputOptionsOpened,
 
+  #[strum(serialize = "recording_started")]
+  RecordingStarted,
+
   #[strum(serialize = "closed_standalone_listbox")]
   ClosedStandaloneListbox,
 

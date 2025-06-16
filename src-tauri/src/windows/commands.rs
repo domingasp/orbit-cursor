@@ -17,10 +17,11 @@ use super::{
   },
 };
 
+pub static INIT_RECORDING_SOURCE_SELECTOR: Once = Once::new();
+
 static INIT_STANDALONE_LISTBOX: Once = Once::new();
 static INIT_RECORDING_OPTIONS_PANEL: Once = Once::new();
 static INIT_REGION_SELECTOR: Once = Once::new();
-static INIT_RECORDING_SOURCE_SELECTOR: Once = Once::new();
 static INIT_RECORDING_DOCK: Once = Once::new();
 
 #[tauri::command]

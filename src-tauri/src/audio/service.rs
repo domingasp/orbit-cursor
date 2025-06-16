@@ -1,12 +1,17 @@
-use std::collections::VecDeque;
+use std::{
+  collections::VecDeque,
+  path::Path,
+  sync::{atomic::AtomicBool, Arc, Mutex},
+};
 
 use cpal::{
   traits::{DeviceTrait, HostTrait},
   Device, Stream, StreamConfig,
 };
+use hound::{WavSpec, WavWriter};
 use tauri::{ipc::Channel, Emitter};
 
-use crate::{constants::Events, APP_HANDLE};
+use crate::{audio::models::SharedWavWriter, APP_HANDLE};
 
 use super::commands::AudioStreamChannel;
 
@@ -18,11 +23,11 @@ fn buffer_to_decibels(samples: &[f32]) -> f32 {
   20.0 * rms.max(1e-8).log10()
 }
 
-fn create_input_stream(
+pub fn build_audio_live_monitoring_stream(
   device: &Device,
   config: &StreamConfig,
   channel: Channel<AudioStreamChannel>,
-  emit_on_err: String,
+  emit_on_err: Option<String>,
 ) -> Stream {
   let buffer_window = (config.sample_rate.0 as f32 * 0.1) as usize;
   let mut buffer = VecDeque::with_capacity(buffer_window);
@@ -45,15 +50,62 @@ fn create_input_stream(
             .unwrap();
         }
       },
-      move |_err| {
-        let _ = APP_HANDLE.get().unwrap().emit(emit_on_err.as_str(), ());
+      move |err| {
+        if let Some(to_emit) = &emit_on_err {
+          let _ = APP_HANDLE.get().unwrap().emit(to_emit.as_str(), ());
+        } else {
+          eprintln!("{:?}", err);
+        }
       },
       None,
     )
     .expect("Error creating stream")
 }
 
-pub fn create_system_audio_stream(channel: Channel<AudioStreamChannel>) -> Stream {
+pub fn build_audio_into_file_stream(
+  device: &Device,
+  config: &StreamConfig,
+  file_path: &Path,
+  start_writing: Arc<AtomicBool>,
+) -> (Stream, SharedWavWriter) {
+  let wav_spec = WavSpec {
+    channels: config.channels,
+    sample_rate: config.sample_rate.0,
+    bits_per_sample: 16,
+    sample_format: hound::SampleFormat::Int,
+  };
+
+  let wav_writer = WavWriter::create(file_path, wav_spec).unwrap();
+  let wav_writer = Arc::new(Mutex::new(Some(wav_writer)));
+
+  let writer_clone = Arc::clone(&wav_writer);
+
+  let stream = device
+    .build_input_stream(
+      config,
+      move |data: &[f32], _: &cpal::InputCallbackInfo| {
+        let mut writer_lock = writer_clone.lock().unwrap();
+        if let Some(ref mut writer) = *writer_lock {
+          if start_writing.load(std::sync::atomic::Ordering::SeqCst) {
+            for &sample in data {
+              let clamped = (sample * i16::MAX as f32).clamp(i16::MIN as f32, i16::MAX as f32);
+              writer.write_sample(clamped as i16).unwrap();
+            }
+          }
+        }
+      },
+      move |err| {
+        eprintln!("Stream error: {}", err);
+      },
+      None,
+    )
+    .expect("Error creating stream");
+
+  (stream, wav_writer)
+}
+
+/// Return system audio device and config
+pub fn get_system_audio_device() -> (Device, StreamConfig) {
   let host = cpal::host_from_id(cpal::HostId::ScreenCaptureKit).unwrap();
   let device = host
     .default_input_device()
@@ -62,29 +114,16 @@ pub fn create_system_audio_stream(channel: Channel<AudioStreamChannel>) -> Strea
     .default_input_config()
     .expect("Unsupported input config");
 
-  create_input_stream(
-    &device,
-    &config.into(),
-    channel,
-    Events::SystemAudioStreamError.to_string(),
-  )
+  (device, config.into())
 }
 
-pub fn create_input_audio_stream(
-  device_name: String,
-  channel: Channel<AudioStreamChannel>,
-) -> Option<Stream> {
+pub fn get_input_audio_device(device_name: String) -> Option<(Device, StreamConfig)> {
   let host = cpal::default_host();
   let device = host
     .input_devices()
-    .ok()?
-    .find(|device| device.name().ok().as_deref() == Some(device_name.as_str()))?;
-  let config = device.default_input_config().ok()?;
+    .unwrap()
+    .find(|device| device.name().unwrap() == device_name.as_str())?;
+  let config = device.default_input_config().unwrap();
 
-  Some(create_input_stream(
-    &device,
-    &config.into(),
-    channel,
-    Events::InputAudioStreamError.to_string(),
-  ))
+  Some((device, config.into()))
 }

@@ -1,4 +1,8 @@
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import {
+  getCurrentWindow,
+  LogicalPosition,
+  LogicalSize,
+} from "@tauri-apps/api/window";
 import { Circle, CircleX, Sparkle } from "lucide-react";
 import { ComponentProps, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -13,6 +17,11 @@ import Separator from "../../../components/separator/separator";
 import Sparkles from "../../../components/sparkles/sparkles";
 import { clearInteractionAttributes } from "../../../lib/styling";
 import { useRecordingStateStore } from "../../../stores/recording-state.store";
+import {
+  selectedItem,
+  StandaloneListBoxes,
+  useStandaloneListBoxStore,
+} from "../../../stores/standalone-listbox.store";
 import {
   AppWindow,
   useWindowReopenStore,
@@ -33,8 +42,31 @@ const RecordingControls = () => {
     useShallow((state) => state.setWindowOpenState)
   );
 
-  const setIsRecording = useRecordingStateStore(
-    useShallow((state) => state.setIsRecording)
+  const [
+    recordingType,
+    selectedMonitor,
+    selectedWindow,
+    region,
+    systemAudio,
+    microphone,
+    camera,
+  ] = useRecordingStateStore(
+    useShallow((state) => [
+      state.recordingType,
+      state.selectedMonitor,
+      state.selectedWindow,
+      state.region,
+      state.systemAudio,
+      state.microphone,
+      state.camera,
+    ])
+  );
+
+  const [microphoneListBox, cameraListBox] = useStandaloneListBoxStore(
+    useShallow((state) => [
+      state.getListBox(StandaloneListBoxes.MicrophoneAudio),
+      state.getListBox(StandaloneListBoxes.Camera),
+    ])
   );
 
   const onCancel = () => {
@@ -57,9 +89,29 @@ const RecordingControls = () => {
   };
 
   const onStartRecording = () => {
+    if (!selectedMonitor) return;
+
     onCancel(); // Closes dock
-    startRecording();
-    setIsRecording(true);
+
+    startRecording({
+      cameraName: camera
+        ? selectedItem(cameraListBox?.selectedItems ?? [])?.id?.toString() ??
+          undefined
+        : undefined,
+      inputAudioName: microphone
+        ? selectedItem(
+            microphoneListBox?.selectedItems ?? []
+          )?.id?.toString() ?? undefined
+        : undefined,
+      monitorName: selectedMonitor.name,
+      recordingType,
+      region: {
+        position: new LogicalPosition({ ...region.position }),
+        size: new LogicalSize({ ...region.size }),
+      },
+      systemAudio,
+      windowId: selectedWindow?.id,
+    });
   };
 
   return (
