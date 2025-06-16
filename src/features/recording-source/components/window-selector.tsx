@@ -6,31 +6,38 @@ import Button from "../../../components/button/button";
 import { listWindows, WindowDetails } from "../api/recording-sources";
 
 type WindowSelectorProps = {
+  isExpanded: boolean;
   onSelect: (window: WindowDetails | null) => void;
   selectedWindow: WindowDetails | null;
 };
-const WindowSelector = ({ onSelect, selectedWindow }: WindowSelectorProps) => {
+const WindowSelector = ({
+  isExpanded,
+  onSelect,
+  selectedWindow,
+}: WindowSelectorProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [windows, setWindows] = useState<WindowDetails[]>([]);
 
   useEffect(() => {
-    void listWindows()
-      .then((windows) => {
-        const latestWindows = windows.sort((a, b) => {
-          const appIconCompare = (a.appIconPath ?? "").localeCompare(
-            b.appIconPath ?? ""
-          );
-          if (appIconCompare !== 0) return appIconCompare;
+    if (isExpanded) {
+      void listWindows(isExpanded)
+        .then((windows) => {
+          const latestWindows = windows.sort((a, b) => {
+            const appIconCompare = (a.appIconPath ?? "").localeCompare(
+              b.appIconPath ?? ""
+            );
+            if (appIconCompare !== 0) return appIconCompare;
 
-          return a.title.localeCompare(b.title);
+            return a.title.localeCompare(b.title);
+          });
+
+          setWindows(latestWindows);
+        })
+        .finally(() => {
+          setIsLoading(false);
         });
-
-        setWindows(latestWindows);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, []);
+    }
+  }, [isExpanded]);
 
   if (isLoading) {
     return (

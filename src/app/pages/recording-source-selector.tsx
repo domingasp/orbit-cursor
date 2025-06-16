@@ -75,22 +75,24 @@ const RecordingSourceSelector = () => {
   };
 
   useEffect(() => {
-    void listMonitors().then((monitors) => {
-      if (
-        selectedMonitor === null ||
-        (!monitors.find((monitor) => monitor.id === selectedMonitor.id) &&
-          monitors.length > 0)
-      ) {
-        setSelectedMonitor(monitors[0]);
-      }
-    });
-
-    if (selectedWindow !== null) {
-      void listWindows().then((windows) => {
-        const doesSelectedExist =
-          windows.findIndex((x) => x.id === selectedWindow.id) > -1;
-        if (!doesSelectedExist) setSelectedWindow(null);
+    if (startRecordingDockOpened) {
+      void listMonitors().then((monitors) => {
+        if (
+          selectedMonitor === null ||
+          (!monitors.find((monitor) => monitor.id === selectedMonitor.id) &&
+            monitors.length > 0)
+        ) {
+          setSelectedMonitor(monitors[0]);
+        }
       });
+
+      if (selectedWindow !== null) {
+        void listWindows(isExpanded).then((windows) => {
+          const doesSelectedExist =
+            windows.findIndex((x) => x.id === selectedWindow.id) > -1;
+          if (!doesSelectedExist) setSelectedWindow(null);
+        });
+      }
     }
   }, [startRecordingDockOpened, isExpanded]);
 
@@ -121,6 +123,7 @@ const RecordingSourceSelector = () => {
         (recordingType === RecordingType.Window ? (
           <SelectorWrapper className="overflow-auto items-start">
             <WindowSelector
+              isExpanded={isExpanded}
               onSelect={onSelect}
               selectedWindow={selectedWindow}
             />
