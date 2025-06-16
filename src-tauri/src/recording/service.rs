@@ -1,4 +1,6 @@
+use std::fs::rename;
 use std::io::Write;
+use std::path::Path;
 use std::process::ChildStdin;
 use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
@@ -8,6 +10,7 @@ use std::{fs::create_dir_all, path::PathBuf, sync::Arc};
 use chrono::Local;
 use cpal::traits::StreamTrait;
 use cpal::{Device, StreamConfig};
+use ffmpeg_sidecar::ffprobe::ffprobe_path;
 use ffmpeg_sidecar::{child::FfmpegChild, command::FfmpegCommand};
 use nokhwa::utils::CameraIndex;
 use nokhwa::CallbackCamera;
@@ -21,7 +24,7 @@ use crate::audio::service::{
   build_audio_into_file_stream, get_input_audio_device, get_system_audio_device,
 };
 use crate::camera::service::{create_camera, frame_to_rgba};
-use crate::recording::models::{RecordingType, Region, StreamSynchronization};
+use crate::recording::models::{RecordingFile, RecordingType, Region, StreamSynchronization};
 use crate::recording_sources::commands::list_monitors;
 use crate::recording_sources::service::get_visible_windows;
 use crate::screen_capture::service::{create_screen_recording_capturer, get_display, get_window};
@@ -45,7 +48,7 @@ pub fn start_screen_recording(
   monitor_name: String,
   window_id: Option<u32>,
   region: Region,
-) {
+) -> JoinHandle<()> {
   tauri::async_runtime::spawn(async move {
     let (capturer, width, height, crop_size, crop_origin) =
       create_screen_capturer(app_handle, recording_type, monitor_name, window_id, region).await;
@@ -87,8 +90,12 @@ pub fn start_screen_recording(
     )
     .await;
 
-    capturer.lock().unwrap().stop_capture();
-  });
+    tauri::async_runtime::spawn(async move {
+      // It can take a while to get the lock
+      // moving to a task avoids holdup
+      capturer.lock().unwrap().stop_capture();
+    });
+  })
 }
 
 /// Create screen capturer based on recording type
@@ -153,9 +160,12 @@ async fn create_screen_capturer(
 /// Create and start system audio recording thread
 ///
 /// Message received in `stop_rx` will finalize the recording.
-pub fn start_system_audio_recording(synchronization: StreamSynchronization, file_path: PathBuf) {
+pub fn start_system_audio_recording(
+  synchronization: StreamSynchronization,
+  file_path: PathBuf,
+) -> JoinHandle<()> {
   let (device, config) = get_system_audio_device();
-  start_audio_recording(synchronization, file_path, device, config);
+  start_audio_recording(synchronization, file_path, device, config)
 }
 
 /// Create and start audio input recording
@@ -165,11 +175,17 @@ pub fn start_input_audio_recording(
   synchronization: StreamSynchronization,
   file_path: PathBuf,
   device_name: String,
-) {
+) -> Option<JoinHandle<()>> {
   if let Some((device, config)) = get_input_audio_device(device_name.clone()) {
-    start_audio_recording(synchronization, file_path, device, config);
+    Some(start_audio_recording(
+      synchronization,
+      file_path,
+      device,
+      config,
+    ))
   } else {
     eprintln!("Failed to get input audio device: {}", device_name);
+    None
   }
 }
 
@@ -179,7 +195,7 @@ fn start_audio_recording(
   file_path: PathBuf,
   device: Device,
   config: StreamConfig,
-) {
+) -> JoinHandle<()> {
   tauri::async_runtime::spawn(async move {
     let (stream, wav_writer) =
       build_audio_into_file_stream(&device, &config, &file_path, synchronization.start_writing);
@@ -194,7 +210,7 @@ fn start_audio_recording(
     if let Some(writer) = writer_lock.take() {
       writer.finalize().unwrap();
     }
-  });
+  })
 }
 
 /// Create and start camera recording
@@ -202,7 +218,7 @@ pub fn start_camera_recording(
   mut synchronization: StreamSynchronization,
   file_path: PathBuf,
   camera_name: String,
-) {
+) -> JoinHandle<()> {
   let available_cameras = nokhwa::query(nokhwa::utils::ApiBackend::Auto).unwrap();
   let camera_info = available_cameras
     .iter()
@@ -262,8 +278,12 @@ pub fn start_camera_recording(
     )
     .await;
 
-    let _ = camera.stop_stream();
-  });
+    tauri::async_runtime::spawn(async move {
+      // It can take a while to get the lock (internally)
+      // moving to a task avoids holdup
+      let _ = camera.stop_stream();
+    });
+  })
 }
 
 /// Create and return camera which sends RGBA frames to `frame_tx`
@@ -339,7 +359,7 @@ fn spawn_capturer_with_send(
   });
 }
 
-/// Create and return Recordings path
+/// Create and return current recording path
 pub fn create_recording_directory(app_handle: &AppHandle) -> PathBuf {
   let recordings_dir = app_handle.path().app_data_dir().unwrap().join("Recordings");
   let timestamp = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
@@ -351,7 +371,7 @@ pub fn create_recording_directory(app_handle: &AppHandle) -> PathBuf {
 
 /// Create and return a channel for frames
 fn create_frame_channel() -> (mpsc::Sender<Vec<u8>>, ArcSender, mpsc::Receiver<Vec<u8>>) {
-  let (tx, rx) = mpsc::channel::<Vec<u8>>(50);
+  let (tx, rx) = mpsc::channel::<Vec<u8>>(100);
   let tx_arc = Arc::new(Mutex::new(Some(tx.clone())));
   (tx, tx_arc, rx)
 }
@@ -424,4 +444,55 @@ async fn tear_down_ffmpeg_writer(
 
   let _ = writer_thread.await;
   let _ = ffmpeg_child.wait();
+}
+
+/// Using ffprobe return the duration, in seconds of the recording file
+pub async fn get_file_duration(recording_dir: &Path, file: &RecordingFile) -> f64 {
+  let result = tokio::process::Command::new(ffprobe_path())
+    .args([
+      "-v",
+      "quiet",
+      "-show_entries",
+      "format=duration",
+      "-of",
+      "default=noprint_wrappers=1:nokey=1",
+    ])
+    .arg(recording_dir.join(file.as_ref()))
+    .kill_on_drop(true)
+    .output()
+    .await
+    .map_err(|e| format!("Failed to run ffmpeg: {}", e));
+
+  match result {
+    Ok(output) => {
+      if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        stdout.trim().parse::<f64>().unwrap_or(0.0)
+      } else {
+        0.0
+      }
+    }
+    Err(err) => {
+      eprintln!("Error getting duration: {}", err);
+      0.0
+    }
+  }
+}
+
+/// Trim file in recording dir to specified duration - the original file is replaced
+pub fn trim_mp4_to_length(recording_dir: &Path, file: &RecordingFile, duration: f64) {
+  let original_file = recording_dir.join(file.as_ref());
+  let temp_file = recording_dir.join(format!("temp-{}", file.as_ref()));
+
+  let trim_command = FfmpegCommand::new()
+    .input(original_file.to_string_lossy())
+    .duration(duration.to_string())
+    .codec_video("libx264")
+    .output(temp_file.to_string_lossy())
+    .spawn();
+
+  if let Ok(mut temp_command) = trim_command {
+    let _ = temp_command.wait();
+    let _ = rename(&temp_file, &original_file);
+  }
 }

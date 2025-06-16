@@ -56,7 +56,10 @@ use windows::{
   },
 };
 
-use crate::screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture};
+use crate::{
+  recording::models::RecordingState,
+  screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
+};
 
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
@@ -69,6 +72,7 @@ struct AppState {
   // Recording related
   is_recording: bool,
   stop_recording_tx: Option<broadcast::Sender<()>>,
+  recording_state: Option<RecordingState>,
 }
 
 async fn setup_store(app: &App) -> Arc<Store<Wry>> {
@@ -161,6 +165,7 @@ pub fn run() {
       magnifier_running: Arc::new(AtomicBool::new(false)),
       is_recording: false,
       stop_recording_tx: None,
+      recording_state: None,
     }))
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_macos_permissions::init())

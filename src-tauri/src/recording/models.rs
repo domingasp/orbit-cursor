@@ -1,8 +1,12 @@
-use std::sync::{atomic::AtomicBool, Arc};
+use std::{
+  collections::HashMap,
+  path::PathBuf,
+  sync::{atomic::AtomicBool, Arc},
+};
 
 use serde::Deserialize;
 use strum_macros::{AsRefStr, Display, EnumString};
-use tauri::{LogicalPosition, LogicalSize};
+use tauri::{async_runtime::JoinHandle, LogicalPosition, LogicalSize};
 use tokio::sync::{broadcast::Receiver, Barrier};
 
 #[derive(Debug, Clone, Deserialize)]
@@ -37,4 +41,24 @@ pub enum RecordingType {
   Region,
   Window,
   Screen,
+}
+
+pub struct RecordingState {
+  pub current_recording_path: PathBuf,
+  pub threads: HashMap<RecordingFile, JoinHandle<()>>,
+}
+
+#[derive(EnumString, AsRefStr, Display, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RecordingFile {
+  #[strum(serialize = "screen.mp4")]
+  Screen,
+
+  #[strum(serialize = "system_audio.wav")]
+  SystemAudio,
+
+  #[strum(serialize = "microphone.wav")]
+  InputAudio,
+
+  #[strum(serialize = "camera.mp4")]
+  Camera,
 }
