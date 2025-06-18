@@ -59,6 +59,7 @@ use windows::{
 use crate::{
   recording::models::RecordingState,
   screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
+  windows::service::spawn_window_close_manager,
 };
 
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
@@ -69,6 +70,7 @@ struct AppState {
   camera_stream: Option<CallbackCamera>,
   magnifier_capturer: Option<Capturer>,
   magnifier_running: Arc<AtomicBool>,
+  input_event_tx: broadcast::Sender<rdev::Event>,
   // Recording related
   is_recording: bool,
   stop_recording_tx: Option<broadcast::Sender<()>>,
@@ -113,6 +115,8 @@ fn init_start_recording_dock(app_handle: &AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   ffmpeg_sidecar::download::auto_download().unwrap();
+
+  let (input_event_tx, _) = broadcast::channel::<rdev::Event>(1024);
 
   let context = tauri::generate_context!();
 
@@ -163,6 +167,7 @@ pub fn run() {
       camera_stream: None,
       magnifier_capturer: None,
       magnifier_running: Arc::new(AtomicBool::new(false)),
+      input_event_tx: input_event_tx.clone(),
       is_recording: false,
       stop_recording_tx: None,
       recording_state: None,
@@ -180,6 +185,7 @@ pub fn run() {
 
       init_system_tray(app_handle.clone())?;
       init_start_recording_dock(app_handle);
+      spawn_window_close_manager(app_handle.clone(), input_event_tx.subscribe());
 
       #[cfg(target_os = "macos")]
       {
@@ -202,8 +208,10 @@ pub fn run() {
         });
       }
 
-      tauri::async_runtime::spawn(async move {
-        if let Err(error) = listen(global_inputs::service::global_input_event_handler) {
+      std::thread::spawn(move || {
+        if let Err(error) = listen(move |e| {
+          global_inputs::service::global_input_event_handler(e, input_event_tx.clone());
+        }) {
           eprintln!("Failed to listen: {:?}", error)
         }
       });

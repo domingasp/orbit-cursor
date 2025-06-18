@@ -6,7 +6,7 @@ use std::{
   },
 };
 
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_nspanel::ManagerExt;
 use tokio::sync::{
   broadcast::{self, Sender},
@@ -19,8 +19,8 @@ use crate::{
     models::{RecordingFile, RecordingState, StartRecordingOptions, StreamSynchronization},
     service::{
       create_recording_directory, get_file_duration, start_camera_recording,
-      start_input_audio_recording, start_screen_recording, start_system_audio_recording,
-      trim_mp4_to_length,
+      start_input_audio_recording, start_mouse_event_recording, start_screen_recording,
+      start_system_audio_recording, trim_mp4_to_length,
     },
   },
   AppState,
@@ -47,9 +47,10 @@ pub fn start_recording(
   barrier_count += conditions.iter().filter(|&&condition| condition).count();
 
   let start_writing = Arc::new(AtomicBool::new(false));
-  // +1 is for this thread, making sure writing switch flipped when all
-  // streams are ready
-  let barrier = Arc::new(Barrier::new(barrier_count + 1));
+
+  // +2 is for this thread and mouse event writer, making sure writing switch flipped
+  // when all streams are ready
+  let barrier = Arc::new(Barrier::new(barrier_count + 2));
 
   let mut threads = HashMap::new();
   threads.insert(
@@ -63,6 +64,12 @@ pub fn start_recording(
       options.window_id,
       options.region,
     ),
+  );
+
+  start_mouse_event_recording(
+    create_stream_sync(&start_writing, &barrier, &stop_tx),
+    recording_dir.clone(),
+    state.input_event_tx.subscribe(),
   );
 
   if options.system_audio {
@@ -120,9 +127,9 @@ pub fn start_recording(
 #[tauri::command]
 pub fn stop_recording(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) {
   let recording_dock = app_handle
-    .get_webview_panel(WindowLabel::RecordingDock.as_ref())
+    .get_webview_window(WindowLabel::RecordingDock.as_ref())
     .unwrap();
-  recording_dock.order_out(None);
+  let _ = recording_dock.hide();
 
   let mut state = state.lock().unwrap();
   state.is_recording = false;
