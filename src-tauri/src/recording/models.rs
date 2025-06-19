@@ -4,7 +4,7 @@ use std::{
   sync::{atomic::AtomicBool, Arc},
 };
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumString};
 use tauri::{async_runtime::JoinHandle, LogicalPosition, LogicalSize};
 use tokio::sync::{broadcast::Receiver, Barrier};
@@ -61,4 +61,24 @@ pub enum RecordingFile {
 
   #[strum(serialize = "camera.mp4")]
   Camera,
+
+  #[strum(serialize = "mouse_events.msgpack")]
+  MouseEvents,
+}
+
+#[derive(Debug, Serialize)]
+pub enum MouseEventRecord {
+  Move {
+    elapsed_ms: u128,
+    x: f64,
+    y: f64,
+  },
+  Down {
+    elapsed_ms: u128,
+    button: rdev::Button,
+  },
+  Up {
+    elapsed_ms: u128,
+    button: rdev::Button,
+  },
 }

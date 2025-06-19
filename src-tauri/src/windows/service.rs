@@ -1,4 +1,8 @@
-use std::{ffi::CString, sync::Arc, time::Duration};
+use std::{
+  ffi::CString,
+  sync::{Arc, Mutex},
+  time::Duration,
+};
 
 use border::WebviewWindowExt as BorderWebviewWindowExt;
 use cocoa::{
@@ -6,24 +10,29 @@ use cocoa::{
   base::{id, nil},
 };
 use objc::{class, msg_send, sel, sel_impl};
+use once_cell::sync::Lazy;
+use rdev::{Button, EventType};
 use tauri::{
   utils::config::WindowEffectsConfig,
   window::{Effect, EffectState},
-  AppHandle, Listener, LogicalPosition, LogicalSize, Manager, WebviewWindow, WebviewWindowBuilder,
+  AppHandle, Emitter, Listener, LogicalPosition, LogicalSize, Manager, WebviewWindow,
+  WebviewWindowBuilder,
 };
 use tauri_nspanel::{
   block::ConcreteBlock,
   objc_id::{Id, Shared},
   raw_nspanel::RawNSPanel,
-  ManagerExt, WebviewWindowExt,
+  WebviewWindowExt,
 };
+use tokio::sync::broadcast::Receiver;
 
-use crate::constants::{Events, PanelLevel, WindowLabel};
+use crate::{
+  constants::{Events, PanelLevel, WindowLabel},
+  windows::commands::collapse_recording_source_selector,
+};
 
 #[allow(non_upper_case_globals)]
 const NSWindowStyleMaskNonActivatingPanel: i32 = 1 << 7;
-
-// region: Behaviors
 
 /// Convert a Webview Window into a stationary NSPanel.
 pub fn convert_to_stationary_panel(
@@ -41,7 +50,7 @@ pub fn convert_to_stationary_panel(
   // Necessary to show above fullscreen apps
   panel.set_style_mask(NSWindowStyleMaskNonActivatingPanel);
 
-  panel.order_out(None);
+  let _ = window.hide();
   panel
 }
 
@@ -57,8 +66,8 @@ pub fn add_close_panel_listener<F>(
   F: Fn(&AppHandle) + Send + Sync + 'static,
 {
   fn hide_panel(app_handle: &AppHandle, window_label: WindowLabel) {
-    if let Ok(panel) = app_handle.get_webview_panel(window_label.as_ref()) {
-      panel.order_out(None);
+    if let Some(panel) = app_handle.get_webview_window(window_label.as_ref()) {
+      panel.hide().ok();
     }
   }
 
@@ -109,10 +118,6 @@ pub async fn open_permissions(app_handle: &AppHandle) {
 
   window.show().ok();
 }
-
-// endregion
-
-// region: Layout
 
 /// Position window above recording dock, `x` parameter determines the x position.
 pub fn position_window_above_dock(app_handle: &AppHandle, window_label: WindowLabel, x: f64) {
@@ -187,10 +192,6 @@ pub fn position_recording_dock(window: &WebviewWindow) {
     let _ = window.set_position(LogicalPosition { x, y });
   }
 }
-
-// endregion
-
-// region: Utilities
 
 fn register_workspace_listener(name: String, callback: Box<dyn Fn()>) {
   let workspace: id = unsafe { msg_send![class!(NSWorkspace), sharedWorkspace] };
@@ -319,4 +320,56 @@ pub fn animate_resize(
   });
 }
 
-// endregion
+/// Spawn a thread which closes windows based on input events
+pub fn spawn_window_close_manager(
+  app_handle: AppHandle,
+  mut input_event_rx: Receiver<rdev::Event>,
+) {
+  std::thread::spawn(move || {
+    static LAST_MOUSE_POS: Lazy<Mutex<(f64, f64)>> = Lazy::new(|| Mutex::new((0.0, 0.0)));
+
+    loop {
+      if let Ok(event) = input_event_rx.blocking_recv() {
+        match event.event_type {
+          EventType::MouseMove { x, y } => {
+            let mut pos = LAST_MOUSE_POS.lock().unwrap();
+            *pos = (x, y);
+          }
+          EventType::ButtonRelease(Button::Left) => {
+            let pos = LAST_MOUSE_POS.lock().unwrap();
+
+            // Any click should close standalone listbox
+            let _ = app_handle.emit(Events::StandaloneListboxDidResignKey.as_ref(), ());
+
+            // Handle recording input options popover
+            let recording_input_options_window = app_handle
+              .get_webview_window(WindowLabel::RecordingInputOptions.as_ref())
+              .unwrap();
+
+            let standalone_listbox_window = app_handle
+              .get_webview_window(WindowLabel::StandaloneListbox.as_ref())
+              .unwrap();
+
+            let recording_source_selector = app_handle
+              .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
+              .unwrap();
+
+            // Recording input options close detection
+            if !is_coordinate_in_window(pos.0, pos.1, &recording_input_options_window)
+              && !is_coordinate_in_window(pos.0, pos.1, &standalone_listbox_window)
+            {
+              let _ = app_handle.emit(Events::RecordingInputOptionsDidResignKey.as_ref(), ());
+            }
+
+            // Region source selector collapse detection
+            if !is_coordinate_in_window(pos.0, pos.1, &recording_source_selector) {
+              collapse_recording_source_selector(app_handle.clone());
+              let _ = app_handle.emit(Events::CollapsedRecordingSourceSelector.as_ref(), ());
+            }
+          }
+          _ => {}
+        }
+      }
+    }
+  });
+}

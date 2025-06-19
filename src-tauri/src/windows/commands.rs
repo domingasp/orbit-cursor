@@ -259,23 +259,23 @@ pub fn hide_start_recording_dock(app_handle: AppHandle, state: State<'_, Mutex<A
   state.audio_streams.clear();
 
   let panel = app_handle
-    .get_webview_panel(WindowLabel::StartRecordingDock.as_ref())
+    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
     .unwrap();
-  panel.order_out(None);
+  let _ = panel.hide();
 
   let recording_source_selector = app_handle
-    .get_webview_panel(WindowLabel::RecordingSourceSelector.as_ref())
+    .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
     .unwrap();
-  recording_source_selector.order_out(None);
+  let _ = recording_source_selector.hide();
   collapse_recording_source_selector(app_handle);
 }
 
 #[tauri::command]
 pub fn hide_region_selector(app_handle: AppHandle) {
-  let panel = app_handle
-    .get_webview_panel(WindowLabel::RegionSelector.as_ref())
+  let window = app_handle
+    .get_webview_window(WindowLabel::RegionSelector.as_ref())
     .unwrap();
-  panel.order_out(None);
+  let _ = window.hide();
 }
 
 #[tauri::command]
@@ -334,15 +334,15 @@ pub fn collapse_recording_source_selector(app_handle: AppHandle) {
 pub fn reset_panels(app_handle: AppHandle) {
   collapse_recording_source_selector(app_handle.clone());
 
-  app_handle
-    .get_webview_panel(WindowLabel::RecordingInputOptions.as_ref())
+  let _ = app_handle
+    .get_webview_window(WindowLabel::RecordingInputOptions.as_ref())
     .unwrap()
-    .order_out(None);
+    .hide();
 
-  app_handle
-    .get_webview_panel(WindowLabel::StandaloneListbox.as_ref())
+  let _ = app_handle
+    .get_webview_window(WindowLabel::StandaloneListbox.as_ref())
     .unwrap()
-    .order_out(None);
+    .hide();
 }
 
 #[tauri::command]

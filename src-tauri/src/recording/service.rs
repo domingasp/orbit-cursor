@@ -1,10 +1,11 @@
-use std::fs::rename;
+use std::fs::{rename, OpenOptions};
 use std::io::Write;
 use std::path::Path;
 use std::process::ChildStdin;
 use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
 use std::thread;
+use std::time::{Duration, Instant, SystemTime};
 use std::{fs::create_dir_all, path::PathBuf, sync::Arc};
 
 use chrono::Local;
@@ -14,17 +15,22 @@ use ffmpeg_sidecar::ffprobe::ffprobe_path;
 use ffmpeg_sidecar::{child::FfmpegChild, command::FfmpegCommand};
 use nokhwa::utils::CameraIndex;
 use nokhwa::CallbackCamera;
+use rdev::EventType;
+use rmp_serde::encode::write;
 use scap::capturer::Capturer;
 use scap::frame::{BGRAFrame, Frame};
 use tauri::async_runtime::JoinHandle;
 use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize};
+use tokio::sync::broadcast;
 use tokio::sync::mpsc::{self};
 
 use crate::audio::service::{
   build_audio_into_file_stream, get_input_audio_device, get_system_audio_device,
 };
 use crate::camera::service::{create_camera, frame_to_rgba};
-use crate::recording::models::{RecordingFile, RecordingType, Region, StreamSynchronization};
+use crate::recording::models::{
+  MouseEventRecord, RecordingFile, RecordingType, Region, StreamSynchronization,
+};
 use crate::recording_sources::commands::list_monitors;
 use crate::recording_sources::service::get_visible_windows;
 use crate::screen_capture::service::{create_screen_recording_capturer, get_display, get_window};
@@ -38,6 +44,77 @@ type CapturerInfo = (
   Option<PhysicalSize<f64>>,
   Option<PhysicalPosition<f64>>,
 );
+
+/// Create and start mouse event recording thread
+///
+/// A single file is generated:
+/// - `mouse_events.msgpack` - contains mouse events (move, button down, button up)
+pub fn start_mouse_event_recording(
+  mut synchronization: StreamSynchronization,
+  recording_dir: PathBuf,
+  mut input_event_rx: broadcast::Receiver<rdev::Event>,
+) {
+  let events_path = recording_dir.join(RecordingFile::MouseEvents.as_ref());
+
+  tauri::async_runtime::spawn(async move {
+    let mut mouse_events_file = OpenOptions::new()
+      .create(true)
+      .append(true)
+      .open(events_path)
+      .expect("Failed to open mouse position message pack file");
+
+    synchronization.barrier.wait().await;
+
+    let movement_throttle_ms = Duration::from_millis(16); // ~60 FPS
+    let start_time = SystemTime::now();
+    let mut last_recorded_move = Instant::now() - movement_throttle_ms;
+
+    loop {
+      if synchronization.stop_rx.try_recv().is_ok() {
+        break;
+      }
+
+      match input_event_rx.recv().await {
+        Ok(event) => {
+          if !synchronization
+            .start_writing
+            .load(std::sync::atomic::Ordering::SeqCst)
+          {
+            continue;
+          }
+
+          let elapsed_ms = SystemTime::now()
+            .duration_since(start_time)
+            .unwrap_or_default()
+            .as_millis();
+
+          let mouse_event_option = match event.event_type {
+            EventType::MouseMove { x, y } => {
+              if last_recorded_move.elapsed() >= movement_throttle_ms {
+                last_recorded_move = Instant::now();
+                Some(MouseEventRecord::Move { elapsed_ms, x, y })
+              } else {
+                None
+              }
+            }
+            EventType::ButtonPress(button) => Some(MouseEventRecord::Down { elapsed_ms, button }),
+            EventType::ButtonRelease(button) => Some(MouseEventRecord::Up { elapsed_ms, button }),
+            _ => None,
+          };
+
+          if let Some(mouse_event) = mouse_event_option {
+            if let Err(e) = write(&mut mouse_events_file, &mouse_event) {
+              eprintln!("Failed to write mouse event: {}", e);
+            }
+          }
+        }
+        Err(e) => {
+          eprintln!("Failed to receive input event: {}", e);
+        }
+      }
+    }
+  });
+}
 
 /// Create and start screen recording thread
 pub fn start_screen_recording(
