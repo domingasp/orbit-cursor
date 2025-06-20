@@ -12,6 +12,7 @@ use cidre::{
 };
 use cocoa::base::nil;
 
+use futures::future::join_all;
 use image::DynamicImage;
 use objc::{
   msg_send,
@@ -19,16 +20,18 @@ use objc::{
   sel, sel_impl,
 };
 use scap::{get_all_targets, Target};
-use tauri::{LogicalSize, Monitor};
+use tauri::{Emitter, LogicalSize, Monitor};
 use uuid::Uuid;
 use xcap::Window;
+
+use crate::{constants::Events, APP_HANDLE};
 
 use super::commands::WindowDetails;
 
 /// \[MacOS\] Return data for visible windows.
 ///
 /// Icons and preview thumbnails are saved under `{app_temp_dir}/window-selector`.
-/// If no dir provided no thumbnails will be generated.
+/// If no dir provided no thumbnails will be generated. Emits `WindowThumbnailsGenerated`.
 pub fn get_visible_windows(
   monitors: Vec<Monitor>,
   app_temp_dir: Option<PathBuf>,
@@ -55,6 +58,7 @@ pub fn get_visible_windows(
   };
 
   let mut all_windows = Vec::new();
+  let mut thumbnail_tasks = Vec::new();
   for window in shareable_windows.iter() {
     if let Some(title) = window.title() {
       if !title.is_empty() && window.window_layer() == 0 && window.is_on_screen() {
@@ -76,13 +80,14 @@ pub fn get_visible_windows(
         if let Some(thumbnail_folder) = window_selector_folder.clone() {
           app_icon_path = get_app_icon(thumbnail_folder.clone(), app_pid);
 
-          // TODO thumbnail creation should be separate thread, maybe futures that get executed
-          // emit event to say these are done so UI can show them
-          // thumbnail_path = tokio::task::spawn_blocking(move || {
-          //   create_and_save_thumbnail(thumbnail_folder, window_id, windows_for_thumbnail)
-          // })
-          // .await
-          // .unwrap();
+          let path = generate_thumbnail_path(thumbnail_folder);
+          thumbnail_path = Some(path.clone());
+
+          let thumbnail_task = tauri::async_runtime::spawn_blocking(move || {
+            create_and_save_thumbnail(path, window_id, windows_for_thumbnail)
+          });
+
+          thumbnail_tasks.push(thumbnail_task);
         }
 
         let target_id = targets.iter().find_map(|t| match t {
@@ -100,6 +105,16 @@ pub fn get_visible_windows(
         });
       }
     }
+  }
+
+  if !thumbnail_tasks.is_empty() {
+    // Use async runtime for faster thumbnail generation
+    tauri::async_runtime::spawn(async move {
+      join_all(thumbnail_tasks).await;
+
+      let app_handle = APP_HANDLE.get().unwrap();
+      let _ = app_handle.emit(Events::WindowThumbnailsGenerated.as_ref(), ());
+    });
   }
 
   all_windows
@@ -206,12 +221,17 @@ fn get_app_icon(dir_path: PathBuf, pid: i32) -> Option<PathBuf> {
   }
 }
 
+pub fn generate_thumbnail_path(dir_path: PathBuf) -> PathBuf {
+  let uuid = Uuid::new_v4();
+  dir_path.join(format!("{}.png", uuid))
+}
+
 /// Save screenshot of app with `app_pid`
 fn create_and_save_thumbnail(
-  dir_path: PathBuf,
+  thumbnail_path: PathBuf,
   window_id: u32,
   windows_for_thumbnail: Arc<Vec<Window>>,
-) -> Option<PathBuf> {
+) {
   if let Some(window_for_thumbnail) = windows_for_thumbnail
     .iter()
     .find(|w| w.id().unwrap_or_default() == window_id)
@@ -222,14 +242,8 @@ fn create_and_save_thumbnail(
     let dyn_image = DynamicImage::ImageRgba8(thumbnail);
     let resized = dyn_image.resize(width / 5, height / 5, image::imageops::FilterType::Nearest);
 
-    let uuid = Uuid::new_v4();
-    let thumbnail_path = dir_path.join(format!("{}.png", uuid));
     let _ = resized.save(&thumbnail_path);
-
-    return Some(thumbnail_path);
   }
-
-  None
 }
 
 fn clear_folder_contents(folder_path: &PathBuf) -> io::Result<()> {
