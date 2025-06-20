@@ -1,13 +1,8 @@
-use std::{
-  collections::HashMap,
-  path::PathBuf,
-  sync::{atomic::AtomicBool, Arc},
-};
+use std::sync::{atomic::AtomicBool, Arc};
 
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumString};
-use tauri::{async_runtime::JoinHandle, LogicalPosition, LogicalSize};
-use tokio::sync::{broadcast::Receiver, Barrier};
+use tauri::{LogicalPosition, LogicalSize};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -28,11 +23,10 @@ pub struct StartRecordingOptions {
   pub camera_name: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StreamSynchronization {
   pub start_writing: Arc<AtomicBool>,
-  pub barrier: Arc<Barrier>,
-  pub stop_rx: Receiver<()>,
+  pub stop_tx: tokio::sync::broadcast::Sender<()>,
 }
 
 #[derive(EnumString, AsRefStr, Display, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -41,11 +35,6 @@ pub enum RecordingType {
   Region,
   Window,
   Screen,
-}
-
-pub struct RecordingState {
-  pub current_recording_path: PathBuf,
-  pub threads: HashMap<RecordingFile, JoinHandle<()>>,
 }
 
 #[derive(EnumString, AsRefStr, Display, Debug, Clone, Copy, PartialEq, Eq, Hash)]

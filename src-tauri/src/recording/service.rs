@@ -1,28 +1,22 @@
-use std::fs::{rename, OpenOptions};
+use std::fs::OpenOptions;
 use std::io::Write;
-use std::path::Path;
-use std::process::ChildStdin;
-use std::sync::atomic::AtomicBool;
+
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
-use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 use std::{fs::create_dir_all, path::PathBuf, sync::Arc};
 
 use chrono::Local;
 use cpal::traits::StreamTrait;
 use cpal::{Device, StreamConfig};
-use ffmpeg_sidecar::ffprobe::ffprobe_path;
 use ffmpeg_sidecar::{child::FfmpegChild, command::FfmpegCommand};
 use nokhwa::utils::CameraIndex;
-use nokhwa::CallbackCamera;
 use rdev::EventType;
 use rmp_serde::encode::write;
 use scap::capturer::Capturer;
 use scap::frame::{BGRAFrame, Frame};
-use tauri::async_runtime::JoinHandle;
 use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize};
 use tokio::sync::broadcast;
-use tokio::sync::mpsc::{self};
 
 use crate::audio::service::{
   build_audio_into_file_stream, get_input_audio_device, get_system_audio_device,
@@ -36,9 +30,8 @@ use crate::recording_sources::service::get_visible_windows;
 use crate::screen_capture::service::{create_screen_recording_capturer, get_display, get_window};
 
 type ArcOneShotSender = Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>;
-type ArcSender = Arc<Mutex<Option<mpsc::Sender<Vec<u8>>>>>;
 type CapturerInfo = (
-  Arc<Mutex<Capturer>>,
+  Capturer,
   u32,
   u32,
   Option<PhysicalSize<f64>>,
@@ -49,32 +42,31 @@ type CapturerInfo = (
 ///
 /// A single file is generated:
 /// - `mouse_events.msgpack` - contains mouse events (move, button down, button up)
-pub fn start_mouse_event_recording(
-  mut synchronization: StreamSynchronization,
+pub fn spawn_mouse_event_recorder(
+  synchronization: StreamSynchronization,
   recording_dir: PathBuf,
   mut input_event_rx: broadcast::Receiver<rdev::Event>,
 ) {
   let events_path = recording_dir.join(RecordingFile::MouseEvents.as_ref());
 
-  tauri::async_runtime::spawn(async move {
-    let mut mouse_events_file = OpenOptions::new()
-      .create(true)
-      .append(true)
-      .open(events_path)
-      .expect("Failed to open mouse position message pack file");
+  let mut mouse_events_file = OpenOptions::new()
+    .create(true)
+    .append(true)
+    .open(events_path)
+    .expect("Failed to open mouse position message pack file");
 
-    synchronization.barrier.wait().await;
-
+  std::thread::spawn(move || {
     let movement_throttle_ms = Duration::from_millis(16); // ~60 FPS
     let start_time = SystemTime::now();
     let mut last_recorded_move = Instant::now() - movement_throttle_ms;
 
+    let mut stop_rx = synchronization.stop_tx.subscribe();
     loop {
-      if synchronization.stop_rx.try_recv().is_ok() {
+      if stop_rx.try_recv().is_ok() {
         break;
       }
 
-      match input_event_rx.recv().await {
+      match input_event_rx.blocking_recv() {
         Ok(event) => {
           if !synchronization
             .start_writing
@@ -118,65 +110,46 @@ pub fn start_mouse_event_recording(
 
 /// Create and start screen recording thread
 pub fn start_screen_recording(
-  mut synchronization: StreamSynchronization,
+  synchronization: StreamSynchronization,
   file_path: PathBuf,
   recording_type: RecordingType,
   app_handle: AppHandle,
   monitor_name: String,
   window_id: Option<u32>,
   region: Region,
-) -> JoinHandle<()> {
-  tauri::async_runtime::spawn(async move {
-    let (capturer, width, height, crop_size, crop_origin) =
-      create_screen_capturer(app_handle, recording_type, monitor_name, window_id, region).await;
+) {
+  let (capturer, width, height, crop_size, crop_origin) =
+    create_screen_capturer(app_handle, recording_type, monitor_name, window_id, region);
 
-    let (frame_tx, frame_tx_arc, frame_rx) = create_frame_channel();
+  let (frame_tx, frame_rx) = std::sync::mpsc::channel::<Vec<u8>>();
 
-    spawn_capturer_with_send(
-      capturer.clone(),
-      frame_tx_arc.clone(),
-      synchronization.start_writing.clone(),
-    );
+  spawn_capturer_with_send(
+    capturer,
+    frame_tx,
+    synchronization.start_writing.clone(),
+    synchronization.stop_tx.subscribe(),
+  );
 
-    let mut ffmpeg_child = create_ffmpeg_writer(
-      file_path,
-      width,
-      height,
-      "bgra".to_string(),
-      None,
-      crop_size,
-      crop_origin,
-    );
-    let ffmpeg_stdin = ffmpeg_child.take_stdin().unwrap();
+  let ffmpeg_child = create_ffmpeg_writer(
+    file_path,
+    width,
+    height,
+    "bgra".to_string(),
+    None,
+    crop_size,
+    crop_origin,
+  );
 
-    let writer = spawn_ffmpeg_frame_writer(
-      frame_rx,
-      ffmpeg_stdin,
-      synchronization.start_writing.clone(),
-    );
-
-    synchronization.barrier.wait().await;
-    let _ = synchronization.stop_rx.recv().await;
-
-    tear_down_ffmpeg_writer(
-      synchronization.start_writing,
-      frame_tx,
-      frame_tx_arc,
-      writer,
-      ffmpeg_child,
-    )
-    .await;
-
-    tauri::async_runtime::spawn(async move {
-      // It can take a while to get the lock
-      // moving to a task avoids holdup
-      capturer.lock().unwrap().stop_capture();
-    });
-  })
+  spawn_ffmpeg_frame_writer(
+    ffmpeg_child,
+    frame_rx,
+    synchronization.start_writing.clone(),
+    synchronization.stop_tx.subscribe(),
+  );
 }
 
 /// Create screen capturer based on recording type
-async fn create_screen_capturer(
+fn create_screen_capturer(
   app_handle: AppHandle,
   recording_type: RecordingType,
   monitor_name: String,
@@ -200,7 +173,7 @@ async fn create_screen_capturer(
   let mut crop_origin: Option<PhysicalPosition<f64>> = None;
 
   if let (RecordingType::Window, Some(window_id)) = (recording_type, window_id) {
-    let windows = get_visible_windows(app_handle.clone().available_monitors().unwrap(), None).await;
+    let windows = get_visible_windows(app_handle.clone().available_monitors().unwrap(), None);
     let window_details = windows.into_iter().find(|w| w.id == window_id);
 
     // Details are not the same as scap::Target
@@ -223,7 +196,6 @@ async fn create_screen_capturer(
   // We don't use scap crop area due to strange behaviour with ffmpeg, instead we crop directly
   // in ffmpeg
   let capturer = create_screen_recording_capturer(app_handle, target);
-  let capturer = Arc::new(Mutex::new(capturer));
 
   (
     capturer,
@@ -234,68 +206,12 @@ async fn create_screen_capturer(
   )
 }
 
-/// Create and start system audio recording thread
-///
-/// Message received in `stop_rx` will finalize the recording.
-pub fn start_system_audio_recording(
-  synchronization: StreamSynchronization,
-  file_path: PathBuf,
-) -> JoinHandle<()> {
-  let (device, config) = get_system_audio_device();
-  start_audio_recording(synchronization, file_path, device, config)
-}
-
-/// Create and start audio input recording
-///
-/// Message received in `stop_rx` will finalize the recording.
-pub fn start_input_audio_recording(
-  synchronization: StreamSynchronization,
-  file_path: PathBuf,
-  device_name: String,
-) -> Option<JoinHandle<()>> {
-  if let Some((device, config)) = get_input_audio_device(device_name.clone()) {
-    Some(start_audio_recording(
-      synchronization,
-      file_path,
-      device,
-      config,
-    ))
-  } else {
-    eprintln!("Failed to get input audio device: {}", device_name);
-    None
-  }
-}
-
-/// Spawn new thread for audio recording
-fn start_audio_recording(
-  mut synchronization: StreamSynchronization,
-  file_path: PathBuf,
-  device: Device,
-  config: StreamConfig,
-) -> JoinHandle<()> {
-  tauri::async_runtime::spawn(async move {
-    let (stream, wav_writer) =
-      build_audio_into_file_stream(&device, &config, &file_path, synchronization.start_writing);
-    stream.play().expect("Failed to start system audio stream");
-
-    synchronization.barrier.wait().await;
-
-    let _ = synchronization.stop_rx.recv().await;
-    drop(stream); // cpal has no stop capability, stream cleaned on drop
-
-    let mut writer_lock = wav_writer.lock().unwrap();
-    if let Some(writer) = writer_lock.take() {
-      writer.finalize().unwrap();
-    }
-  })
-}
-
 /// Create and start camera recording
 pub fn start_camera_recording(
-  mut synchronization: StreamSynchronization,
+  synchronization: StreamSynchronization,
   file_path: PathBuf,
   camera_name: String,
-) -> JoinHandle<()> {
+) {
   let available_cameras = nokhwa::query(nokhwa::utils::ApiBackend::Auto).unwrap();
   let camera_info = available_cameras
     .iter()
@@ -304,131 +220,140 @@ pub fn start_camera_recording(
   let camera_index = camera_info.index().clone();
 
   let start_writing_for_writer = synchronization.start_writing.clone();
-  tauri::async_runtime::spawn(async move {
-    // Some cameras (like Macbook webcam) have a startup period.
-    // Once camera starts sending first frame one shot is sent and
-    // barrier awaited
-    let (camera_ready_tx, camera_ready_rx) = tokio::sync::oneshot::channel();
-    let camera_ready_tx = Arc::new(Mutex::new(Some(camera_ready_tx)));
 
-    let (frame_tx, frame_tx_arc, frame_rx) = create_frame_channel();
+  let (camera_ready_tx, camera_ready_rx) = tokio::sync::oneshot::channel();
+  let camera_ready_tx = Arc::new(Mutex::new(Some(camera_ready_tx)));
 
-    let mut camera = setup_camera_with_send(
-      camera_index,
-      camera_ready_tx.clone(),
-      frame_tx_arc.clone(),
-      start_writing_for_writer,
-    );
+  let (frame_tx, frame_rx) = std::sync::mpsc::channel::<Vec<u8>>();
 
-    let resolution = camera.resolution().unwrap();
-    let frame_rate = camera.frame_rate().unwrap();
+  let (resolution, frame_rate) = spawn_camera_with_send(
+    camera_index,
+    camera_ready_tx.clone(),
+    frame_tx,
+    start_writing_for_writer,
+    synchronization.stop_tx.subscribe(),
+  );
 
-    let mut ffmpeg_child = create_ffmpeg_writer(
-      file_path,
-      resolution.width(),
-      resolution.height(),
-      "rgba".to_string(),
-      Some(frame_rate.to_string()),
-      None,
-      None,
-    );
-    let ffmpeg_stdin = ffmpeg_child.take_stdin().unwrap();
+  let ffmpeg_child = create_ffmpeg_writer(
+    file_path,
+    resolution.width(),
+    resolution.height(),
+    "rgba".to_string(),
+    Some(frame_rate.to_string()),
+    None,
+    None,
+  );
 
-    let writer = spawn_ffmpeg_frame_writer(
-      frame_rx,
-      ffmpeg_stdin,
-      synchronization.start_writing.clone(),
-    );
+  spawn_ffmpeg_frame_writer(
+    ffmpeg_child,
+    frame_rx,
+    synchronization.start_writing.clone(),
+    synchronization.stop_tx.subscribe(),
+  );
 
-    let _ = camera.open_stream();
-    let _ = camera_ready_rx.await;
-
-    synchronization.barrier.wait().await;
-    let _ = synchronization.stop_rx.recv().await;
-
-    tear_down_ffmpeg_writer(
-      synchronization.start_writing,
-      frame_tx,
-      frame_tx_arc,
-      writer,
-      ffmpeg_child,
-    )
-    .await;
-
-    tauri::async_runtime::spawn(async move {
-      // It can take a while to get the lock (internally)
-      // moving to a task avoids holdup
-      let _ = camera.stop_stream();
-    });
-  })
+  let _ = camera_ready_rx.blocking_recv();
 }
 
 /// Create and return camera which sends RGBA frames to `frame_tx`
-fn setup_camera_with_send(
+fn spawn_camera_with_send(
   camera_index: CameraIndex,
   camera_ready_tx: ArcOneShotSender,
-  frame_tx: ArcSender,
+  frame_tx: std::sync::mpsc::Sender<Vec<u8>>,
   start_writing: Arc<AtomicBool>,
-) -> CallbackCamera {
-  create_camera(camera_index, move |frame| {
+  mut stop_rx: broadcast::Receiver<()>,
+) -> (nokhwa::utils::Resolution, u32) {
+  let mut camera = create_camera(camera_index, move |frame| {
     if let Some(tx) = camera_ready_tx.lock().unwrap().take() {
       let _ = tx.send(());
     }
 
-    if let Some(ref tx) = *frame_tx.lock().unwrap() {
-      if start_writing.load(std::sync::atomic::Ordering::SeqCst) {
-        let _ = tx.try_send(frame_to_rgba(frame));
-      }
+    if start_writing.load(std::sync::atomic::Ordering::SeqCst) {
+      let _ = frame_tx.send(frame_to_rgba(frame));
     }
   })
-  .unwrap()
+  .unwrap();
+
+  let resolution = camera.resolution().unwrap();
+  let frame_rate = camera.frame_rate().unwrap();
+
+  std::thread::spawn(move || {
+    if let Err(e) = camera.open_stream() {
+      eprintln!("Failed to start camera: {}", e);
+    }
+
+    let _ = stop_rx.blocking_recv(); // Keeps camera alive
+  });
+
+  (resolution, frame_rate)
 }
 
 /// Spawn new thread for ffmpeg write to stdin
 fn spawn_ffmpeg_frame_writer(
-  mut frame_rx: mpsc::Receiver<Vec<u8>>,
-  mut ffmpeg_stdin: ChildStdin,
+  mut ffmpeg_child: FfmpegChild,
+  frame_rx: std::sync::mpsc::Receiver<Vec<u8>>,
   start_writing: Arc<AtomicBool>,
-) -> JoinHandle<()> {
-  tauri::async_runtime::spawn(async move {
-    while let Some(frame) = frame_rx.recv().await {
-      if start_writing.load(std::sync::atomic::Ordering::SeqCst) {
-        let _ = ffmpeg_stdin.write_all(&frame);
+  mut stop_rx: broadcast::Receiver<()>,
+) {
+  std::thread::spawn(move || {
+    let mut stdin = ffmpeg_child.take_stdin().unwrap();
+    loop {
+      if stop_rx.try_recv().is_ok() {
+        break;
+      }
+
+      match frame_rx.recv_timeout(Duration::from_millis(100)) {
+        Ok(frame) => {
+          if start_writing.load(Ordering::SeqCst) {
+            let _ = stdin.write_all(&frame);
+          }
+        }
+        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+          continue;
+        }
+        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+          break;
+        }
       }
     }
 
-    drop(ffmpeg_stdin);
-  })
+    if let Err(e) = stdin.flush() {
+      eprintln!("Failed to flush ffmpeg stdin: {}", e);
+    }
+
+    drop(stdin); // signals EOF to ffmpeg
+    let _ = ffmpeg_child.wait();
+  });
 }
 
 /// Spawn new thread for scap::Capturer to grab and push frames to tx
 ///
 /// Starts capturer
 fn spawn_capturer_with_send(
-  capturer: Arc<Mutex<Capturer>>,
-  tx: ArcSender,
+  mut capturer: Capturer,
+  frame_tx: std::sync::mpsc::Sender<Vec<u8>>,
   start_writing: Arc<AtomicBool>,
+  mut stop_rx: broadcast::Receiver<()>,
 ) {
-  thread::spawn(move || {
-    capturer.lock().unwrap().start_capture();
+  capturer.start_capture();
 
+  std::thread::spawn(move || {
     // We cache the last frame with data - ScreenCaptureKit sends empty frames when static
     // this seems to only happen when recording windows rather than the screen
     let mut cached_frame: Option<BGRAFrame> = None;
     loop {
-      if let Ok(capturer) = capturer.lock() {
-        if let Ok(Frame::BGRA(frame)) = capturer.get_next_frame() {
-          if let Some(ref tx) = *tx.lock().unwrap() {
-            if start_writing.load(std::sync::atomic::Ordering::SeqCst) {
-              if let Err(e) = tx.try_send(if frame.data.is_empty() && cached_frame.is_some() {
-                cached_frame.clone().unwrap().data
-              } else {
-                cached_frame = Some(frame.clone());
-                frame.data
-              }) {
-                eprintln!("Failed to send frame to writer {}", e);
-              }
-            }
+      if stop_rx.try_recv().is_ok() {
+        break;
+      }
+
+      if let Ok(Frame::BGRA(frame)) = capturer.get_next_frame() {
+        if start_writing.load(std::sync::atomic::Ordering::SeqCst) {
+          if let Err(e) = frame_tx.send(if frame.data.is_empty() && cached_frame.is_some() {
+            cached_frame.clone().unwrap().data
+          } else {
+            cached_frame = Some(frame.clone());
+            frame.data
+          }) {
+            eprintln!("Failed to send frame to writer: {}", e);
           }
         }
       }
@@ -444,13 +369,6 @@ pub fn create_recording_directory(app_handle: &AppHandle) -> PathBuf {
   let _ = create_dir_all(&session_dir);
 
   session_dir
-}
-
-/// Create and return a channel for frames
-fn create_frame_channel() -> (mpsc::Sender<Vec<u8>>, ArcSender, mpsc::Receiver<Vec<u8>>) {
-  let (tx, rx) = mpsc::channel::<Vec<u8>>(100);
-  let tx_arc = Arc::new(Mutex::new(Some(tx.clone())));
-  (tx, tx_arc, rx)
 }
 
 /// Create and spawn an ffmpeg writer
@@ -498,78 +416,48 @@ fn create_ffmpeg_writer(
   child.spawn().unwrap()
 }
 
-/// Tear down ffmpeg writer ensuring a stable file is created
-async fn tear_down_ffmpeg_writer(
-  start_writing: Arc<AtomicBool>,
-  tx: mpsc::Sender<Vec<u8>>,
-  tx_arc: ArcSender,
-  writer_thread: JoinHandle<()>,
-  mut ffmpeg_child: FfmpegChild,
+/// Create and start system audio recording thread
+///
+/// Message received in `stop_rx` will finalize the recording.
+pub fn start_system_audio_recording(synchronization: StreamSynchronization, file_path: PathBuf) {
+  let (device, config) = get_system_audio_device();
+  start_audio_recording(synchronization, file_path, device, config);
+}
+
+/// Create and start audio input recording
+///
+/// Message received in `stop_rx` will finalize the recording.
+pub fn start_input_audio_recording(
+  synchronization: StreamSynchronization,
+  file_path: PathBuf,
+  device_name: String,
 ) {
-  start_writing.store(false, std::sync::atomic::Ordering::SeqCst);
-
-  {
-    // Dropping sender to ensure writer drops ffmpeg_stdin, signalling end of recording
-    match tx_arc.lock() {
-      Ok(mut locked_tx) => {
-        *locked_tx = None;
-      }
-      Err(e) => eprintln!("Failed to lock frame sender: {}", e),
-    }
-  }
-  drop(tx);
-
-  let _ = writer_thread.await;
-  let _ = ffmpeg_child.wait();
-}
-
-/// Using ffprobe return the duration, in seconds of the recording file
-pub async fn get_file_duration(recording_dir: &Path, file: &RecordingFile) -> f64 {
-  let result = tokio::process::Command::new(ffprobe_path())
-    .args([
-      "-v",
-      "quiet",
-      "-show_entries",
-      "format=duration",
-      "-of",
-      "default=noprint_wrappers=1:nokey=1",
-    ])
-    .arg(recording_dir.join(file.as_ref()))
-    .kill_on_drop(true)
-    .output()
-    .await
-    .map_err(|e| format!("Failed to run ffmpeg: {}", e));
-
-  match result {
-    Ok(output) => {
-      if output.status.success() {
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        stdout.trim().parse::<f64>().unwrap_or(0.0)
-      } else {
-        0.0
-      }
-    }
-    Err(err) => {
-      eprintln!("Error getting duration: {}", err);
-      0.0
-    }
+  if let Some((device, config)) = get_input_audio_device(device_name.clone()) {
+    start_audio_recording(synchronization, file_path, device, config);
+  } else {
+    eprintln!("Failed to get input audio device: {}", device_name);
   }
 }
 
-/// Trim file in recording dir to specified duration - the original file is replaced
-pub fn trim_mp4_to_length(recording_dir: &Path, file: &RecordingFile, duration: f64) {
-  let original_file = recording_dir.join(file.as_ref());
-  let temp_file = recording_dir.join(format!("temp-{}", file.as_ref()));
+/// Spawn new thread for audio recording
+fn start_audio_recording(
+  synchronization: StreamSynchronization,
+  file_path: PathBuf,
+  device: Device,
+  config: StreamConfig,
+) {
+  let (stream, wav_writer) =
+    build_audio_into_file_stream(&device, &config, &file_path, synchronization.start_writing);
+  stream.play().expect("Failed to start system audio stream");
 
-  let trim_command = FfmpegCommand::new()
-    .input(original_file.to_string_lossy())
-    .duration(duration.to_string())
-    .codec_video("libx264")
-    .output(temp_file.to_string_lossy())
-    .spawn();
+  let mut stop_rx = synchronization.stop_tx.subscribe();
+  tauri::async_runtime::spawn(async move {
+    let _ = stop_rx.recv().await;
+    drop(stream); // cpal has no stop capability, stream cleaned on drop
 
-  if let Ok(mut temp_command) = trim_command {
-    let _ = temp_command.wait();
-    let _ = rename(&temp_file, &original_file);
-  }
+    let mut writer_lock = wav_writer.lock().unwrap();
+    if let Some(writer) = writer_lock.take() {
+      writer.finalize().unwrap();
+    }
+  });
 }

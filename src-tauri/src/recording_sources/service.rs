@@ -12,7 +12,7 @@ use cidre::{
 };
 use cocoa::base::nil;
 
-use futures::{stream::FuturesUnordered, StreamExt};
+use futures::future::join_all;
 use image::DynamicImage;
 use objc::{
   msg_send,
@@ -20,27 +20,34 @@ use objc::{
   sel, sel_impl,
 };
 use scap::{get_all_targets, Target};
-use tauri::{LogicalSize, Monitor};
+use tauri::{Emitter, LogicalSize, Monitor};
 use uuid::Uuid;
 use xcap::Window;
 
+use crate::{constants::Events, APP_HANDLE};
+
 use super::commands::WindowDetails;
 
-/// [MacOS] Return data for visible windows.
+/// \[MacOS\] Return data for visible windows.
 ///
 /// Icons and preview thumbnails are saved under `{app_temp_dir}/window-selector`.
-/// If no dir provided no thumbnails will be generated.
-pub async fn get_visible_windows(
+/// If no dir provided no thumbnails will be generated. Emits `WindowThumbnailsGenerated`.
+pub fn get_visible_windows(
   monitors: Vec<Monitor>,
   app_temp_dir: Option<PathBuf>,
 ) -> Vec<WindowDetails> {
   let targets = Arc::new(get_all_targets());
-  let shareable_content = sc::ShareableContent::current().await.unwrap();
+
+  // no sync method for current, this is the correct approach - https://github.com/yury/cidre/discussions/26
+  let (tx, rx) = std::sync::mpsc::channel();
+  sc::ShareableContent::current_with_ch(move |res, _err| {
+    tx.send(res.unwrap().retained()).unwrap();
+  });
+
+  let shareable_content = rx.recv().unwrap();
   let shareable_displays = shareable_content.displays();
   let shareable_windows = shareable_content.windows();
   let windows_for_thumbnail_arc = Arc::new(Window::all().unwrap());
-
-  let futures = FuturesUnordered::new();
 
   let window_selector_folder = if let Some(app_temp_dir) = app_temp_dir {
     let dir = app_temp_dir.join("window-selector");
@@ -50,6 +57,8 @@ pub async fn get_visible_windows(
     None
   };
 
+  let mut all_windows = Vec::new();
+  let mut thumbnail_tasks = Vec::new();
   for window in shareable_windows.iter() {
     if let Some(title) = window.title() {
       if !title.is_empty() && window.window_layer() == 0 && window.is_on_screen() {
@@ -64,39 +73,51 @@ pub async fn get_visible_windows(
         let scale_factor = monitors[window_display_index].scale_factor();
 
         let windows_for_thumbnail = Arc::clone(&windows_for_thumbnail_arc);
-        futures.push(async move {
-          let mut app_icon_path: Option<PathBuf> = None;
-          let mut thumbnail_path: Option<PathBuf> = None;
 
-          if let Some(thumbnail_folder) = window_selector_folder.clone() {
-            app_icon_path = get_app_icon(thumbnail_folder.clone(), app_pid);
-            thumbnail_path = tokio::task::spawn_blocking(move || {
-              create_and_save_thumbnail(thumbnail_folder, window_id, windows_for_thumbnail)
-            })
-            .await
-            .unwrap();
-          }
+        let mut app_icon_path: Option<PathBuf> = None;
+        let mut thumbnail_path: Option<PathBuf> = None;
 
-          let target_id = targets.iter().find_map(|t| match t {
-            Target::Window(window_target) if window_target.title == title => Some(window_target.id),
-            _ => None,
+        if let Some(thumbnail_folder) = window_selector_folder.clone() {
+          app_icon_path = get_app_icon(thumbnail_folder.clone(), app_pid);
+
+          let path = generate_thumbnail_path(thumbnail_folder);
+          thumbnail_path = Some(path.clone());
+
+          let thumbnail_task = tauri::async_runtime::spawn_blocking(move || {
+            create_and_save_thumbnail(path, window_id, windows_for_thumbnail)
           });
 
-          WindowDetails {
-            id: target_id.unwrap_or_default(),
-            title,
-            app_icon_path,
-            thumbnail_path,
-            size: LogicalSize::new(frame.size.width, frame.size.height),
-            scale_factor,
-          }
+          thumbnail_tasks.push(thumbnail_task);
+        }
+
+        let target_id = targets.iter().find_map(|t| match t {
+          Target::Window(window_target) if window_target.title == title => Some(window_target.id),
+          _ => None,
+        });
+
+        all_windows.push(WindowDetails {
+          id: target_id.unwrap_or_default(),
+          title,
+          app_icon_path,
+          thumbnail_path,
+          size: LogicalSize::new(frame.size.width, frame.size.height),
+          scale_factor,
         });
       }
     }
   }
 
-  let results: Vec<WindowDetails> = futures.collect().await;
-  results
+  if !thumbnail_tasks.is_empty() {
+    // Use async runtime for faster thumbnail generation
+    tauri::async_runtime::spawn(async move {
+      join_all(thumbnail_tasks).await;
+
+      let app_handle = APP_HANDLE.get().unwrap();
+      let _ = app_handle.emit(Events::WindowThumbnailsGenerated.as_ref(), ());
+    });
+  }
+
+  all_windows
 }
 
 #[link(name = "AppKit", kind = "framework")]
@@ -200,12 +221,17 @@ fn get_app_icon(dir_path: PathBuf, pid: i32) -> Option<PathBuf> {
   }
 }
 
+pub fn generate_thumbnail_path(dir_path: PathBuf) -> PathBuf {
+  let uuid = Uuid::new_v4();
+  dir_path.join(format!("{}.png", uuid))
+}
+
 /// Save screenshot of app with `app_pid`
 fn create_and_save_thumbnail(
-  dir_path: PathBuf,
+  thumbnail_path: PathBuf,
   window_id: u32,
   windows_for_thumbnail: Arc<Vec<Window>>,
-) -> Option<PathBuf> {
+) {
   if let Some(window_for_thumbnail) = windows_for_thumbnail
     .iter()
     .find(|w| w.id().unwrap_or_default() == window_id)
@@ -216,14 +242,8 @@ fn create_and_save_thumbnail(
     let dyn_image = DynamicImage::ImageRgba8(thumbnail);
     let resized = dyn_image.resize(width / 5, height / 5, image::imageops::FilterType::Nearest);
 
-    let uuid = Uuid::new_v4();
-    let thumbnail_path = dir_path.join(format!("{}.png", uuid));
     let _ = resized.save(&thumbnail_path);
-
-    return Some(thumbnail_path);
   }
-
-  None
 }
 
 fn clear_folder_contents(folder_path: &PathBuf) -> io::Result<()> {

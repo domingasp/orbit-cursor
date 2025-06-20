@@ -8,4 +8,5 @@ export enum Events {
   SystemAudioStreamError = "system_audio_stream_error",
   InputAudioStreamError = "input_audio_stream_error",
   CollapsedRecordingSourceSelector = "collapsed_recording_source_selector",
+  WindowThumbnailsGenerated = "window_thumbnails_generated",
 }

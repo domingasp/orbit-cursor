@@ -1,8 +1,11 @@
+import { useQuery } from "@tanstack/react-query";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { CircleSlash2, LoaderCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import Button from "../../../components/button/button";
+import { Events } from "../../../types/events";
 import { listWindows, WindowDetails } from "../api/recording-sources";
 
 type WindowSelectorProps = {
@@ -15,31 +18,38 @@ const WindowSelector = ({
   onSelect,
   selectedWindow,
 }: WindowSelectorProps) => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [windows, setWindows] = useState<WindowDetails[]>([]);
+  const [thumbnailsGenerated, setThumbnailsGenerated] = useState(false);
+
+  const { data: windows, isLoading } = useQuery({
+    enabled: isExpanded,
+    queryFn: async () => {
+      const windows = await listWindows(isExpanded);
+
+      return windows.sort((a, b) => {
+        const appIconCompare = (a.appIconPath ?? "").localeCompare(
+          b.appIconPath ?? ""
+        );
+        if (appIconCompare !== 0) return appIconCompare;
+
+        return a.title.localeCompare(b.title);
+      });
+    },
+    queryKey: ["windows", isExpanded],
+  });
 
   useEffect(() => {
-    if (isExpanded) {
-      void listWindows(isExpanded)
-        .then((windows) => {
-          const latestWindows = windows.sort((a, b) => {
-            const appIconCompare = (a.appIconPath ?? "").localeCompare(
-              b.appIconPath ?? ""
-            );
-            if (appIconCompare !== 0) return appIconCompare;
+    const unlisten = listen(Events.WindowThumbnailsGenerated, () => {
+      setThumbnailsGenerated(true);
+    });
 
-            return a.title.localeCompare(b.title);
-          });
+    return () => {
+      void unlisten.then((f) => {
+        f();
+      });
+    };
+  }, []);
 
-          setWindows(latestWindows);
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    }
-  }, [isExpanded]);
-
-  if (isLoading) {
+  if (isLoading || !thumbnailsGenerated) {
     return (
       <LoaderCircle
         className="self-center animate-spin text-content-fg"
@@ -48,7 +58,7 @@ const WindowSelector = ({
     );
   }
 
-  if (windows.length === 0)
+  if (windows?.length === 0)
     return (
       <div className="self-center flex flex-row items-center gap-4 text-content-fg font-semibold text-2xl">
         <CircleSlash2 size={64} />
@@ -58,7 +68,7 @@ const WindowSelector = ({
 
   return (
     <div className="grid grid-cols-4 gap-2 p-4">
-      {windows.map((window) => (
+      {windows?.map((window) => (
         <Button
           key={window.id}
           className="relative flex flex-col items-start border-content-fg/5 border-1"

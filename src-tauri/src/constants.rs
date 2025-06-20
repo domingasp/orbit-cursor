@@ -40,6 +40,9 @@ pub enum Events {
 
   #[strum(serialize = "collapsed_recording_source_selector")]
   CollapsedRecordingSourceSelector,
+
+  #[strum(serialize = "window_thumbnails_generated")]
+  WindowThumbnailsGenerated,
 }
 
 #[derive(EnumString, AsRefStr, Display, Debug, Clone, Copy, PartialEq, Eq, Hash)]
