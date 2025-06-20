@@ -12,7 +12,6 @@ use cidre::{
 };
 use cocoa::base::nil;
 
-use futures::{stream::FuturesUnordered, StreamExt};
 use image::DynamicImage;
 use objc::{
   msg_send,
@@ -26,21 +25,26 @@ use xcap::Window;
 
 use super::commands::WindowDetails;
 
-/// [MacOS] Return data for visible windows.
+/// \[MacOS\] Return data for visible windows.
 ///
 /// Icons and preview thumbnails are saved under `{app_temp_dir}/window-selector`.
 /// If no dir provided no thumbnails will be generated.
-pub async fn get_visible_windows(
+pub fn get_visible_windows(
   monitors: Vec<Monitor>,
   app_temp_dir: Option<PathBuf>,
 ) -> Vec<WindowDetails> {
   let targets = Arc::new(get_all_targets());
-  let shareable_content = sc::ShareableContent::current().await.unwrap();
+
+  // no sync method for current, this is the correct approach - https://github.com/yury/cidre/discussions/26
+  let (tx, rx) = std::sync::mpsc::channel();
+  sc::ShareableContent::current_with_ch(move |res, _err| {
+    tx.send(res.unwrap().retained()).unwrap();
+  });
+
+  let shareable_content = rx.recv().unwrap();
   let shareable_displays = shareable_content.displays();
   let shareable_windows = shareable_content.windows();
   let windows_for_thumbnail_arc = Arc::new(Window::all().unwrap());
-
-  let futures = FuturesUnordered::new();
 
   let window_selector_folder = if let Some(app_temp_dir) = app_temp_dir {
     let dir = app_temp_dir.join("window-selector");
@@ -50,6 +54,7 @@ pub async fn get_visible_windows(
     None
   };
 
+  let mut all_windows = Vec::new();
   for window in shareable_windows.iter() {
     if let Some(title) = window.title() {
       if !title.is_empty() && window.window_layer() == 0 && window.is_on_screen() {
@@ -64,39 +69,40 @@ pub async fn get_visible_windows(
         let scale_factor = monitors[window_display_index].scale_factor();
 
         let windows_for_thumbnail = Arc::clone(&windows_for_thumbnail_arc);
-        futures.push(async move {
-          let mut app_icon_path: Option<PathBuf> = None;
-          let mut thumbnail_path: Option<PathBuf> = None;
 
-          if let Some(thumbnail_folder) = window_selector_folder.clone() {
-            app_icon_path = get_app_icon(thumbnail_folder.clone(), app_pid);
-            thumbnail_path = tokio::task::spawn_blocking(move || {
-              create_and_save_thumbnail(thumbnail_folder, window_id, windows_for_thumbnail)
-            })
-            .await
-            .unwrap();
-          }
+        let mut app_icon_path: Option<PathBuf> = None;
+        let mut thumbnail_path: Option<PathBuf> = None;
 
-          let target_id = targets.iter().find_map(|t| match t {
-            Target::Window(window_target) if window_target.title == title => Some(window_target.id),
-            _ => None,
-          });
+        if let Some(thumbnail_folder) = window_selector_folder.clone() {
+          app_icon_path = get_app_icon(thumbnail_folder.clone(), app_pid);
 
-          WindowDetails {
-            id: target_id.unwrap_or_default(),
-            title,
-            app_icon_path,
-            thumbnail_path,
-            size: LogicalSize::new(frame.size.width, frame.size.height),
-            scale_factor,
-          }
+          // TODO thumbnail creation should be separate thread, maybe futures that get executed
+          // emit event to say these are done so UI can show them
+          // thumbnail_path = tokio::task::spawn_blocking(move || {
+          //   create_and_save_thumbnail(thumbnail_folder, window_id, windows_for_thumbnail)
+          // })
+          // .await
+          // .unwrap();
+        }
+
+        let target_id = targets.iter().find_map(|t| match t {
+          Target::Window(window_target) if window_target.title == title => Some(window_target.id),
+          _ => None,
+        });
+
+        all_windows.push(WindowDetails {
+          id: target_id.unwrap_or_default(),
+          title,
+          app_icon_path,
+          thumbnail_path,
+          size: LogicalSize::new(frame.size.width, frame.size.height),
+          scale_factor,
         });
       }
     }
   }
 
-  let results: Vec<WindowDetails> = futures.collect().await;
-  results
+  all_windows
 }
 
 #[link(name = "AppKit", kind = "framework")]

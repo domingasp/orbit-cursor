@@ -61,5 +61,4 @@ pub async fn list_windows(app_handle: AppHandle, generate_thumbnails: bool) -> V
       None
     },
   )
-  .await
 }

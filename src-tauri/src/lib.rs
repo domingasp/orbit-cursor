@@ -12,6 +12,7 @@ mod windows;
 
 use std::{
   collections::HashMap,
+  path::PathBuf,
   sync::{atomic::AtomicBool, Arc, Mutex, OnceLock},
 };
 
@@ -31,7 +32,7 @@ use permissions::{
   commands::{check_permissions, open_system_settings, request_permission},
   service::{ensure_permissions, monitor_permissions},
 };
-use rdev::listen;
+use rdev::{listen, set_is_main_thread};
 use recording::commands::{start_recording, stop_recording};
 use recording_sources::commands::{list_monitors, list_windows};
 use scap::capturer::Capturer;
@@ -57,7 +58,6 @@ use windows::{
 };
 
 use crate::{
-  recording::models::RecordingState,
   screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
   windows::service::spawn_window_close_manager,
 };
@@ -74,7 +74,7 @@ struct AppState {
   // Recording related
   is_recording: bool,
   stop_recording_tx: Option<broadcast::Sender<()>>,
-  recording_state: Option<RecordingState>,
+  current_recording_dir: Option<PathBuf>,
 }
 
 async fn setup_store(app: &App) -> Arc<Store<Wry>> {
@@ -170,7 +170,7 @@ pub fn run() {
       input_event_tx: input_event_tx.clone(),
       is_recording: false,
       stop_recording_tx: None,
-      recording_state: None,
+      current_recording_dir: None,
     }))
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_macos_permissions::init())
@@ -209,6 +209,7 @@ pub fn run() {
       }
 
       std::thread::spawn(move || {
+        set_is_main_thread(false);
         if let Err(error) = listen(move |e| {
           global_inputs::service::global_input_event_handler(e, input_event_tx.clone());
         }) {
