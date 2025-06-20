@@ -41,23 +41,6 @@ pub fn start_recording(
     stop_tx: stop_tx.clone(),
   };
 
-  // Always
-  start_screen_recording(
-    synchronization.clone(),
-    recording_dir.join(RecordingFile::Screen.as_ref()),
-    options.recording_type,
-    app_handle.clone(),
-    options.monitor_name,
-    options.window_id,
-    options.region,
-  );
-
-  spawn_mouse_event_recorder(
-    synchronization.clone(),
-    recording_dir.clone(),
-    state.input_event_tx.subscribe(),
-  );
-
   // Optional
   if options.system_audio {
     start_system_audio_recording(
@@ -81,6 +64,26 @@ pub fn start_recording(
       camera_name,
     );
   }
+
+  // Always
+  // MUST be after the optionals
+  // Window capture causes empty frames if this comes first - not sure why, only happens
+  // when multiple streams
+  start_screen_recording(
+    synchronization.clone(),
+    recording_dir.join(RecordingFile::Screen.as_ref()),
+    options.recording_type,
+    app_handle.clone(),
+    options.monitor_name,
+    options.window_id,
+    options.region,
+  );
+
+  spawn_mouse_event_recorder(
+    synchronization.clone(),
+    recording_dir.clone(),
+    state.input_event_tx.subscribe(),
+  );
 
   start_writing.store(true, Ordering::SeqCst);
   let _ = app_handle.emit(Events::RecordingStarted.as_ref(), ());

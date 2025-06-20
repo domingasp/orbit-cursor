@@ -31,7 +31,7 @@ use crate::screen_capture::service::{create_screen_recording_capturer, get_displ
 
 type ArcOneShotSender = Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>;
 type CapturerInfo = (
-  Arc<Mutex<Capturer>>,
+  Capturer,
   u32,
   u32,
   Option<PhysicalSize<f64>>,
@@ -124,7 +124,7 @@ pub fn start_screen_recording(
   let (frame_tx, frame_rx) = std::sync::mpsc::channel::<Vec<u8>>();
 
   spawn_capturer_with_send(
-    capturer.clone(),
+    capturer,
     frame_tx,
     synchronization.start_writing.clone(),
     synchronization.stop_tx.subscribe(),
@@ -196,7 +196,6 @@ fn create_screen_capturer(
   // We don't use scap crop area due to strange behaviour with ffmpeg, instead we crop directly
   // in ffmpeg
   let capturer = create_screen_recording_capturer(app_handle, target);
-  let capturer = Arc::new(Mutex::new(capturer));
 
   (
     capturer,
@@ -330,12 +329,12 @@ fn spawn_ffmpeg_frame_writer(
 ///
 /// Starts capturer
 fn spawn_capturer_with_send(
-  capturer: Arc<Mutex<Capturer>>,
+  mut capturer: Capturer,
   frame_tx: std::sync::mpsc::Sender<Vec<u8>>,
   start_writing: Arc<AtomicBool>,
   mut stop_rx: broadcast::Receiver<()>,
 ) {
-  capturer.lock().unwrap().start_capture();
+  capturer.start_capture();
 
   std::thread::spawn(move || {
     // We cache the last frame with data - ScreenCaptureKit sends empty frames when static
@@ -346,17 +345,15 @@ fn spawn_capturer_with_send(
         break;
       }
 
-      if let Ok(capturer) = capturer.lock() {
-        if let Ok(Frame::BGRA(frame)) = capturer.get_next_frame() {
-          if start_writing.load(std::sync::atomic::Ordering::SeqCst) {
-            if let Err(e) = frame_tx.send(if frame.data.is_empty() && cached_frame.is_some() {
-              cached_frame.clone().unwrap().data
-            } else {
-              cached_frame = Some(frame.clone());
-              frame.data
-            }) {
-              eprintln!("Failed to send frame to writer: {}", e);
-            }
+      if let Ok(Frame::BGRA(frame)) = capturer.get_next_frame() {
+        if start_writing.load(std::sync::atomic::Ordering::SeqCst) {
+          if let Err(e) = frame_tx.send(if frame.data.is_empty() && cached_frame.is_some() {
+            cached_frame.clone().unwrap().data
+          } else {
+            cached_frame = Some(frame.clone());
+            frame.data
+          }) {
+            eprintln!("Failed to send frame to writer: {}", e);
           }
         }
       }
