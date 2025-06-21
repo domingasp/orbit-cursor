@@ -153,10 +153,9 @@ pub fn show_standalone_listbox(
   });
   let _ = window.set_size(size);
 
-  let panel = app_handle
-    .get_webview_panel(WindowLabel::StandaloneListbox.as_ref())
-    .unwrap();
-  panel.show();
+  if let Err(e) = window.show() {
+    eprintln!("Failed to show standalone listbox: {}", e);
+  }
 }
 
 #[tauri::command]
@@ -170,11 +169,14 @@ pub fn show_recording_input_options(
     .open_windows
     .insert(WindowLabel::RecordingInputOptions, true);
 
-  let panel = app_handle
-    .get_webview_panel(WindowLabel::RecordingInputOptions.as_ref())
-    .unwrap();
   position_window_above_dock(&app_handle, WindowLabel::RecordingInputOptions, x);
-  panel.order_front_regardless();
+
+  let window = app_handle
+    .get_webview_window(WindowLabel::RecordingInputOptions.as_ref())
+    .unwrap();
+  if let Err(e) = window.show() {
+    eprintln!("Failed to show recording input options: {}", e);
+  }
 
   let _ = app_handle
     .emit(Events::RecordingInputOptionsOpened.as_ref(), ())
@@ -200,10 +202,12 @@ pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<
     .open_windows
     .insert(WindowLabel::StartRecordingDock, true);
 
-  let panel = app_handle
-    .get_webview_panel(WindowLabel::StartRecordingDock.as_ref())
+  let window = app_handle
+    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
     .unwrap();
-  panel.order_front_regardless();
+  if let Err(e) = window.show() {
+    eprintln!("Failed to show start recording dock: {}", e);
+  }
 
   // Showing/hiding doesn't remount component, instead we emit event to UI
   let _ = app_handle
@@ -216,8 +220,8 @@ pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<
       )
     });
 
-  if let Ok(recording_source_selector) =
-    app_handle.get_webview_panel(WindowLabel::RecordingSourceSelector.as_ref())
+  if let Some(recording_source_selector) =
+    app_handle.get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
   {
     state
       .open_windows
@@ -227,7 +231,9 @@ pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<
       .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
       .unwrap();
     position_recording_source_selector(app_handle, &recording_source_selector_window);
-    recording_source_selector.order_front_regardless();
+    if let Err(e) = recording_source_selector.show() {
+      eprintln!("Failed to show recording source selector: {}", e);
+    }
   }
 }
 
@@ -243,10 +249,10 @@ pub fn show_region_selector(
   let _ = window.set_size(size);
   let _ = window.set_position(position);
 
-  let panel = app_handle
-    .get_webview_panel(WindowLabel::RegionSelector.as_ref())
-    .unwrap();
-  panel.make_key_and_order_front(None);
+  if let Err(e) = window.show() {
+    eprintln!("Failed to show region selector: {}", e);
+  }
+
   let _ = window.set_focus();
 }
 
