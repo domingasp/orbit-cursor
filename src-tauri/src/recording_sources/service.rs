@@ -20,7 +20,7 @@ use objc::{
   sel, sel_impl,
 };
 use scap::{get_all_targets, Target};
-use tauri::{Emitter, LogicalSize, Monitor};
+use tauri::{Emitter, LogicalPosition, LogicalSize, Monitor};
 use uuid::Uuid;
 use xcap::Window;
 
@@ -101,6 +101,7 @@ pub fn get_visible_windows(
           app_icon_path,
           thumbnail_path,
           size: LogicalSize::new(frame.size.width, frame.size.height),
+          position: LogicalPosition::new(frame.origin.x, frame.origin.y),
           scale_factor,
         });
       }

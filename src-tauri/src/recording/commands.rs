@@ -9,10 +9,11 @@ use tokio::sync::broadcast::{self};
 use crate::{
   constants::{Events, WindowLabel},
   recording::{
-    models::{RecordingFile, StartRecordingOptions, StreamSynchronization},
+    models::{RecordingFile, RecordingMetadata, StartRecordingOptions, StreamSynchronization},
     service::{
       create_recording_directory, spawn_mouse_event_recorder, start_camera_recording,
       start_input_audio_recording, start_screen_recording, start_system_audio_recording,
+      write_metadata,
     },
   },
   AppState,
@@ -68,7 +69,7 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
     // MUST be after the optionals
     // Window capture causes empty frames if this comes first - not sure why, only happens
     // when multiple streams
-    start_screen_recording(
+    let (recording_origin, scale_factor) = start_screen_recording(
       synchronization.clone(),
       recording_dir.join(RecordingFile::Screen.as_ref()),
       options.recording_type,
@@ -82,6 +83,14 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
       synchronization.clone(),
       recording_dir.clone(),
       state.input_event_tx.subscribe(),
+    );
+
+    let _ = write_metadata(
+      recording_dir.join(RecordingFile::Metadata.as_ref()),
+      RecordingMetadata {
+        recording_origin,
+        scale_factor,
+      },
     );
 
     start_writing.store(true, Ordering::SeqCst);
