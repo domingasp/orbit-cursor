@@ -24,6 +24,7 @@ pub struct WindowDetails {
   pub app_icon_path: Option<PathBuf>,
   pub thumbnail_path: Option<PathBuf>,
   pub size: LogicalSize<f64>,
+  pub position: LogicalPosition<f64>,
   pub scale_factor: f64,
 }
 

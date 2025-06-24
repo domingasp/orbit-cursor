@@ -1,4 +1,4 @@
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 use std::io::Write;
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -15,7 +15,7 @@ use rdev::EventType;
 use rmp_serde::encode::write;
 use scap::capturer::Capturer;
 use scap::frame::{BGRAFrame, Frame};
-use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize};
+use tauri::{AppHandle, LogicalPosition, Manager, PhysicalPosition, PhysicalSize};
 use tokio::sync::broadcast;
 
 use crate::audio::service::{
@@ -23,7 +23,7 @@ use crate::audio::service::{
 };
 use crate::camera::service::{create_camera, frame_to_rgba};
 use crate::recording::models::{
-  MouseEventRecord, RecordingFile, RecordingType, Region, StreamSynchronization,
+  MouseEventRecord, RecordingFile, RecordingMetadata, RecordingType, Region, StreamSynchronization,
 };
 use crate::recording_sources::commands::list_monitors;
 use crate::recording_sources::service::get_visible_windows;
@@ -36,12 +36,16 @@ type CapturerInfo = (
   u32,
   Option<PhysicalSize<f64>>,
   Option<PhysicalPosition<f64>>,
+  LogicalPosition<f64>,
+  f64,
 );
 
 /// Create and start mouse event recording thread
 ///
-/// A single file is generated:
-/// - `mouse_events.msgpack` - contains mouse events (move, button down, button up)
+/// A single file, `mouse_events.msgpack`, is generated containing mouse events
+/// (move, button down, button up).
+///
+/// * `origin` - Recording origin, screens and windows have different origins.
 pub fn spawn_mouse_event_recorder(
   synchronization: StreamSynchronization,
   recording_dir: PathBuf,
@@ -109,6 +113,8 @@ pub fn spawn_mouse_event_recorder(
 }
 
 /// Create and start screen recording thread
+///
+/// Returns recording origin (logical coords) and scale factor of monitor
 pub fn start_screen_recording(
   synchronization: StreamSynchronization,
   file_path: PathBuf,
@@ -117,8 +123,8 @@ pub fn start_screen_recording(
   monitor_name: String,
   window_id: Option<u32>,
   region: Region,
-) {
-  let (capturer, width, height, crop_size, crop_origin) =
+) -> (LogicalPosition<f64>, f64) {
+  let (capturer, width, height, crop_size, crop_origin, recording_origin, scale_factor) =
     create_screen_capturer(app_handle, recording_type, monitor_name, window_id, region);
 
   let (frame_tx, frame_rx) = std::sync::mpsc::channel::<Vec<u8>>();
@@ -146,6 +152,8 @@ pub fn start_screen_recording(
     synchronization.start_writing.clone(),
     synchronization.stop_tx.subscribe(),
   );
+
+  (recording_origin, scale_factor)
 }
 
 /// Create screen capturer based on recording type
@@ -172,6 +180,8 @@ fn create_screen_capturer(
   let mut crop_size: Option<PhysicalSize<f64>> = None;
   let mut crop_origin: Option<PhysicalPosition<f64>> = None;
 
+  let mut recording_origin = monitor.position;
+
   if let (RecordingType::Window, Some(window_id)) = (recording_type, window_id) {
     let windows = get_visible_windows(app_handle.clone().available_monitors().unwrap(), None);
     let window_details = windows.into_iter().find(|w| w.id == window_id);
@@ -186,11 +196,13 @@ fn create_screen_capturer(
         target = Some(window_target);
         width = window_size.width;
         height = window_size.height;
+        recording_origin = window_details.position
       }
     }
   } else if recording_type == RecordingType::Region {
     crop_size = Some(region.size.to_physical(scale_factor));
     crop_origin = Some(region.position.to_physical(scale_factor));
+    recording_origin = region.position;
   }
 
   // We don't use scap crop area due to strange behaviour with ffmpeg, instead we crop directly
@@ -203,6 +215,8 @@ fn create_screen_capturer(
     height as u32,
     crop_size,
     crop_origin,
+    recording_origin,
+    scale_factor,
   )
 }
 
@@ -411,6 +425,8 @@ fn create_ffmpeg_writer(
   child
     .codec_video("libx264")
     .crf(20)
+    // Needed for compatibility with Mac QuickTime
+    .pix_fmt("yuv420p")
     .output(file_path.to_string_lossy());
 
   child.spawn().unwrap()
@@ -460,4 +476,13 @@ fn start_audio_recording(
       writer.finalize().unwrap();
     }
   });
+}
+
+pub fn write_metadata(file_path: PathBuf, metadata: RecordingMetadata) -> tauri::Result<()> {
+  let json = serde_json::to_string(&metadata)?;
+
+  let mut file = File::create(file_path)?;
+  file.write_all(json.as_bytes())?;
+
+  Ok(())
 }

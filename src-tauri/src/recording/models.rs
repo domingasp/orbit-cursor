@@ -53,6 +53,9 @@ pub enum RecordingFile {
 
   #[strum(serialize = "mouse_events.msgpack")]
   MouseEvents,
+
+  #[strum(serialize = "metadata.json")]
+  Metadata,
 }
 
 #[derive(Debug, Serialize)]
@@ -70,4 +73,10 @@ pub enum MouseEventRecord {
     elapsed_ms: u128,
     button: rdev::Button,
   },
+}
+
+#[derive(Debug, Serialize)]
+pub struct RecordingMetadata {
+  pub recording_origin: LogicalPosition<f64>,
+  pub scale_factor: f64,
 }
