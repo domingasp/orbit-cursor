@@ -11,17 +11,12 @@ use cpal::{
 use hound::{WavSpec, WavWriter};
 use tauri::{ipc::Channel, Emitter};
 
-use crate::{audio::models::SharedWavWriter, APP_HANDLE};
+use crate::APP_HANDLE;
 
-use super::commands::AudioStreamChannel;
+use super::models::AudioStreamChannel;
 
-fn buffer_to_decibels(samples: &[f32]) -> f32 {
-  let sum_squares: f32 = samples.iter().map(|&s| s * s).sum();
-  let mean_square: f32 = sum_squares / (samples.len() as f32);
-  let rms = mean_square.sqrt();
-
-  20.0 * rms.max(1e-8).log10()
-}
+type WavFileWriter = WavWriter<std::io::BufWriter<std::fs::File>>;
+pub type SharedWavWriter = Arc<Mutex<Option<WavFileWriter>>>;
 
 pub fn build_audio_live_monitoring_stream(
   device: &Device,
@@ -104,7 +99,19 @@ pub fn build_audio_into_file_stream(
   (stream, wav_writer)
 }
 
+pub fn get_input_audio_device(device_name: String) -> Option<(Device, StreamConfig)> {
+  let host = cpal::default_host();
+  let device = host
+    .input_devices()
+    .unwrap()
+    .find(|device| device.name().unwrap() == device_name.as_str())?;
+  let config = device.default_input_config().unwrap();
+
+  Some((device, config.into()))
+}
+
 /// Return system audio device and config
+#[cfg(target_os = "macos")]
 pub fn get_system_audio_device() -> (Device, StreamConfig) {
   let host = cpal::host_from_id(cpal::HostId::ScreenCaptureKit).unwrap();
   let device = host
@@ -117,13 +124,15 @@ pub fn get_system_audio_device() -> (Device, StreamConfig) {
   (device, config.into())
 }
 
-pub fn get_input_audio_device(device_name: String) -> Option<(Device, StreamConfig)> {
-  let host = cpal::default_host();
-  let device = host
-    .input_devices()
-    .unwrap()
-    .find(|device| device.name().unwrap() == device_name.as_str())?;
-  let config = device.default_input_config().unwrap();
+#[cfg(target_os = "windows")]
+pub fn get_system_audio_device() -> (Device, StreamConfig) {
+  unimplemented!("System audio not supported on windows");
+}
 
-  Some((device, config.into()))
+fn buffer_to_decibels(samples: &[f32]) -> f32 {
+  let sum_squares: f32 = samples.iter().map(|&s| s * s).sum();
+  let mean_square: f32 = sum_squares / (samples.len() as f32);
+  let rms = mean_square.sqrt();
+
+  20.0 * rms.max(1e-8).log10()
 }

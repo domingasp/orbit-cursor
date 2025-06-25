@@ -2,26 +2,17 @@ use std::sync::Mutex;
 
 use super::models::AudioStream;
 use crate::{
-  audio::service::{
-    build_audio_live_monitoring_stream, get_input_audio_device, get_system_audio_device,
+  audio::{
+    models::AudioStreamChannel,
+    service::{
+      build_audio_live_monitoring_stream, get_input_audio_device, get_system_audio_device,
+    },
   },
   constants::Events,
   AppState,
 };
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use serde::Serialize;
 use tauri::{ipc::Channel, State};
-
-#[derive(Clone, Serialize)]
-#[serde(
-  rename_all = "camelCase",
-  rename_all_fields = "camelCase",
-  tag = "event",
-  content = "data"
-)]
-pub enum AudioStreamChannel {
-  Signal { decibels: f32 },
-}
 
 #[tauri::command]
 pub fn start_audio_listener(

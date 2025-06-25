@@ -6,27 +6,6 @@ use nokhwa::{
 use tauri::ipc::Channel;
 use yuv::{YuvPackedImage, YuvRange, YuvStandardMatrix};
 
-fn yuyv_to_rgba(buffer: &[u8], width: u32, height: u32) -> Vec<u8> {
-  let mut rgba_buffer = vec![0u8; (width * height * 4) as usize];
-
-  let packed_image = YuvPackedImage {
-    yuy: buffer,
-    yuy_stride: width * 2,
-    width,
-    height,
-  };
-
-  let _ = yuv::yuyv422_to_rgba(
-    &packed_image,
-    &mut rgba_buffer,
-    width * 4,
-    YuvRange::Limited,
-    YuvStandardMatrix::Bt709,
-  );
-
-  rgba_buffer
-}
-
 pub fn frame_to_rgba(frame: Buffer) -> Vec<u8> {
   let (width, height) = {
     let r = frame.resolution();
@@ -73,4 +52,25 @@ pub fn create_camera(
       None
     }
   }
+}
+
+fn yuyv_to_rgba(buffer: &[u8], width: u32, height: u32) -> Vec<u8> {
+  let mut rgba_buffer = vec![0u8; (width * height * 4) as usize];
+
+  let packed_image = YuvPackedImage {
+    yuy: buffer,
+    yuy_stride: width * 2,
+    width,
+    height,
+  };
+
+  let _ = yuv::yuyv422_to_rgba(
+    &packed_image,
+    &mut rgba_buffer,
+    width * 4,
+    YuvRange::Limited,
+    YuvStandardMatrix::Bt709,
+  );
+
+  rgba_buffer
 }

@@ -80,21 +80,24 @@ struct AppState {
 async fn setup_store(app: &App) -> Arc<Store<Wry>> {
   let store = app.store(STORE_NAME).unwrap();
 
-  if store.get(FIRST_RUN).is_none() {
-    store.set(FIRST_RUN, json!(true));
-  }
+  #[cfg(target_os = "macos")]
+  {
+    if store.get(FIRST_RUN).is_none() {
+      store.set(FIRST_RUN, json!(true));
+    }
 
-  if store.get(NATIVE_REQUESTABLE_PERMISSIONS).is_none() {
-    // Actual access is checked at runtime
-    store.set(
-      NATIVE_REQUESTABLE_PERMISSIONS,
-      json!({
-        "accessibility": true,
-        "screen": true,
-        "microphone": true,
-        "camera": true
-      }),
-    );
+    if store.get(NATIVE_REQUESTABLE_PERMISSIONS).is_none() {
+      // Actual access is checked at runtime
+      store.set(
+        NATIVE_REQUESTABLE_PERMISSIONS,
+        json!({
+          "accessibility": true,
+          "screen": true,
+          "microphone": true,
+          "camera": true
+        }),
+      );
+    }
   }
 
   store
@@ -188,9 +191,11 @@ pub fn run() {
       spawn_window_close_manager(app_handle.clone(), input_event_tx.subscribe());
 
       #[cfg(target_os = "macos")]
-      {
-        app.set_activation_policy(tauri::ActivationPolicy::Accessory); // Removes dock icon
-        tauri::async_runtime::block_on(async {
+      app.set_activation_policy(tauri::ActivationPolicy::Accessory); // Removes dock icon
+
+      tauri::async_runtime::block_on(async {
+        #[cfg(target_os = "macos")]
+        {
           let has_required = ensure_permissions().await;
           if !has_required {
             open_permissions(app.handle()).await;
@@ -199,14 +204,20 @@ pub fn run() {
             store.set(FIRST_RUN, json!(false));
             show_start_recording_dock(app.handle(), app.state());
           }
-        });
+        }
 
-        tauri::async_runtime::spawn(async move {
-          if let Err(e) = monitor_permissions(app_handle_clone).await {
-            eprintln!("Permission monitoring error: {}", e);
-          }
-        });
-      }
+        #[cfg(target_os = "windows")]
+        {
+          show_start_recording_dock(app.handle(), app.state());
+        }
+      });
+
+      #[cfg(target_os = "macos")]
+      tauri::async_runtime::spawn(async move {
+        if let Err(e) = monitor_permissions(app_handle_clone).await {
+          eprintln!("Permission monitoring error: {}", e);
+        }
+      });
 
       std::thread::spawn(move || {
         set_is_main_thread(false);

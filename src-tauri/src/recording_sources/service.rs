@@ -28,10 +28,11 @@ use crate::{constants::Events, APP_HANDLE};
 
 use super::commands::WindowDetails;
 
-/// \[MacOS\] Return data for visible windows.
+/// Return data for visible windows.
 ///
 /// Icons and preview thumbnails are saved under `{app_temp_dir}/window-selector`.
 /// If no dir provided no thumbnails will be generated. Emits `WindowThumbnailsGenerated`.
+#[cfg(target_os = "macos")]
 pub fn get_visible_windows(
   monitors: Vec<Monitor>,
   app_temp_dir: Option<PathBuf>,
@@ -121,6 +122,7 @@ pub fn get_visible_windows(
   all_windows
 }
 
+#[cfg(target_os = "macos")]
 #[link(name = "AppKit", kind = "framework")]
 extern "C" {
   pub fn NSIntersectionRect(a: cidre::ns::Rect, b: cidre::ns::Rect) -> cidre::ns::Rect;
@@ -130,6 +132,7 @@ extern "C" {
 ///
 /// Many edge cases not managed, down to the user to properly position their
 /// windows.
+#[cfg(target_os = "macos")]
 fn get_window_display(shareable_displays: &Array<Display>, window_frame: cidre::ns::Rect) -> usize {
   let mut display_index: usize = 0;
 
@@ -150,7 +153,8 @@ fn get_window_display(shareable_displays: &Array<Display>, window_frame: cidre::
   display_index
 }
 
-/// [MacOS] Fetch app icon, save to file, and return path
+/// Fetch app icon, save to file, and return path
+#[cfg(target_os = "macos")]
 fn get_app_icon(dir_path: PathBuf, pid: i32) -> Option<PathBuf> {
   unsafe {
     let running_app_class = Class::get("NSRunningApplication").unwrap();
@@ -222,6 +226,29 @@ fn get_app_icon(dir_path: PathBuf, pid: i32) -> Option<PathBuf> {
   }
 }
 
+#[cfg(target_os = "windows")]
+pub fn get_visible_windows(
+  monitors: Vec<Monitor>,
+  app_temp_dir: Option<PathBuf>,
+) -> Vec<WindowDetails> {
+  unimplemented!("Windows does not support getting visible windows")
+}
+
+/// Estimates the display based on intersection size
+///
+/// Many edge cases not managed, down to the user to properly position their
+/// windows.
+#[cfg(target_os = "windows")]
+fn get_window_display(shareable_displays: &Array<Display>, window_frame: cidre::ns::Rect) -> usize {
+  unimplemented!("Windows does not support getting current display for window")
+}
+
+/// Fetch app icon, save to file, and return path
+#[cfg(target_os = "windows")]
+fn get_app_icon(dir_path: PathBuf, pid: i32) -> Option<PathBuf> {
+  unimplemented!("Windows does not support getting app icon for process")
+}
+
 pub fn generate_thumbnail_path(dir_path: PathBuf) -> PathBuf {
   let uuid = Uuid::new_v4();
   dir_path.join(format!("{}.png", uuid))
@@ -245,6 +272,22 @@ fn create_and_save_thumbnail(
 
     let _ = resized.save(&thumbnail_path);
   }
+}
+
+#[cfg(target_os = "macos")]
+/// Return monitor names - assumes order is the same as tauri `.available_monitors`
+pub fn get_monitor_names() -> Vec<String> {
+  let low_level_screens = cidre::ns::Screen::screens();
+
+  low_level_screens
+    .iter()
+    .map(|screen| screen.localized_name().to_string())
+    .collect()
+}
+
+#[cfg(target_os = "windows")]
+pub fn get_monitor_names() -> Vec<String> {
+  unimplemented!("Windows does not support monitor names!")
 }
 
 fn clear_folder_contents(folder_path: &PathBuf) -> io::Result<()> {
