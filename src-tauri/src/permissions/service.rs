@@ -26,6 +26,62 @@ pub async fn ensure_permissions() -> bool {
   screen && accessibility
 }
 
+/// Polls permissions every second - stops polling once all required permissions granted.
+pub async fn monitor_permissions(app_handle: Arc<AppHandle>) -> Result<(), String> {
+  let mut interval = interval(Duration::from_secs(1));
+
+  loop {
+    interval.tick().await;
+
+    let response = check_permissions(app_handle.store(STORE_NAME).unwrap()).await;
+    let all_granted = response.permissions.values().all(|p| p.has_access);
+
+    app_handle
+      .emit(Events::MonitorPermissions.as_ref(), response.permissions)
+      .map_err(|e| {
+        format!(
+          "Failed to emit {} event: {}",
+          Events::MonitorPermissions.as_ref(),
+          e
+        )
+      })?;
+
+    if all_granted {
+      break;
+    }
+  }
+
+  Ok(())
+}
+
+pub async fn request_permission(
+  store: Arc<Store<Wry>>,
+  permission: PermissionType,
+) -> Result<(), String> {
+  match permission {
+    PermissionType::Accessibility => request_accessibility_permission().await,
+    PermissionType::Screen => request_screen_recording_permission().await,
+    PermissionType::Microphone => request_microphone_permission().await?,
+    PermissionType::Camera => request_camera_permission().await?,
+  }
+
+  // After requesting the first time we need to update permission tracking.
+  let mut native_requestable_permissions = store
+    .get(NATIVE_REQUESTABLE_PERMISSIONS)
+    .and_then(|v| v.as_object().cloned())
+    .unwrap();
+
+  native_requestable_permissions.insert(permission.to_string(), serde_json::Value::Bool(false));
+
+  store.set(
+    NATIVE_REQUESTABLE_PERMISSIONS,
+    native_requestable_permissions,
+  );
+
+  Ok(())
+}
+
+#[cfg(target_os = "macos")]
 pub async fn check_permissions(store: Arc<Store<Wry>>) -> CheckPermissionsResponse {
   fn insert_permission(
     map: &mut HashMap<String, PermissionStatus>,
@@ -87,57 +143,17 @@ pub async fn check_permissions(store: Arc<Store<Wry>>) -> CheckPermissionsRespon
   }
 }
 
-/// Polls permissions every seconds - returns once all required permissions granted.
-pub async fn monitor_permissions(app_handle: Arc<AppHandle>) -> Result<(), String> {
-  let mut interval = interval(Duration::from_secs(1));
+#[cfg(target_os = "windows")]
+// No way to detect the OS on frontend, windows does not need permissions
+pub async fn check_permissions(_store: Arc<Store<Wry>>) -> CheckPermissionsResponse {
+  let all_true = PermissionStatus::all_true();
 
-  loop {
-    interval.tick().await;
-
-    let response = check_permissions(app_handle.store(STORE_NAME).unwrap()).await;
-    let all_granted = response.permissions.values().all(|p| p.has_access);
-
-    app_handle
-      .emit(Events::MonitorPermissions.as_ref(), response.permissions)
-      .map_err(|e| {
-        format!(
-          "Failed to emit {} event: {}",
-          Events::MonitorPermissions.as_ref(),
-          e
-        )
-      })?;
-
-    if all_granted {
-      break;
-    }
+  CheckPermissionsResponse {
+    permissions: HashMap::from([
+      (PermissionType::Accessibility.to_string(), all_true.clone()),
+      (PermissionType::Screen.to_string(), all_true.clone()),
+      (PermissionType::Microphone.to_string(), all_true.clone()),
+      (PermissionType::Camera.to_string(), all_true.clone()),
+    ]),
   }
-
-  Ok(())
-}
-
-pub async fn request_permission(
-  store: Arc<Store<Wry>>,
-  permission: PermissionType,
-) -> Result<(), String> {
-  match permission {
-    PermissionType::Accessibility => request_accessibility_permission().await,
-    PermissionType::Screen => request_screen_recording_permission().await,
-    PermissionType::Microphone => request_microphone_permission().await?,
-    PermissionType::Camera => request_camera_permission().await?,
-  }
-
-  // After requesting the first time we need to update permission tracking.
-  let mut native_requestable_permissions = store
-    .get(NATIVE_REQUESTABLE_PERMISSIONS)
-    .and_then(|v| v.as_object().cloned())
-    .unwrap();
-
-  native_requestable_permissions.insert(permission.to_string(), serde_json::Value::Bool(false));
-
-  store.set(
-    NATIVE_REQUESTABLE_PERMISSIONS,
-    native_requestable_permissions,
-  );
-
-  Ok(())
 }

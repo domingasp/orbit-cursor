@@ -1,5 +1,6 @@
 use std::sync::{Mutex, Once};
 
+use serde::Serialize;
 use tauri::{AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, State};
 use tauri_nspanel::{panel_delegate, ManagerExt};
 
@@ -8,13 +9,9 @@ use crate::{
   AppState,
 };
 
-use super::{
-  models::Bounds,
-  service::{
-    add_animation, add_border, add_close_panel_listener, animate_resize,
-    convert_to_stationary_panel, position_recording_dock, position_recording_source_selector,
-    position_window_above_dock, Anchor,
-  },
+use super::service::{
+  add_animation, add_border, add_close_panel_listener, animate_resize, convert_to_stationary_panel,
+  position_recording_dock, position_recording_source_selector, position_window_above_dock, Anchor,
 };
 
 pub static INIT_RECORDING_SOURCE_SELECTOR: Once = Once::new();
@@ -24,6 +21,14 @@ static INIT_RECORDING_OPTIONS_PANEL: Once = Once::new();
 static INIT_REGION_SELECTOR: Once = Once::new();
 static INIT_RECORDING_DOCK: Once = Once::new();
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Bounds {
+  pub start_point: LogicalPosition<f64>,
+  pub end_point: LogicalPosition<f64>,
+  pub display_id: Option<String>,
+}
+
 #[tauri::command]
 pub fn init_standalone_listbox(app_handle: AppHandle) {
   INIT_STANDALONE_LISTBOX.call_once(|| {
@@ -31,19 +36,22 @@ pub fn init_standalone_listbox(app_handle: AppHandle) {
       .get_webview_window(WindowLabel::StandaloneListbox.as_ref())
       .unwrap();
 
-    let panel = convert_to_stationary_panel(&window, PanelLevel::StandaloneListBox);
+    #[cfg(target_os = "macos")]
+    {
+      let panel = convert_to_stationary_panel(&window, PanelLevel::StandaloneListBox);
 
-    let panel_delegate = panel_delegate!(StandaloneListBoxDelegate {
-      window_did_resign_key
-    });
+      let panel_delegate = panel_delegate!(StandaloneListBoxDelegate {
+        window_did_resign_key
+      });
 
-    let handle = app_handle.clone();
-    panel_delegate.set_listener(Box::new(move |delegate_name: String| {
-      if delegate_name.as_str() == "window_did_resign_key" {
-        let _ = handle.emit(Events::StandaloneListboxDidResignKey.as_ref(), ());
-      }
-    }));
-    panel.set_delegate(panel_delegate);
+      let handle = app_handle.clone();
+      panel_delegate.set_listener(Box::new(move |delegate_name: String| {
+        if delegate_name.as_str() == "window_did_resign_key" {
+          let _ = handle.emit(Events::StandaloneListboxDidResignKey.as_ref(), ());
+        }
+      }));
+      panel.set_delegate(panel_delegate);
+    }
 
     add_close_panel_listener(
       app_handle,
@@ -62,9 +70,12 @@ pub fn init_recording_input_options(app_handle: AppHandle) {
     let window = app_handle
       .get_webview_window(WindowLabel::RecordingInputOptions.as_ref())
       .unwrap();
-    add_border(&window);
 
-    let _ = convert_to_stationary_panel(&window, PanelLevel::RecordingInputOptions);
+    #[cfg(target_os = "macos")]
+    {
+      add_border(&window);
+      let _ = convert_to_stationary_panel(&window, PanelLevel::RecordingInputOptions);
+    }
 
     add_close_panel_listener(
       app_handle,
@@ -89,7 +100,11 @@ pub fn init_region_selector(app_handle: AppHandle) {
     let window = app_handle
       .get_webview_window(WindowLabel::RegionSelector.as_ref())
       .unwrap();
-    let _ = convert_to_stationary_panel(&window, PanelLevel::RegionSelector);
+
+    #[cfg(target_os = "macos")]
+    {
+      let _ = convert_to_stationary_panel(&window, PanelLevel::RegionSelector);
+    }
   });
 }
 
@@ -99,12 +114,15 @@ pub fn init_recording_source_selector(app_handle: AppHandle) {
     let window = app_handle
       .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
       .unwrap();
-    add_border(&window);
-    add_animation(&window, 3);
+
+    #[cfg(target_os = "macos")]
+    {
+      add_border(&window);
+      add_animation(&window, 3);
+      let _ = convert_to_stationary_panel(&window, PanelLevel::RecordingSourceSelector);
+    }
 
     position_recording_source_selector(&app_handle, &window);
-
-    let _ = convert_to_stationary_panel(&window, PanelLevel::RecordingSourceSelector);
   });
 }
 
@@ -114,12 +132,15 @@ pub fn init_recording_dock(app_handle: AppHandle) {
     let window = app_handle
       .get_webview_window(WindowLabel::RecordingDock.as_ref())
       .unwrap();
-    add_border(&window);
-    add_animation(&window, 3);
+
+    #[cfg(target_os = "macos")]
+    {
+      add_border(&window);
+      add_animation(&window, 3);
+      let _ = convert_to_stationary_panel(&window, PanelLevel::RecordingDock);
+    }
 
     position_recording_dock(&window);
-
-    let _ = convert_to_stationary_panel(&window, PanelLevel::RecordingDock);
   });
 }
 
@@ -393,14 +414,22 @@ pub fn get_dock_bounds(app_handle: AppHandle) -> Bounds {
 }
 
 #[tauri::command]
+#[cfg(target_os = "macos")]
 pub fn update_dock_opacity(app_handle: AppHandle, opacity: f64) {
   let dock = app_handle
     .get_webview_panel(WindowLabel::StartRecordingDock.as_ref())
     .unwrap();
+
   let source_selector = app_handle
     .get_webview_panel(WindowLabel::RecordingSourceSelector.as_ref())
     .unwrap();
 
   dock.set_alpha_value(opacity);
   source_selector.set_alpha_value(opacity);
+}
+
+#[tauri::command]
+#[cfg(target_os = "windows")]
+pub fn update_dock_opacity(app_handle: AppHandle, opacity: f64) {
+  unimplemented!("Windows does not support dock opacity adjustment");
 }

@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use serde::Serialize;
 use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, PhysicalSize};
 
+use crate::recording_sources::service::get_monitor_names;
+
 use super::service::get_visible_windows;
 
 #[derive(Debug, Clone, Serialize)]
@@ -31,7 +33,7 @@ pub struct WindowDetails {
 #[tauri::command]
 pub fn list_monitors(app_handle: AppHandle) -> Vec<MonitorDetails> {
   let monitors = app_handle.available_monitors().unwrap();
-  let low_level_screens = cidre::ns::Screen::screens();
+  let monitor_names = get_monitor_names();
 
   let mut monitor_details = Vec::new();
   for i in 0..monitors.len() {
@@ -40,7 +42,7 @@ pub fn list_monitors(app_handle: AppHandle) -> Vec<MonitorDetails> {
 
     monitor_details.push(MonitorDetails {
       id: monitors[i].name().unwrap().to_string(), // this is a unique identifier Monitor #xxxxx
-      name: low_level_screens[i].localized_name().to_string(),
+      name: monitor_names[i].to_string(),
       position: monitors[i].position().to_logical(scale_factor),
       size: size.to_logical(scale_factor),
       physical_size: PhysicalSize::new(size.width as f64, size.height as f64),

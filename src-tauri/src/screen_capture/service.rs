@@ -66,9 +66,7 @@ fn get_app_targets(app_handle: AppHandle) -> Vec<Target> {
   targets
     .into_iter()
     .filter(|t| match t {
-      Target::Window(window) => app_window_titles_to_exclude
-        .iter()
-        .any(|title| window.title == *title),
+      Target::Window(window) => app_window_titles_to_exclude.contains(&window.title),
       _ => false,
     })
     .collect()

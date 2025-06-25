@@ -3,13 +3,15 @@ use std::sync::{
   Arc, Mutex,
 };
 
+use serde::Deserialize;
+use strum_macros::{AsRefStr, Display, EnumString};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::broadcast::{self};
 
 use crate::{
   constants::{Events, WindowLabel},
   recording::{
-    models::{RecordingFile, RecordingMetadata, StartRecordingOptions, StreamSynchronization},
+    models::{RecordingMetadata, RecordingType, Region, StreamSynchronization},
     service::{
       create_recording_directory, spawn_mouse_event_recorder, start_camera_recording,
       start_input_audio_recording, start_screen_recording, start_system_audio_recording,
@@ -18,6 +20,39 @@ use crate::{
   },
   AppState,
 };
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartRecordingOptions {
+  pub system_audio: bool,
+  pub recording_type: RecordingType,
+  pub monitor_name: String,
+  pub window_id: Option<u32>,
+  pub region: Region,
+  pub input_audio_name: Option<String>,
+  pub camera_name: Option<String>,
+}
+
+#[derive(EnumString, AsRefStr, Display, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RecordingFile {
+  #[strum(serialize = "screen.mp4")]
+  Screen,
+
+  #[strum(serialize = "system_audio.wav")]
+  SystemAudio,
+
+  #[strum(serialize = "microphone.wav")]
+  InputAudio,
+
+  #[strum(serialize = "camera.mp4")]
+  Camera,
+
+  #[strum(serialize = "mouse_events.msgpack")]
+  MouseEvents,
+
+  #[strum(serialize = "metadata.json")]
+  Metadata,
+}
 
 #[tauri::command]
 pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) -> Result<(), ()> {
@@ -81,7 +116,7 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
 
     spawn_mouse_event_recorder(
       synchronization.clone(),
-      recording_dir.clone(),
+      recording_dir.join(RecordingFile::MouseEvents.as_ref()),
       state.input_event_tx.subscribe(),
     );
 

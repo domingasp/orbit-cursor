@@ -32,9 +32,11 @@ use crate::{
 };
 
 #[allow(non_upper_case_globals)]
+#[cfg(target_os = "macos")]
 const NSWindowStyleMaskNonActivatingPanel: i32 = 1 << 7;
 
 /// Convert a Webview Window into a stationary NSPanel.
+#[cfg(target_os = "macos")]
 pub fn convert_to_stationary_panel(
   window: &WebviewWindow,
   level: PanelLevel,
@@ -80,18 +82,22 @@ pub fn add_close_panel_listener<F>(
     listener_close_callback(&listener_handle);
   });
 
-  let workspace_handle = app_handle.clone();
-  let workspace_close_callback = close_callback_arc.clone();
-  register_workspace_listener(
-    "NSWorkspaceDidActivateApplicationNotification".into(),
-    Box::new(move || {
-      hide_panel(&workspace_handle, window_label);
-      workspace_close_callback(&workspace_handle);
-    }),
-  );
+  #[cfg(target_os = "macos")]
+  {
+    let workspace_handle = app_handle.clone();
+    let workspace_close_callback = close_callback_arc.clone();
+    register_workspace_listener(
+      "NSWorkspaceDidActivateApplicationNotification".into(),
+      Box::new(move || {
+        hide_panel(&workspace_handle, window_label);
+        workspace_close_callback(&workspace_handle);
+      }),
+    );
+  }
 }
 
 /// Open the permissions window.
+#[cfg(target_os = "macos")]
 pub async fn open_permissions(app_handle: &AppHandle) {
   let window = WebviewWindowBuilder::new(
     app_handle,
@@ -193,6 +199,7 @@ pub fn position_recording_dock(window: &WebviewWindow) {
   }
 }
 
+#[cfg(target_os = "macos")]
 fn register_workspace_listener(name: String, callback: Box<dyn Fn()>) {
   let workspace: id = unsafe { msg_send![class!(NSWorkspace), sharedWorkspace] };
 
@@ -212,15 +219,17 @@ fn register_workspace_listener(name: String, callback: Box<dyn Fn()>) {
 }
 
 /// Add window border effect.
+#[cfg(target_os = "macos")]
 pub fn add_border(window: &WebviewWindow) {
   window.add_border(None);
   let border = window.border().expect("window has no border");
   border.set_accepts_first_mouse(true);
 }
 
-/// [MacOS] Add animation behaviour.
+/// Add animation behaviour.
 ///
 /// Available values: https://github.com/phracker/MacOSX-SDKs/blob/master/MacOSX10.9.sdk/System/Library/Frameworks/AppKit.framework/Versions/C/Headers/NSWindow.h?#L131
+#[cfg(target_os = "macos")]
 pub fn add_animation(window: &WebviewWindow, animation_behaviour: u32) {
   unsafe {
     let ns_window: id = window.ns_window().unwrap() as id;

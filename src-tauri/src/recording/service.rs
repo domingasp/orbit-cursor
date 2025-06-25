@@ -15,6 +15,7 @@ use rdev::EventType;
 use rmp_serde::encode::write;
 use scap::capturer::Capturer;
 use scap::frame::{BGRAFrame, Frame};
+use serde::Serialize;
 use tauri::{AppHandle, LogicalPosition, Manager, PhysicalPosition, PhysicalSize};
 use tokio::sync::broadcast;
 
@@ -22,9 +23,7 @@ use crate::audio::service::{
   build_audio_into_file_stream, get_input_audio_device, get_system_audio_device,
 };
 use crate::camera::service::{create_camera, frame_to_rgba};
-use crate::recording::models::{
-  MouseEventRecord, RecordingFile, RecordingMetadata, RecordingType, Region, StreamSynchronization,
-};
+use crate::recording::models::{RecordingMetadata, RecordingType, Region, StreamSynchronization};
 use crate::recording_sources::commands::list_monitors;
 use crate::recording_sources::service::get_visible_windows;
 use crate::screen_capture::service::{create_screen_recording_capturer, get_display, get_window};
@@ -40,6 +39,23 @@ type CapturerInfo = (
   f64,
 );
 
+#[derive(Debug, Serialize)]
+pub enum MouseEventRecord {
+  Move {
+    elapsed_ms: u128,
+    x: f64,
+    y: f64,
+  },
+  Down {
+    elapsed_ms: u128,
+    button: rdev::Button,
+  },
+  Up {
+    elapsed_ms: u128,
+    button: rdev::Button,
+  },
+}
+
 /// Create and start mouse event recording thread
 ///
 /// A single file, `mouse_events.msgpack`, is generated containing mouse events
@@ -48,15 +64,13 @@ type CapturerInfo = (
 /// * `origin` - Recording origin, screens and windows have different origins.
 pub fn spawn_mouse_event_recorder(
   synchronization: StreamSynchronization,
-  recording_dir: PathBuf,
+  file_path: PathBuf,
   mut input_event_rx: broadcast::Receiver<rdev::Event>,
 ) {
-  let events_path = recording_dir.join(RecordingFile::MouseEvents.as_ref());
-
   let mut mouse_events_file = OpenOptions::new()
     .create(true)
     .append(true)
-    .open(events_path)
+    .open(file_path)
     .expect("Failed to open mouse position message pack file");
 
   std::thread::spawn(move || {
@@ -422,12 +436,12 @@ fn create_ffmpeg_writer(
     ]);
   }
 
-  child
-    .codec_video("libx264")
-    .crf(20)
-    // Needed for compatibility with Mac QuickTime
-    .pix_fmt("yuv420p")
-    .output(file_path.to_string_lossy());
+  child.codec_video("libx264").crf(20);
+
+  #[cfg(target_os = "macos")] // Compatibility with QuickTime
+  child.pix_fmt("yuv420p");
+
+  child.output(file_path.to_string_lossy());
 
   child.spawn().unwrap()
 }

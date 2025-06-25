@@ -1,10 +1,3 @@
-use std::{
-  fs::File,
-  io::BufWriter,
-  sync::{Arc, Mutex},
-};
-
-use hound::WavWriter;
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 
@@ -16,5 +9,13 @@ pub enum AudioStream {
   Input,
 }
 
-type WavFileWriter = WavWriter<BufWriter<File>>;
-pub type SharedWavWriter = Arc<Mutex<Option<WavFileWriter>>>;
+#[derive(Clone, Serialize)]
+#[serde(
+  rename_all = "camelCase",
+  rename_all_fields = "camelCase",
+  tag = "event",
+  content = "data"
+)]
+pub enum AudioStreamChannel {
+  Signal { decibels: f32 },
+}
