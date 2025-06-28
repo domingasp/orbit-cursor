@@ -67,6 +67,9 @@ pub enum WindowLabel {
 
   #[strum(serialize = "recording_dock")]
   RecordingDock,
+
+  #[strum(serialize = "editor")]
+  Editor,
 }
 
 #[repr(i32)]

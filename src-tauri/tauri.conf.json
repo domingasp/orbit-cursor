@@ -98,6 +98,17 @@
           "radius": 10,
           "state": "active"
         }
+      },
+      {
+        "title": "Editor",
+        "label": "editor",
+        "url": "/editor",
+        "width": 800,
+        "height": 600,
+        "visible": false,
+        "hiddenTitle": true,
+        "acceptFirstMouse": true,
+        "titleBarStyle": "Overlay"
       }
     ],
     "security": {

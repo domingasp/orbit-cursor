@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider } from "react-router";
 
+import Editor from "./pages/editor";
 import StandaloneListBox from "./pages/listbox-standalone";
 import RecordingDock from "./pages/recording-dock";
 import RecordingInputOptions from "./pages/recording-input-options";
@@ -36,6 +37,10 @@ const router = createBrowserRouter([
   {
     element: <RecordingDock />,
     path: "/recording-dock",
+  },
+  {
+    element: <Editor />,
+    path: "/editor",
   },
 ]);
 
