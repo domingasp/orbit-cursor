@@ -59,7 +59,7 @@ use windows::{
 
 use crate::{
   screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
-  windows::service::spawn_window_close_manager,
+  windows::service::{editor_close_listener, spawn_window_close_manager},
 };
 
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
@@ -75,6 +75,8 @@ struct AppState {
   is_recording: bool,
   stop_recording_tx: Option<broadcast::Sender<()>>,
   current_recording_dir: Option<PathBuf>,
+  // Editing related
+  is_editing: bool,
 }
 
 async fn setup_store(app: &App) -> Arc<Store<Wry>> {
@@ -174,6 +176,7 @@ pub fn run() {
       is_recording: false,
       stop_recording_tx: None,
       current_recording_dir: None,
+      is_editing: false,
     }))
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_macos_permissions::init())
@@ -189,6 +192,7 @@ pub fn run() {
       init_system_tray(app_handle.clone())?;
       init_start_recording_dock(app_handle);
       spawn_window_close_manager(app_handle.clone(), input_event_tx.subscribe());
+      editor_close_listener(&app_handle.clone());
 
       #[cfg(target_os = "macos")]
       app.set_activation_policy(tauri::ActivationPolicy::Accessory); // Removes dock icon

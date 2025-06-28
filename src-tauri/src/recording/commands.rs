@@ -152,4 +152,14 @@ pub fn stop_recording(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) 
   if let Some(stop_tx) = state.stop_recording_tx.take() {
     let _ = stop_tx.send(());
   }
+
+  state.is_editing = true;
+  let editor = app_handle
+    .get_webview_window(WindowLabel::Editor.as_ref())
+    .unwrap();
+  let _ = editor.show();
+  let _ = editor.set_focus();
+
+  #[cfg(target_os = "macos")] // Shows dock icon, allows editor to go fullscreen
+  let _ = app_handle.set_activation_policy(tauri::ActivationPolicy::Regular);
 }

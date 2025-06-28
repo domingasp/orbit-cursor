@@ -214,8 +214,8 @@ pub fn show_recording_input_options(
 pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<AppState>>) {
   let mut state = state.lock().unwrap();
 
-  // Only allow showing when not recording
-  if state.is_recording {
+  // Only allow showing when not recording or editing
+  if state.is_recording || state.is_editing {
     return;
   }
 
@@ -275,6 +275,23 @@ pub fn show_region_selector(
   }
 
   let _ = window.set_focus();
+}
+
+#[tauri::command]
+pub fn show_and_focus_editor(app_handle: &AppHandle, state: State<'_, Mutex<AppState>>) {
+  let state = state.lock().unwrap();
+
+  // Only allow showing when not recording or editing
+  if state.is_recording || !state.is_editing {
+    return;
+  }
+
+  let editor = app_handle
+    .get_webview_window(WindowLabel::Editor.as_ref())
+    .unwrap();
+
+  let _ = editor.unminimize();
+  let _ = editor.set_focus();
 }
 
 #[tauri::command]

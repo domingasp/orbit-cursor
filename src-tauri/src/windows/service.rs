@@ -16,7 +16,7 @@ use tauri::{
   utils::config::WindowEffectsConfig,
   window::{Effect, EffectState},
   AppHandle, Emitter, Listener, LogicalPosition, LogicalSize, Manager, WebviewWindow,
-  WebviewWindowBuilder,
+  WebviewWindowBuilder, WindowEvent,
 };
 use tauri_nspanel::{
   block::ConcreteBlock,
@@ -34,6 +34,33 @@ use crate::{
 #[allow(non_upper_case_globals)]
 #[cfg(target_os = "macos")]
 const NSWindowStyleMaskNonActivatingPanel: i32 = 1 << 7;
+
+pub fn editor_close_listener(app_handle: &AppHandle) {
+  let editor = app_handle
+    .get_webview_window(WindowLabel::Editor.as_ref())
+    .unwrap();
+
+  let editor_clone = editor.clone();
+  let app_handle_for_listener = app_handle.clone();
+
+  editor.on_window_event(move |event| {
+    if let WindowEvent::CloseRequested { api, .. } = event {
+      use crate::AppState;
+      use tauri::State;
+
+      api.prevent_close();
+
+      let state: State<'_, Mutex<AppState>> = app_handle_for_listener.state();
+      let mut app_state = state.lock().unwrap();
+      app_state.is_editing = false;
+
+      let _ = editor_clone.hide();
+
+      #[cfg(target_os = "macos")]
+      let _ = app_handle_for_listener.set_activation_policy(tauri::ActivationPolicy::Accessory);
+    }
+  });
+}
 
 /// Convert a Webview Window into a stationary NSPanel.
 #[cfg(target_os = "macos")]
