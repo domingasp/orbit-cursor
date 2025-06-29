@@ -109,14 +109,18 @@ pub fn get_visible_windows(
     }
   }
 
+  let app_handle = APP_HANDLE.get().unwrap();
   if !thumbnail_tasks.is_empty() {
+    let app_handle = app_handle.clone();
     // Use async runtime for faster thumbnail generation
     tauri::async_runtime::spawn(async move {
       join_all(thumbnail_tasks).await;
 
-      let app_handle = APP_HANDLE.get().unwrap();
       let _ = app_handle.emit(Events::WindowThumbnailsGenerated.as_ref(), ());
     });
+  } else {
+    let app_handle = app_handle.clone();
+    let _ = app_handle.emit(Events::WindowThumbnailsGenerated.as_ref(), ());
   }
 
   all_windows
