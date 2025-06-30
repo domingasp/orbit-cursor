@@ -53,9 +53,25 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
     let start_writing = Arc::new(AtomicBool::new(false));
     let (stop_tx, _) = broadcast::channel::<()>(1);
 
+    // Barrier used for a synchronized finish
+    let mut barrier_count = 2; // Screen + Stop command
+    if options.system_audio {
+      barrier_count += 1;
+    }
+    if options.input_audio_name.is_some() {
+      barrier_count += 1;
+    }
+
+    if options.camera_name.is_some() {
+      barrier_count += 1;
+    }
+
+    let stop_barrier = Arc::new(std::sync::Barrier::new(barrier_count));
+
     let synchronization = StreamSynchronization {
       start_writing: start_writing.clone(),
       stop_tx: stop_tx.clone(),
+      stop_barrier: stop_barrier.clone(),
     };
 
     // Optional
@@ -118,6 +134,7 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
 
     state.is_recording = true;
     state.stop_recording_tx = Some(stop_tx);
+    state.stop_barrier = Some(stop_barrier);
     state.recording_manifest = Some(RecordingManifest {
       directory: recording_dir,
       files: recording_file_set,
@@ -139,6 +156,10 @@ pub fn stop_recording(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) 
 
   if let Some(stop_tx) = state.stop_recording_tx.take() {
     let _ = stop_tx.send(());
+  }
+
+  if let Some(stop_barrier) = state.stop_barrier.take() {
+    stop_barrier.wait();
   }
 
   state.is_editing = true;

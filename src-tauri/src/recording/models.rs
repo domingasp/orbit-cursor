@@ -18,6 +18,7 @@ pub struct Region {
 pub struct StreamSynchronization {
   pub start_writing: Arc<AtomicBool>,
   pub stop_tx: tokio::sync::broadcast::Sender<()>,
+  pub stop_barrier: Arc<std::sync::Barrier>,
 }
 
 #[derive(EnumString, AsRefStr, Display, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]

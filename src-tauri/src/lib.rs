@@ -74,6 +74,7 @@ struct AppState {
   // Recording related
   is_recording: bool,
   stop_recording_tx: Option<broadcast::Sender<()>>,
+  stop_barrier: Option<Arc<std::sync::Barrier>>,
   recording_manifest: Option<RecordingManifest>,
   // Editing related
   is_editing: bool,
@@ -175,6 +176,7 @@ pub fn run() {
       input_event_tx: input_event_tx.clone(),
       is_recording: false,
       stop_recording_tx: None,
+      stop_barrier: None,
       recording_manifest: None,
       is_editing: false,
     }))
