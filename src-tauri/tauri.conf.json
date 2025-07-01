@@ -115,7 +115,7 @@
       "csp": "http://asset.localhost",
       "assetProtocol": {
         "enable": true,
-        "scope": ["$TEMP/**"]
+        "scope": ["$TEMP/**", "$APPDATA/**"]
       }
     },
     "trayIcon": {
