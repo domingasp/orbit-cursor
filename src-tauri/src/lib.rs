@@ -181,6 +181,7 @@ pub fn run() {
       is_editing: false,
     }))
     .plugin(tauri_plugin_opener::init())
+    .plugin(tauri_plugin_os::init())
     .plugin(tauri_plugin_macos_permissions::init())
     .plugin(tauri_nspanel::init())
     .plugin(tauri_plugin_shell::init())

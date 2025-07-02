@@ -1,5 +1,12 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
+import { useShallow } from "zustand/react/shallow";
+
+import {
+  AvailableActions,
+  useHotkeyStore,
+} from "../../../stores/hotkeys.store";
 
 import Controls from "./controls";
 
@@ -19,6 +26,8 @@ const PreviewPlayer = ({
   setCurrentTime,
   systemAudioPath,
 }: PreviewPlayerProps) => {
+  const getHotkey = useHotkeyStore(useShallow((state) => state.getHotkey));
+
   const screenRef = useRef<HTMLVideoElement>(null);
   const cameraRef = useRef<HTMLVideoElement>(null);
   const systemAudioRef = useRef<HTMLAudioElement>(null);
@@ -85,12 +94,6 @@ const PreviewPlayer = ({
     animationFrameId.current = requestAnimationFrame(loop);
   };
 
-  const backToStart = () => {
-    updateAllMediaTime(0);
-    setCurrentTime(0);
-    setHasFinished(false);
-  };
-
   const play = () => {
     if (hasFinished) backToStart();
 
@@ -112,10 +115,19 @@ const PreviewPlayer = ({
     setIsPlaying(false);
   };
 
+  const backToStart = () => {
+    updateAllMediaTime(0);
+    setCurrentTime(0);
+    setHasFinished(false);
+  };
+
   const togglePlay = () => {
     if (!isPlaying) play();
     else pause();
   };
+
+  useHotkeys(getHotkey(AvailableActions.EditorBackToStart), backToStart);
+  useHotkeys(getHotkey(AvailableActions.EditorTogglePlay), togglePlay);
 
   useEffect(() => {
     const calculations = () => {

@@ -2,6 +2,7 @@ import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
 
 import { checkPermissions } from "../api/permissions";
+import { rehydrateHotkeyStore } from "../stores/hotkeys.store";
 import { Permissions, usePermissionsStore } from "../stores/permissions.store";
 import { rehydrateRecordingStateStore } from "../stores/recording-state.store";
 import { updateStandaloneListBoxStore } from "../stores/standalone-listbox.store";
@@ -37,6 +38,7 @@ export const App = () => {
     updateStandaloneListBoxStore(e);
     rehydrateRecordingStateStore(e);
     rehydrateWindowReopenState(e);
+    rehydrateHotkeyStore(e);
   };
 
   useEffect(() => {
