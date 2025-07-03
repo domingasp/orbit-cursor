@@ -9,7 +9,7 @@ type AppProviderProps = {
 export const AppProvider = ({ children }: AppProviderProps) => {
   return (
     <QueryClientProvider client={QUERY_CLIENT}>
-      <main className="container min-w-[100%]">{children}</main>
+      <main className="container min-w-dvw min-h-dvh">{children}</main>
     </QueryClientProvider>
   );
 };

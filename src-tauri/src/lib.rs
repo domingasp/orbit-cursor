@@ -12,7 +12,6 @@ mod windows;
 
 use std::{
   collections::HashMap,
-  path::PathBuf,
   sync::{atomic::AtomicBool, Arc, Mutex, OnceLock},
 };
 
@@ -58,6 +57,7 @@ use windows::{
 };
 
 use crate::{
+  recording::models::RecordingManifest,
   screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
   windows::service::{editor_close_listener, spawn_window_close_manager},
 };
@@ -74,7 +74,8 @@ struct AppState {
   // Recording related
   is_recording: bool,
   stop_recording_tx: Option<broadcast::Sender<()>>,
-  current_recording_dir: Option<PathBuf>,
+  stop_barrier: Option<Arc<std::sync::Barrier>>,
+  recording_manifest: Option<RecordingManifest>,
   // Editing related
   is_editing: bool,
 }
@@ -175,10 +176,12 @@ pub fn run() {
       input_event_tx: input_event_tx.clone(),
       is_recording: false,
       stop_recording_tx: None,
-      current_recording_dir: None,
+      stop_barrier: None,
+      recording_manifest: None,
       is_editing: false,
     }))
     .plugin(tauri_plugin_opener::init())
+    .plugin(tauri_plugin_os::init())
     .plugin(tauri_plugin_macos_permissions::init())
     .plugin(tauri_nspanel::init())
     .plugin(tauri_plugin_shell::init())

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { formatTime } from "../../../lib/time";
+
 import NumberRotate from "./number-rotate";
 
 type ElapsedTimeProps = {
@@ -8,14 +10,6 @@ type ElapsedTimeProps = {
 const ElapsedTime = ({ isRecording }: ElapsedTimeProps) => {
   const interval = useRef<NodeJS.Timeout>(null);
   const [secondsElapsed, setSecondsElapsed] = useState(0);
-
-  const formatTime = (seconds: number) => {
-    const hrs = String(Math.floor(seconds / 3600)).padStart(2, "0");
-    const mins = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
-    const secs = String(seconds % 60).padStart(2, "0");
-
-    return { hrs, mins, secs };
-  };
 
   const time = useMemo(() => formatTime(secondsElapsed), [secondsElapsed]);
 

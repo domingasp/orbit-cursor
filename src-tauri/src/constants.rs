@@ -43,6 +43,9 @@ pub enum Events {
 
   #[strum(serialize = "window_thumbnails_generated")]
   WindowThumbnailsGenerated,
+
+  #[strum(serialize = "recording_complete")]
+  RecordingComplete,
 }
 
 #[derive(EnumString, AsRefStr, Display, Debug, Clone, Copy, PartialEq, Eq, Hash)]

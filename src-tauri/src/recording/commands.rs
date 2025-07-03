@@ -4,14 +4,16 @@ use std::sync::{
 };
 
 use serde::Deserialize;
-use strum_macros::{AsRefStr, Display, EnumString};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::broadcast::{self};
 
 use crate::{
   constants::{Events, WindowLabel},
   recording::{
-    models::{RecordingMetadata, RecordingType, Region, StreamSynchronization},
+    models::{
+      RecordingFile, RecordingFileSet, RecordingManifest, RecordingMetadata, RecordingType, Region,
+      StreamSynchronization,
+    },
     service::{
       create_recording_directory, spawn_mouse_event_recorder, start_camera_recording,
       start_input_audio_recording, start_screen_recording, start_system_audio_recording,
@@ -33,27 +35,6 @@ pub struct StartRecordingOptions {
   pub camera_name: Option<String>,
 }
 
-#[derive(EnumString, AsRefStr, Display, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum RecordingFile {
-  #[strum(serialize = "screen.mp4")]
-  Screen,
-
-  #[strum(serialize = "system_audio.wav")]
-  SystemAudio,
-
-  #[strum(serialize = "microphone.wav")]
-  InputAudio,
-
-  #[strum(serialize = "camera.mp4")]
-  Camera,
-
-  #[strum(serialize = "mouse_events.msgpack")]
-  MouseEvents,
-
-  #[strum(serialize = "metadata.json")]
-  Metadata,
-}
-
 #[tauri::command]
 pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) -> Result<(), ()> {
   let recording_dock = app_handle
@@ -67,17 +48,35 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
     let state: State<'_, Mutex<AppState>> = app_handle.state();
     let mut state = state.lock().unwrap();
     let recording_dir = create_recording_directory(&app_handle);
+    let mut recording_file_set = RecordingFileSet::default();
 
     let start_writing = Arc::new(AtomicBool::new(false));
     let (stop_tx, _) = broadcast::channel::<()>(1);
 
+    // Barrier used for a synchronized finish
+    let mut barrier_count = 2; // Screen + Stop command
+    if options.system_audio {
+      barrier_count += 1;
+    }
+    if options.input_audio_name.is_some() {
+      barrier_count += 1;
+    }
+
+    if options.camera_name.is_some() {
+      barrier_count += 1;
+    }
+
+    let stop_barrier = Arc::new(std::sync::Barrier::new(barrier_count));
+
     let synchronization = StreamSynchronization {
       start_writing: start_writing.clone(),
       stop_tx: stop_tx.clone(),
+      stop_barrier: stop_barrier.clone(),
     };
 
     // Optional
     if options.system_audio {
+      recording_file_set.system_audio = Some(RecordingFile::SystemAudio);
       start_system_audio_recording(
         synchronization.clone(),
         recording_dir.join(RecordingFile::SystemAudio.as_ref()),
@@ -85,6 +84,7 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
     }
 
     if let Some(device_name) = options.input_audio_name {
+      recording_file_set.microphone = Some(RecordingFile::InputAudio);
       start_input_audio_recording(
         synchronization.clone(),
         recording_dir.join(RecordingFile::InputAudio.as_ref()),
@@ -93,6 +93,7 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
     }
 
     if let Some(camera_name) = options.camera_name {
+      recording_file_set.camera = Some(RecordingFile::Camera);
       start_camera_recording(
         synchronization.clone(),
         recording_dir.join(RecordingFile::Camera.as_ref()),
@@ -133,7 +134,11 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
 
     state.is_recording = true;
     state.stop_recording_tx = Some(stop_tx);
-    state.current_recording_dir = Some(recording_dir);
+    state.stop_barrier = Some(stop_barrier);
+    state.recording_manifest = Some(RecordingManifest {
+      directory: recording_dir,
+      files: recording_file_set,
+    });
   });
 
   Ok(())
@@ -153,12 +158,20 @@ pub fn stop_recording(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) 
     let _ = stop_tx.send(());
   }
 
+  if let Some(stop_barrier) = state.stop_barrier.take() {
+    stop_barrier.wait();
+  }
+
   state.is_editing = true;
   let editor = app_handle
     .get_webview_window(WindowLabel::Editor.as_ref())
     .unwrap();
   let _ = editor.show();
   let _ = editor.set_focus();
+
+  if let Some(recording_manifest) = state.recording_manifest.take() {
+    let _ = app_handle.emit(Events::RecordingComplete.as_ref(), recording_manifest);
+  }
 
   #[cfg(target_os = "macos")] // Shows dock icon, allows editor to go fullscreen
   let _ = app_handle.set_activation_policy(tauri::ActivationPolicy::Regular);

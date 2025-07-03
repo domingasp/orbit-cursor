@@ -2,7 +2,7 @@ use std::fs::{File, OpenOptions};
 use std::io::Write;
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
+use std::sync::{Barrier, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 use std::{fs::create_dir_all, path::PathBuf, sync::Arc};
 
@@ -165,6 +165,7 @@ pub fn start_screen_recording(
     frame_rx,
     synchronization.start_writing.clone(),
     synchronization.stop_tx.subscribe(),
+    synchronization.stop_barrier.clone(),
   );
 
   (recording_origin, scale_factor)
@@ -277,6 +278,7 @@ pub fn start_camera_recording(
     frame_rx,
     synchronization.start_writing.clone(),
     synchronization.stop_tx.subscribe(),
+    synchronization.stop_barrier.clone(),
   );
 
   let _ = camera_ready_rx.blocking_recv();
@@ -321,6 +323,7 @@ fn spawn_ffmpeg_frame_writer(
   frame_rx: std::sync::mpsc::Receiver<Vec<u8>>,
   start_writing: Arc<AtomicBool>,
   mut stop_rx: broadcast::Receiver<()>,
+  stop_barrier: Arc<Barrier>,
 ) {
   std::thread::spawn(move || {
     let mut stdin = ffmpeg_child.take_stdin().unwrap();
@@ -350,6 +353,7 @@ fn spawn_ffmpeg_frame_writer(
 
     drop(stdin); // signals EOF to ffmpeg
     let _ = ffmpeg_child.wait();
+    stop_barrier.wait();
   });
 }
 
@@ -489,6 +493,8 @@ fn start_audio_recording(
     if let Some(writer) = writer_lock.take() {
       writer.finalize().unwrap();
     }
+
+    synchronization.stop_barrier.wait();
   });
 }
 
