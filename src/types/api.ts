@@ -20,6 +20,7 @@ export enum Commands {
   StopCameraStream = "stop_camera_stream",
   ShowRegionSelector = "show_region_selector",
   HideRegionSelector = "hide_region_selector",
+  PassthroughRegionSelector = "passthrough_region_selector",
   ExpandRecordingSourceSelector = "expand_recording_source_selector",
   CollapseRecordingSourceSelector = "collapse_recording_source_selector",
   ListMonitors = "list_monitors",

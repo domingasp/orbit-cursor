@@ -27,6 +27,10 @@ export const hideStartRecordingDock = () => {
   void invoke(Commands.HideStartRecordingDock);
 };
 
+export const passthroughRegionSelector = (passthrough: boolean = false) => {
+  void invoke(Commands.PassthroughRegionSelector, { passthrough });
+};
+
 export const showStandaloneListBox = async (
   parentWindowLabel: string,
   offset: LogicalPosition,

@@ -96,13 +96,14 @@ const RegionSelector = () => {
   const startRecordingDockOpened = useWindowReopenStore(
     useShallow((state) => state.windows[AppWindow.StartRecordingDock])
   );
-  const [region, setRegion, recordingType, selectedMonitor] =
+  const [region, setRegion, recordingType, selectedMonitor, isRecording] =
     useRecordingStateStore(
       useShallow((state) => [
         state.region,
         state.setRegion,
         state.recordingType,
         state.selectedMonitor,
+        state.isRecording,
       ])
     );
 
@@ -120,7 +121,18 @@ const RegionSelector = () => {
 
   // To avoid too many storage updates we only update store at the end
   const onEnd = () => {
-    setRegion({ position, size });
+    // We offset the position/size by a pixel to match the boundary,
+    // otherwise an extra pixel is unexpectedly included
+    setRegion({
+      position: {
+        x: position.x + 1,
+        y: position.y + 1,
+      },
+      size: {
+        height: Math.max(1, size.height - 2),
+        width: Math.max(1, size.width - 2),
+      },
+    });
     updateDockOpacity(1);
     previousProximity.current = -1; // ensure calculation happens
   };
@@ -227,16 +239,18 @@ const RegionSelector = () => {
         </defs>
 
         <rect
-          className="fill-black/50"
           height="100%"
           mask="url(#cutout)"
           width="100%"
+          className={cn(
+            "fill-black/50 transition-colors",
+            isRecording && "fill-black/33"
+          )}
         />
       </svg>
 
       <Rnd
         bounds="parent"
-        className="border-white border-2 border-dashed"
         onDragStart={resetPanels}
         onDragStop={onEnd}
         onResizeStart={onResizeStart}
@@ -245,6 +259,10 @@ const RegionSelector = () => {
         resizeHandleClasses={handleClasses}
         resizeHandleStyles={handleStyles}
         size={{ height: size.height, width: size.width }}
+        className={cn(
+          "border-white border-2 border-dashed",
+          isRecording && "invisible"
+        )}
         onDrag={(_e, d) => {
           setPosition({ x: d.x, y: d.y });
         }}

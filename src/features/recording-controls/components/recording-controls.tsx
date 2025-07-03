@@ -4,19 +4,25 @@ import {
   LogicalSize,
 } from "@tauri-apps/api/window";
 import { Circle, CircleX, Sparkle } from "lucide-react";
-import { ComponentProps, useRef } from "react";
+import { ComponentProps, useEffect, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import {
+  hideRegionSelector,
   hideStartRecordingDock,
   showRecordingInputOptions,
+  showRegionSelector,
+  passthroughRegionSelector,
 } from "../../../api/windows";
 import Button from "../../../components/button/button";
 import Keyboard from "../../../components/keyboard/keyboard";
 import Separator from "../../../components/separator/separator";
 import Sparkles from "../../../components/sparkles/sparkles";
 import { clearInteractionAttributes } from "../../../lib/styling";
-import { useRecordingStateStore } from "../../../stores/recording-state.store";
+import {
+  RecordingType,
+  useRecordingStateStore,
+} from "../../../stores/recording-state.store";
 import {
   selectedItem,
   StandaloneListBoxes,
@@ -38,8 +44,11 @@ const KEYBOARD_STYLE: ComponentProps<typeof Keyboard> = {
 
 const RecordingControls = () => {
   const optionsButtonRef = useRef<HTMLButtonElement>(null);
-  const setWindowOpenState = useWindowReopenStore(
-    useShallow((state) => state.setWindowOpenState)
+  const [startRecordingDockOpened, setWindowOpenState] = useWindowReopenStore(
+    useShallow((state) => [
+      state.windows[AppWindow.StartRecordingDock],
+      state.setWindowOpenState,
+    ])
   );
 
   const [
@@ -69,10 +78,14 @@ const RecordingControls = () => {
     ])
   );
 
-  const onCancel = () => {
+  const onCancel = (closeRegionSelector: boolean = true) => {
     clearInteractionAttributes();
     setWindowOpenState(AppWindow.StartRecordingDock, false);
     hideStartRecordingDock();
+
+    if (closeRegionSelector) {
+      hideRegionSelector();
+    }
   };
 
   const openRecordingInputOptions = async () => {
@@ -91,7 +104,11 @@ const RecordingControls = () => {
   const onStartRecording = () => {
     if (!selectedMonitor) return;
 
-    onCancel(); // Closes dock
+    // Keep region selector open to show user where the recording is happening
+    onCancel(recordingType !== RecordingType.Region); // Closes dock
+    if (recordingType === RecordingType.Region) {
+      passthroughRegionSelector(true);
+    }
 
     startRecording({
       cameraName: camera
@@ -114,13 +131,25 @@ const RecordingControls = () => {
     });
   };
 
+  useEffect(() => {
+    if (
+      startRecordingDockOpened &&
+      selectedMonitor &&
+      recordingType === RecordingType.Region
+    ) {
+      showRegionSelector(selectedMonitor.position, selectedMonitor.size);
+    }
+  }, [recordingType, startRecordingDockOpened, selectedMonitor]);
+
   return (
     <div className="flex items-center justify-center">
       <Button
         className="self-stretch cursor-default group"
-        onPress={onCancel}
         showFocus={false}
         variant="ghost"
+        onPress={() => {
+          onCancel();
+        }}
       >
         <div className="flex flex-col gap-1 items-center">
           <CircleX className="text-muted transition-[colors_transform] group-data-[hovered]:text-content-fg group-data-[hovered]:scale-110 transform" />

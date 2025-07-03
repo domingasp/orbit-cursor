@@ -20,6 +20,7 @@ use crate::{
       write_metadata,
     },
   },
+  windows::commands::{hide_region_selector, passthrough_region_selector},
   AppState,
 };
 
@@ -161,6 +162,10 @@ pub fn stop_recording(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) 
   if let Some(stop_barrier) = state.stop_barrier.take() {
     stop_barrier.wait();
   }
+
+  // Re-enable and hide region selector (not always applicable)
+  hide_region_selector(app_handle.clone());
+  passthrough_region_selector(app_handle.clone(), false);
 
   state.is_editing = true;
   let editor = app_handle

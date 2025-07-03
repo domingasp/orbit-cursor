@@ -69,8 +69,8 @@ const Magnifier = ({
         if (activeHandle.current) {
           const bounds = activeHandle.current.getBoundingClientRect();
           // x, y are top left coords by default
-          const x = bounds.x + bounds.width / 2;
-          const y = bounds.y + bounds.height / 2;
+          const x = Math.round(bounds.x + bounds.width / 2);
+          const y = Math.round(bounds.y + bounds.height / 2);
           setHandlePosition({
             logical: { x, y },
             physical: {
