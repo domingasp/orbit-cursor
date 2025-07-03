@@ -59,7 +59,10 @@ use windows::{
 use crate::{
   recording::models::RecordingManifest,
   screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
-  windows::service::{editor_close_listener, spawn_window_close_manager},
+  windows::{
+    commands::passthrough_region_selector,
+    service::{editor_close_listener, spawn_window_close_manager},
+  },
 };
 
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
@@ -139,6 +142,7 @@ pub fn run() {
       init_region_selector,
       show_region_selector,
       hide_region_selector,
+      passthrough_region_selector,
       hide_start_recording_dock,
       init_recording_source_selector,
       expand_recording_source_selector,

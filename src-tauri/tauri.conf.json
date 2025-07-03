@@ -62,6 +62,7 @@
         "resizable": false,
         "fullscreen": false,
         "shadow": false,
+        "visible": false,
         "transparent": true,
         "acceptFirstMouse": true
       },

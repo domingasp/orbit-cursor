@@ -323,6 +323,14 @@ pub fn hide_region_selector(app_handle: AppHandle) {
 }
 
 #[tauri::command]
+pub fn passthrough_region_selector(app_handle: AppHandle, passthrough: bool) {
+  let window = app_handle
+    .get_webview_window(WindowLabel::RegionSelector.as_ref())
+    .unwrap();
+  let _ = window.set_ignore_cursor_events(passthrough);
+}
+
+#[tauri::command]
 pub fn is_start_recording_dock_open(state: State<'_, Mutex<AppState>>) -> bool {
   let state = state.lock().unwrap();
   state
