@@ -22,7 +22,7 @@ use tokio::sync::broadcast;
 use crate::audio::service::{
   build_audio_into_file_stream, get_input_audio_device, get_system_audio_device,
 };
-use crate::camera::service::{create_camera, frame_to_rgba};
+use crate::camera::service::{create_camera, frame_format_to_ffmpeg};
 use crate::recording::models::{RecordingMetadata, RecordingType, Region, StreamSynchronization};
 use crate::recording_sources::commands::list_monitors;
 use crate::recording_sources::service::get_visible_windows;
@@ -255,7 +255,7 @@ pub fn start_camera_recording(
 
   let (frame_tx, frame_rx) = std::sync::mpsc::channel::<Vec<u8>>();
 
-  let (resolution, frame_rate) = spawn_camera_with_send(
+  let (resolution, frame_rate, pixel_format) = spawn_camera_with_send(
     camera_index,
     camera_ready_tx.clone(),
     frame_tx,
@@ -267,7 +267,7 @@ pub fn start_camera_recording(
     file_path,
     resolution.width(),
     resolution.height(),
-    "rgba".to_string(),
+    pixel_format,
     Some(frame_rate.to_string()),
     None,
     None,
@@ -291,20 +291,25 @@ fn spawn_camera_with_send(
   frame_tx: std::sync::mpsc::Sender<Vec<u8>>,
   start_writing: Arc<AtomicBool>,
   mut stop_rx: broadcast::Receiver<()>,
-) -> (nokhwa::utils::Resolution, u32) {
+) -> (nokhwa::utils::Resolution, u32, String) {
   let mut camera = create_camera(camera_index, move |frame| {
     if let Some(tx) = camera_ready_tx.lock().unwrap().take() {
       let _ = tx.send(());
     }
 
     if start_writing.load(std::sync::atomic::Ordering::SeqCst) {
-      let _ = frame_tx.send(frame_to_rgba(frame));
+      let _ = frame_tx.send(frame.buffer().to_vec());
     }
   })
   .unwrap();
 
   let resolution = camera.resolution().unwrap();
   let frame_rate = camera.frame_rate().unwrap();
+  let frame_format = frame_format_to_ffmpeg(
+    camera
+      .frame_format()
+      .unwrap_or(nokhwa::utils::FrameFormat::RAWRGB),
+  );
 
   std::thread::spawn(move || {
     if let Err(e) = camera.open_stream() {
@@ -314,7 +319,7 @@ fn spawn_camera_with_send(
     let _ = stop_rx.blocking_recv(); // Keeps camera alive
   });
 
-  (resolution, frame_rate)
+  (resolution, frame_rate, frame_format.to_string())
 }
 
 /// Spawn new thread for ffmpeg write to stdin
