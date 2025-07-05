@@ -86,6 +86,7 @@ const StandaloneListBox = () => {
         {items.map((item) => (
           <ListBoxItem
             key={item.id}
+            className="min-h-6"
             id={item.id ?? undefined}
             size="sm"
             textValue={item.label}
