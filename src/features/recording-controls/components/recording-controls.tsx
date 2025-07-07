@@ -141,6 +141,10 @@ const RecordingControls = () => {
     }
   }, [recordingType, startRecordingDockOpened, selectedMonitor]);
 
+  useEffect(() => {
+    if (recordingType !== RecordingType.Region) hideRegionSelector();
+  }, [recordingType]);
+
   return (
     <div className="flex items-center justify-center">
       <Button

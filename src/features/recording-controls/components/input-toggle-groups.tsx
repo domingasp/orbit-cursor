@@ -86,8 +86,10 @@ const InputToggleGroup = ({
       void listAudioInputs().then((microphones) => {
         if (selectedMicrophone === null || selectedMicrophone.id === null) {
           setMicrophoneWarning(WarningType.Empty);
+          setMicrophone(false);
         } else if (!microphones.includes(selectedMicrophone.id.toString())) {
           setMicrophoneWarning(WarningType.Disconnected);
+          setMicrophone(false);
         } else {
           setMicrophoneWarning(undefined);
         }
@@ -104,8 +106,10 @@ const InputToggleGroup = ({
       void listCameras().then((cameras) => {
         if (selectedCamera === null || selectedCamera.id === null) {
           setCameraWarning(WarningType.Empty);
+          setCamera(false);
         } else if (!cameras.includes(selectedCamera.id.toString())) {
           setCameraWarning(WarningType.Empty);
+          setCamera(false);
         } else {
           setCameraWarning(undefined);
         }

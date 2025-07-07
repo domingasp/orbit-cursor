@@ -21,6 +21,7 @@ export type Region = {
 
 type RecordingStateProps = {
   camera: boolean;
+  inputWarnings: string[];
   isRecording: boolean;
   microphone: boolean;
   recordingType: RecordingType;
@@ -43,6 +44,7 @@ export const useRecordingStateStore = create<RecordingStateProps>()(
     persist(
       (set) => ({
         camera: false,
+        inputWarnings: [],
         isRecording: false,
         microphone: false,
         recordingType: RecordingType.Region,
