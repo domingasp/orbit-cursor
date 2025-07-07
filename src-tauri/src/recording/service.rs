@@ -14,7 +14,7 @@ use nokhwa::utils::CameraIndex;
 use rdev::EventType;
 use rmp_serde::encode::write;
 use scap::capturer::Capturer;
-use scap::frame::{BGRAFrame, Frame};
+use scap::frame::{Frame, YUVFrame};
 use serde::Serialize;
 use tauri::{AppHandle, LogicalPosition, Manager, PhysicalPosition, PhysicalSize};
 use tokio::sync::broadcast;
@@ -154,7 +154,7 @@ pub fn start_screen_recording(
     file_path,
     width,
     height,
-    "bgra".to_string(),
+    "nv12".to_string(),
     None,
     crop_size,
     crop_origin,
@@ -331,7 +331,7 @@ fn spawn_ffmpeg_frame_writer(
   stop_barrier: Arc<Barrier>,
 ) {
   std::thread::spawn(move || {
-    let mut stdin = ffmpeg_child.take_stdin().unwrap();
+    let mut stdin = std::io::BufWriter::new(ffmpeg_child.take_stdin().unwrap());
     loop {
       if stop_rx.try_recv().is_ok() {
         break;
@@ -374,24 +374,47 @@ fn spawn_capturer_with_send(
   capturer.start_capture();
 
   std::thread::spawn(move || {
-    // We cache the last frame with data - ScreenCaptureKit sends empty frames when static
-    // this seems to only happen when recording windows rather than the screen
-    let mut cached_frame: Option<BGRAFrame> = None;
+    // Required as MacOS ScreenCaptureKit only sends frames when data
+    // actually changes, at least on application recording
+    let mut cached_frame: Option<YUVFrame> = None;
+
     loop {
       if stop_rx.try_recv().is_ok() {
         break;
       }
 
-      if let Ok(Frame::BGRA(frame)) = capturer.get_next_frame() {
-        if start_writing.load(std::sync::atomic::Ordering::SeqCst) {
-          if let Err(e) = frame_tx.send(if frame.data.is_empty() && cached_frame.is_some() {
-            cached_frame.clone().unwrap().data
-          } else {
-            cached_frame = Some(frame.clone());
-            frame.data
-          }) {
-            eprintln!("Failed to send frame to writer: {}", e);
+      if start_writing.load(std::sync::atomic::Ordering::SeqCst) {
+        let frame: Option<&YUVFrame> =
+          match capturer.get_next_frame_or_timeout(Duration::from_millis(10)) {
+            Ok(Frame::YUVFrame(frame)) => {
+              cached_frame = Some(frame);
+              cached_frame.as_ref()
+            }
+            _ => cached_frame.as_ref(),
+          };
+
+        if let Some(frame) = frame {
+          let width = frame.width as usize;
+          let height = frame.height as usize;
+
+          let mut buffer = Vec::with_capacity(width * height + (width * height / 2));
+
+          // Y plane with stride removal
+          for row in 0..height {
+            let y_start = row * frame.luminance_stride as usize;
+            let y_end = y_start + width;
+            buffer.extend_from_slice(&frame.luminance_bytes[y_start..y_end]);
           }
+
+          // Copy UV plane with stride removal (NV12)
+          let chroma_height = height / 2;
+          for row in 0..chroma_height {
+            let uv_start = row * frame.chrominance_stride as usize;
+            let uv_end = uv_start + width;
+            buffer.extend_from_slice(&frame.chrominance_bytes[uv_start..uv_end]);
+          }
+
+          let _ = frame_tx.send(buffer);
         }
       }
     }
@@ -429,6 +452,7 @@ fn create_ffmpeg_writer(
   }
 
   child
+    .realtime()
     .format("rawvideo")
     .pix_fmt(pixel_format)
     .size(width, height)
@@ -445,7 +469,14 @@ fn create_ffmpeg_writer(
     ]);
   }
 
-  child.codec_video("libx264").crf(20);
+  #[cfg(target_os = "macos")]
+  {
+    child.codec_video("h264_videotoolbox");
+    child.args(["-b:v", "12000k", "-profile:v", "high"]);
+  }
+
+  #[cfg(not(target_os = "macos"))]
+  child.codec_video("libx264").crf(20); // Software backed
 
   #[cfg(target_os = "macos")] // Compatibility with QuickTime
   child.pix_fmt("yuv420p");

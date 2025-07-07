@@ -5101,7 +5101,7 @@ dependencies = [
 [[package]]
 name = "scap"
 version = "0.0.8"
-source = "git+https://github.com/domingasp/scap?branch=macos-window-as-target#f13e7e7d4296582b71182b90195f9cf10a776f8a"
+source = "git+https://github.com/domingasp/scap?branch=macos-window-as-target#d58d503f1b2121a883f239d2299416672ea50119"
 dependencies = [
  "cocoa 0.25.0",
  "core-graphics-helmer-fork",
