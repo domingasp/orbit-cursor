@@ -70,6 +70,8 @@ const InputToggleGroup = ({
     setMicrophone,
     systemAudio,
     setSystemAudio,
+    setCameraHasWarning,
+    setMicrophoneHasWarning,
   ] = useRecordingStateStore(
     useShallow((state) => [
       state.camera,
@@ -78,6 +80,8 @@ const InputToggleGroup = ({
       state.setMicrophone,
       state.systemAudio,
       state.setSystemAudio,
+      state.setCameraHasWarning,
+      state.setMicrophoneHasWarning,
     ])
   );
 
@@ -86,10 +90,8 @@ const InputToggleGroup = ({
       void listAudioInputs().then((microphones) => {
         if (selectedMicrophone === null || selectedMicrophone.id === null) {
           setMicrophoneWarning(WarningType.Empty);
-          setMicrophone(false);
         } else if (!microphones.includes(selectedMicrophone.id.toString())) {
           setMicrophoneWarning(WarningType.Disconnected);
-          setMicrophone(false);
         } else {
           setMicrophoneWarning(undefined);
         }
@@ -106,16 +108,22 @@ const InputToggleGroup = ({
       void listCameras().then((cameras) => {
         if (selectedCamera === null || selectedCamera.id === null) {
           setCameraWarning(WarningType.Empty);
-          setCamera(false);
         } else if (!cameras.includes(selectedCamera.id.toString())) {
           setCameraWarning(WarningType.Empty);
-          setCamera(false);
         } else {
           setCameraWarning(undefined);
         }
       });
     }
   }, [selectedCamera, startRecordingDockOpened, recordingInputOptionsOpened]);
+
+  useEffect(() => {
+    setMicrophoneHasWarning(microphoneWarning !== undefined);
+  }, [microphoneWarning]);
+
+  useEffect(() => {
+    setCameraHasWarning(cameraWarning !== undefined);
+  }, [cameraWarning]);
 
   return (
     <div className="flex flex-row justify-between px-2 text-content-fg">

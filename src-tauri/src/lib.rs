@@ -50,17 +50,14 @@ use windows::{
     quit_app, reset_panels, show_recording_input_options, show_region_selector,
     show_standalone_listbox, show_start_recording_dock, update_dock_opacity,
   },
-  service::{
-    add_animation, add_border, convert_to_stationary_panel, handle_dock_positioning,
-    open_permissions,
-  },
+  service::open_permissions,
 };
 
 use crate::{
   recording::models::RecordingManifest,
   screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
   windows::{
-    commands::passthrough_region_selector,
+    commands::{init_start_recording_dock, passthrough_region_selector},
     service::{editor_close_listener, spawn_window_close_manager},
   },
 };
@@ -107,18 +104,6 @@ async fn setup_store(app: &App) -> Arc<Store<Wry>> {
   }
 
   store
-}
-
-fn init_start_recording_dock(app_handle: &AppHandle) {
-  let window = app_handle
-    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
-    .unwrap();
-
-  add_border(&window);
-  add_animation(&window, 3);
-  handle_dock_positioning(&window);
-
-  let _ = convert_to_stationary_panel(&window, constants::PanelLevel::StartRecordingDock);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
