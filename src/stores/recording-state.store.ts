@@ -19,7 +19,7 @@ export type Region = {
   size: { height: number; width: number };
 };
 
-type RecordingStateProps = {
+type RecordingState = {
   camera: boolean;
   cameraHasWarning: boolean;
   isRecording: boolean;
@@ -42,7 +42,7 @@ type RecordingStateProps = {
   systemAudio: boolean;
 };
 
-export const useRecordingStateStore = create<RecordingStateProps>()(
+export const useRecordingStateStore = create<RecordingState>()(
   devtools(
     persist(
       (set) => ({

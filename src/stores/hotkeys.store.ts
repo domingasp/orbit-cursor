@@ -41,12 +41,12 @@ const getDefaultHotkeys = (): Record<AvailableActions, string> =>
     ])
   ) as Record<AvailableActions, string>;
 
-type HotkeyStore = {
+type HotkeyState = {
   getHotkey: (action: AvailableActions) => string;
   hotkeys: Record<AvailableActions, string>;
 };
 
-export const useHotkeyStore = create<HotkeyStore>()(
+export const useHotkeyStore = create<HotkeyState>()(
   devtools(
     persist(
       (_set, get) => ({
