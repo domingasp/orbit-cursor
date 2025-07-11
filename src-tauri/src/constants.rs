@@ -46,6 +46,9 @@ pub enum Events {
 
   #[strum(serialize = "recording_complete")]
   RecordingComplete,
+
+  #[strum(serialize = "closed_editor")]
+  ClosedEditor,
 }
 
 #[derive(EnumString, AsRefStr, Display, Debug, Clone, Copy, PartialEq, Eq, Hash)]

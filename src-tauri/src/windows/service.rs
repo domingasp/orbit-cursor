@@ -55,6 +55,7 @@ pub fn editor_close_listener(app_handle: &AppHandle) {
       app_state.is_editing = false;
 
       let _ = editor_clone.hide();
+      let _ = app_handle_for_listener.emit(Events::ClosedEditor.as_ref(), ());
 
       #[cfg(target_os = "macos")]
       let _ = app_handle_for_listener.set_activation_policy(tauri::ActivationPolicy::Accessory);

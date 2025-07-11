@@ -10,4 +10,5 @@ export enum Events {
   CollapsedRecordingSourceSelector = "collapsed_recording_source_selector",
   WindowThumbnailsGenerated = "window_thumbnails_generated",
   RecordingComplete = "recording_complete",
+  ClosedEditor = "closed_editor",
 }

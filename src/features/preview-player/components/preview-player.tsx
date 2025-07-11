@@ -1,89 +1,89 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
-import { useHotkeys } from "react-hotkeys-hook";
 import { useShallow } from "zustand/react/shallow";
 
-import {
-  AvailableActions,
-  useHotkeyStore,
-} from "../../../stores/hotkeys.store";
-
-import Controls from "./controls";
+import { usePlaybackStore } from "../../../stores/editor/playback.store";
 
 type PreviewPlayerProps = {
-  currentTime: number;
   screenPath: string;
-  setCurrentTime: (value: number) => void;
   cameraPath?: string;
   microphonePath?: string;
   systemAudioPath?: string;
 };
 const PreviewPlayer = ({
   cameraPath,
-  currentTime,
   microphonePath,
   screenPath,
-  setCurrentTime,
   systemAudioPath,
 }: PreviewPlayerProps) => {
-  const getHotkey = useHotkeyStore(useShallow((state) => state.getHotkey));
+  const [
+    playing,
+    currentTime,
+    setCurrentTime,
+    shortestDuration,
+    pause,
+    seekEventId,
+    setShortestDuration,
+  ] = usePlaybackStore(
+    useShallow((state) => [
+      state.playing,
+      state.currentTime,
+      state.setCurrentTime,
+      state.shortestDuration,
+      state.pause,
+      state.seekEventId,
+      state.setShortestDuration,
+    ])
+  );
 
   const screenRef = useRef<HTMLVideoElement>(null);
   const cameraRef = useRef<HTMLVideoElement>(null);
   const systemAudioRef = useRef<HTMLAudioElement>(null);
   const microphoneRef = useRef<HTMLAudioElement>(null);
+  const refs: React.RefObject<HTMLMediaElement | null>[] = [
+    screenRef,
+    cameraRef,
+    systemAudioRef,
+    microphoneRef,
+  ];
 
   const animationFrameId = useRef<number | null>(null);
 
   const [aspectRatio, setAspectRatio] = useState<number | null>(null);
   const [isVertical, setIsVertical] = useState(false);
 
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [hasFinished, setHasFinished] = useState(false);
-  const [minDuration, setMinDuration] = useState<number | null>(null);
+  const computeShortestDuration = () => {
+    const durations = refs
+      .map((ref) => ref.current?.duration)
+      .filter((d) => typeof d === "number" && !isNaN(d)) as number[];
 
-  const computeMinDuration = () => {
-    const durations = [
-      screenRef.current?.duration,
-      cameraRef.current?.duration,
-      systemAudioRef.current?.duration,
-      microphoneRef.current?.duration,
-    ].filter((d) => typeof d === "number" && !isNaN(d)) as number[];
-
-    if (durations.length > 0) {
-      return Math.min(...durations);
-    }
-    return null;
+    return durations.length > 0 ? Math.min(...durations) : null;
   };
 
   const updateAllMediaTime = (time: number) => {
-    if (screenRef.current) screenRef.current.currentTime = time;
-    if (cameraRef.current) cameraRef.current.currentTime = time;
-    if (systemAudioRef.current) systemAudioRef.current.currentTime = time;
-    if (microphoneRef.current) microphoneRef.current.currentTime = time;
-  };
-
-  const stopTimer = () => {
-    if (animationFrameId.current !== null) {
-      cancelAnimationFrame(animationFrameId.current);
-      animationFrameId.current = null;
-    }
+    refs.forEach((ref) => {
+      if (ref.current) ref.current.currentTime = time;
+    });
   };
 
   const startTimer = () => {
     // Pre-emptive stop, prevents media overshooting and pinging back
     const EPSILON = 0.02;
+
     const loop = () => {
       if (screenRef.current) {
         const current = screenRef.current.currentTime;
         setCurrentTime(current);
 
-        if (minDuration !== null && current >= minDuration - EPSILON) {
+        if (
+          shortestDuration !== null &&
+          current >= shortestDuration - EPSILON
+        ) {
+          stopTimer();
           pause();
-          setHasFinished(true);
           // Ensures deterministic behaviour, consistent stop point
-          setCurrentTime(minDuration);
-          updateAllMediaTime(minDuration);
+          setCurrentTime(shortestDuration);
+          updateAllMediaTime(shortestDuration);
           return;
         }
       }
@@ -94,51 +94,47 @@ const PreviewPlayer = ({
     animationFrameId.current = requestAnimationFrame(loop);
   };
 
-  const play = () => {
-    if (hasFinished) backToStart();
-
-    void screenRef.current?.play();
-    void cameraRef.current?.play();
-    void systemAudioRef.current?.play();
-    void microphoneRef.current?.play();
-
-    startTimer();
-    setIsPlaying(true);
-  };
-  const pause = () => {
-    screenRef.current?.pause();
-    cameraRef.current?.pause();
-    systemAudioRef.current?.pause();
-    microphoneRef.current?.pause();
-
-    stopTimer();
-    setIsPlaying(false);
+  const stopTimer = () => {
+    if (animationFrameId.current !== null) {
+      cancelAnimationFrame(animationFrameId.current);
+      animationFrameId.current = null;
+    }
   };
 
-  const backToStart = () => {
-    updateAllMediaTime(0);
-    setCurrentTime(0);
-    setHasFinished(false);
-  };
+  useEffect(() => {
+    refs.forEach((ref) => {
+      if (ref.current) ref.current.currentTime = currentTime;
+    });
 
-  const togglePlay = () => {
-    if (!isPlaying) play();
-    else pause();
-  };
+    if (playing) {
+      refs.forEach((ref) => {
+        void ref.current?.play();
+      });
+      startTimer();
+    } else {
+      refs.forEach((ref) => {
+        ref.current?.pause();
+      });
+      stopTimer();
+    }
 
-  useHotkeys(getHotkey(AvailableActions.EditorBackToStart), backToStart);
-  useHotkeys(getHotkey(AvailableActions.EditorTogglePlay), togglePlay);
+    return () => {
+      stopTimer();
+    };
+  }, [playing]);
+
+  useEffect(() => {
+    refs.forEach((ref) => {
+      if (ref.current) ref.current.currentTime = currentTime;
+    });
+  }, [seekEventId]);
 
   useEffect(() => {
     const calculations = () => {
       if (screenRef.current) {
-        setIsVertical(
-          screenRef.current.videoHeight > screenRef.current.videoWidth
-        );
-
-        setAspectRatio(
-          screenRef.current.videoWidth / screenRef.current.videoHeight
-        );
+        const { videoHeight: h, videoWidth: w } = screenRef.current;
+        setIsVertical(h > w);
+        setAspectRatio(w / h);
       }
     };
     screenRef.current?.addEventListener("loadedmetadata", calculations);
@@ -146,17 +142,12 @@ const PreviewPlayer = ({
     return () => {
       screenRef.current?.removeEventListener("loadedmetadata", calculations);
     };
-  }, []);
-
-  useEffect(() => {
-    pause();
-    backToStart();
-  }, [screenPath]);
+  }, [setIsVertical, setAspectRatio]);
 
   useEffect(() => {
     const handleLoaded = () => {
-      const min = computeMinDuration();
-      setMinDuration(min);
+      const min = computeShortestDuration();
+      setShortestDuration(min);
     };
 
     const elements = [
@@ -192,9 +183,6 @@ const PreviewPlayer = ({
             onContextMenu={(e) => {
               e.preventDefault();
             }}
-            onEnded={() => {
-              setIsPlaying(false);
-            }}
           />
 
           {cameraPath && (
@@ -222,15 +210,6 @@ const PreviewPlayer = ({
       {microphonePath && (
         <audio ref={microphoneRef} src={convertFileSrc(microphonePath)} />
       )}
-
-      <div className="shrink-0">
-        <Controls
-          currentTime={currentTime}
-          isPlaying={isPlaying}
-          onBackToStart={backToStart}
-          onTogglePlay={togglePlay}
-        />
-      </div>
     </div>
   );
 };

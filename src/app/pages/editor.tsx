@@ -1,8 +1,11 @@
 import { listen } from "@tauri-apps/api/event";
 import { CircleSlash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import PreviewPlayer from "../../features/preview-player/components/preview-player";
+import Toolbar from "../../features/toolbar/components/toolbar";
+import { usePlaybackStore } from "../../stores/editor/playback.store";
 import { Events } from "../../types/events";
 
 type RecordingManifest = {
@@ -30,7 +33,9 @@ const Editor = () => {
     RecordingManifest | undefined
   >();
 
-  const [currentTime, setCurrentTime] = useState(0);
+  const [pause, seek] = usePlaybackStore(
+    useShallow((state) => [state.pause, state.seek])
+  );
 
   useEffect(() => {
     const unlisten = listen(Events.RecordingComplete, (data) => {
@@ -49,6 +54,19 @@ const Editor = () => {
     return recordingManifest.directory + "/" + file;
   };
 
+  useEffect(() => {
+    const unlisten = listen(Events.ClosedEditor, () => {
+      pause();
+      seek(0);
+    });
+
+    return () => {
+      void unlisten.then((f) => {
+        f();
+      });
+    };
+  }, []);
+
   return (
     <div className="text-content-fg bg-transparent relative h-dvh">
       <div
@@ -66,14 +84,16 @@ const Editor = () => {
       )}
 
       {recordingManifest && (
-        <PreviewPlayer
-          cameraPath={createPath(recordingManifest.files.camera)}
-          currentTime={currentTime}
-          microphonePath={createPath(recordingManifest.files.microphone)}
-          screenPath={createPath(recordingManifest.files.screen) ?? ""}
-          setCurrentTime={setCurrentTime}
-          systemAudioPath={createPath(recordingManifest.files.systemAudio)}
-        />
+        <>
+          <PreviewPlayer
+            cameraPath={createPath(recordingManifest.files.camera)}
+            microphonePath={createPath(recordingManifest.files.microphone)}
+            screenPath={createPath(recordingManifest.files.screen) ?? ""}
+            systemAudioPath={createPath(recordingManifest.files.systemAudio)}
+          />
+
+          <Toolbar />
+        </>
       )}
     </div>
   );
