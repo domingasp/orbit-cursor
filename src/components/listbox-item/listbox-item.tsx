@@ -44,8 +44,8 @@ const listBoxItemVariants = tv({
 
 type ListBoxItemProps = AriaListBoxItemProps &
   VariantProps<typeof listBoxItemVariants> & {
-    className: string;
     children?: React.ReactNode;
+    className?: string;
   };
 
 const ListBoxItem = ({
