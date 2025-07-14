@@ -20,6 +20,7 @@ type ActionMetadata = {
 export enum AvailableActions {
   EditorTogglePlay = "editor.togglePlay",
   EditorBackToStart = "editor.backToStart",
+  EditorExport = "editor.export",
 }
 
 export const ActionsMetadata: Record<AvailableActions, ActionMetadata> = {
@@ -30,6 +31,10 @@ export const ActionsMetadata: Record<AvailableActions, ActionMetadata> = {
   [AvailableActions.EditorTogglePlay]: {
     defaultHotkey: { macos: "space", windows: "space" },
     description: "Toggles the pause/play state of the video.",
+  },
+  [AvailableActions.EditorExport]: {
+    defaultHotkey: { macos: "meta+e", windows: "ctrl+e" },
+    description: "Open the Export modal.",
   },
 };
 

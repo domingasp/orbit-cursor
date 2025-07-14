@@ -41,7 +41,11 @@ const toggleAnimationProps: MotionProps = {
   initial: { opacity: 0, scale: 0 },
 };
 
-const Toolbar = () => {
+type ToolbarProps = {
+  hotkeysEnabled: boolean;
+  openExportOptions: () => void;
+};
+const Toolbar = ({ hotkeysEnabled, openExportOptions }: ToolbarProps) => {
   const getHotkey = useHotkeyStore(useShallow((state) => state.getHotkey));
 
   const [playing, currentTime, seek, togglePlay] = usePlaybackStore(
@@ -65,9 +69,14 @@ const Toolbar = () => {
   };
 
   useHotkeys(getHotkey(AvailableActions.EditorBackToStart), backToStart, {
-    preventDefault: true,
+    enabled: hotkeysEnabled,
   });
-  useHotkeys(getHotkey(AvailableActions.EditorTogglePlay), togglePlay);
+  useHotkeys(getHotkey(AvailableActions.EditorTogglePlay), togglePlay, {
+    enabled: hotkeysEnabled,
+  });
+  useHotkeys(getHotkey(AvailableActions.EditorExport), openExportOptions, {
+    enabled: hotkeysEnabled,
+  });
 
   return (
     <div className="flex flex-row justify-center py-0.5 relative">
@@ -122,18 +131,21 @@ const Toolbar = () => {
       </Group>
 
       <Group className="flex flex-row items-center absolute right-2 top-0 bottom-0">
-        <Button
-          variant="ghost"
-          className={cn(
-            controlButtonStyles,
-            "text-xs",
-            "font-light",
-            "text-muted"
-          )}
-        >
-          Export
-          <Upload className="text-content-fg" size={iconSize} />
-        </Button>
+        <HotkeyTooltip hotkey={getHotkey(AvailableActions.EditorExport)}>
+          <Button
+            onPress={openExportOptions}
+            variant="ghost"
+            className={cn(
+              controlButtonStyles,
+              "text-xs",
+              "font-light",
+              "text-muted"
+            )}
+          >
+            Export
+            <Upload className="text-content-fg" size={iconSize} />
+          </Button>
+        </HotkeyTooltip>
       </Group>
     </div>
   );

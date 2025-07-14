@@ -1,8 +1,11 @@
 import { listen } from "@tauri-apps/api/event";
 import { CircleSlash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Dialog } from "react-aria-components";
 import { useShallow } from "zustand/react/shallow";
 
+import Modal from "../../components/modal/modal";
+import ExportOptions from "../../features/export-options/components/export-options";
 import PreviewPlayer from "../../features/preview-player/components/preview-player";
 import Toolbar from "../../features/toolbar/components/toolbar";
 import { usePlaybackStore } from "../../stores/editor/playback.store";
@@ -36,6 +39,8 @@ const Editor = () => {
   const [pause, seek] = usePlaybackStore(
     useShallow((state) => [state.pause, state.seek])
   );
+
+  const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
 
   useEffect(() => {
     const unlisten = listen(Events.RecordingComplete, (data) => {
@@ -92,7 +97,22 @@ const Editor = () => {
             systemAudioPath={createPath(recordingManifest.files.systemAudio)}
           />
 
-          <Toolbar />
+          <Toolbar
+            hotkeysEnabled={!isExportOptionsOpen}
+            openExportOptions={() => {
+              setIsExportOptionsOpen(true);
+            }}
+          />
+
+          <Modal
+            isOpen={isExportOptionsOpen}
+            onOpenChange={setIsExportOptionsOpen}
+            isDismissable
+          >
+            <Dialog className="outline-none">
+              <ExportOptions />
+            </Dialog>
+          </Modal>
         </>
       )}
     </div>
