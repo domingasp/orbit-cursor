@@ -1,6 +1,7 @@
 mod audio;
 mod camera;
 mod constants;
+mod export;
 mod global_inputs;
 #[cfg(target_os = "macos")]
 mod permissions;
@@ -54,6 +55,7 @@ use windows::{
 };
 
 use crate::{
+  export::commands::path_exists,
   recording::models::RecordingManifest,
   screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
   windows::{
@@ -151,6 +153,7 @@ pub fn run() {
       init_recording_dock,
       start_recording,
       stop_recording,
+      path_exists
     ])
     .manage(Mutex::new(AppState {
       open_windows: HashMap::from([
@@ -174,6 +177,7 @@ pub fn run() {
     .plugin(tauri_plugin_macos_permissions::init())
     .plugin(tauri_nspanel::init())
     .plugin(tauri_plugin_shell::init())
+    .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_store::Builder::new().build())
     .setup(|app: &mut App| {
       let store = tauri::async_runtime::block_on(setup_store(app));

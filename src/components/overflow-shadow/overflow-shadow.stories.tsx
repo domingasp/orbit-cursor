@@ -4,13 +4,6 @@ import OverflowShadow from "./overflow-shadow";
 
 /** Parent container must have `relative` and `overflow-hidden` applied. */
 const meta = {
-  argTypes: {
-    orientation: {
-      control: "inline-radio",
-      options: ["vertical", "horizontal"],
-      table: { readonly: true },
-    },
-  },
   args: {
     children: (
       <>
@@ -23,7 +16,7 @@ const meta = {
   },
   component: OverflowShadow,
   parameters: {
-    controls: { exclude: ["children"] },
+    controls: { exclude: ["children", "className", "startAtEnd"] },
     layout: "centered",
   },
   title: "Overflow Shadow",
@@ -32,6 +25,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/* --------------------------------- Stories -------------------------------- */
 export const Vertical: Story = {
   args: {
     orientation: "vertical",
@@ -49,6 +43,30 @@ export const Horizontal: Story = {
   },
   render: (args) => (
     <div className="text-content-fg w-[150px] whitespace-nowrap relative overflow-hidden">
+      <OverflowShadow {...args} />
+    </div>
+  ),
+};
+
+export const NoScrollbar: Story = {
+  args: {
+    noScrollbar: true,
+    orientation: "vertical",
+  },
+  render: (args) => (
+    <div className="text-content-fg w-[150px] h-[100px] relative overflow-hidden">
+      <OverflowShadow {...args} />
+    </div>
+  ),
+};
+
+export const StartAtEnd: Story = {
+  args: {
+    orientation: "horizontal",
+    startAtEnd: true,
+  },
+  render: (args) => (
+    <div className="text-content-fg w-[150px] relative overflow-hidden">
       <OverflowShadow {...args} />
     </div>
   ),

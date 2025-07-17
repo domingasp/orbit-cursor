@@ -8,23 +8,44 @@ import { VariantProps } from "tailwind-variants";
 import { tv } from "../../../tailwind-merge.config";
 
 const checkboxVariants = tv({
+  defaultVariants: {
+    size: "md",
+  },
   slots: {
     base: "group flex items-center relative gap-2 text-content-fg text-sm",
     checkbox: [
-      "w-5 h-5 border-1 border-muted/50 rounded-sm transition-colors",
+      "border-1 border-muted/50 rounded-sm transition-colors",
       "flex items-center justify-center shrink-0",
       "group-data-[selected]:border-info group-data-[selected]:bg-info",
     ],
-    svg: "w-3.5 h-3.5 fill-none translate-y-[0.5px]",
+    svg: "fill-none",
+  },
+
+  variants: {
+    size: {
+      md: {
+        checkbox: "w-5 h-5",
+        svg: "w-3.5 h-3.5 translate-y-[0.5px]",
+      },
+      sm: {
+        checkbox: "w-4 h-4",
+        svg: "w-3 h-3",
+      },
+      xs: {
+        checkbox: "w-3.5 h-3.5",
+        svg: "w-2.5 h-2.5",
+      },
+    },
   },
 });
 
-type CheckboxProps = AriaCheckboxProps &
-  Omit<AriaCheckboxProps, "children"> &
-  VariantProps<typeof checkboxVariants> & { children?: React.ReactNode };
+type CheckboxProps = Omit<AriaCheckboxProps, "children"> &
+  VariantProps<typeof checkboxVariants> & {
+    children?: React.ReactNode;
+  };
 
-const Checkbox = ({ children, ...props }: CheckboxProps) => {
-  const { base, checkbox, svg } = checkboxVariants();
+const Checkbox = ({ children, size, ...props }: CheckboxProps) => {
+  const { base, checkbox, svg } = checkboxVariants({ size });
 
   return (
     <AriaCheckbox {...props} className={base()}>

@@ -41,6 +41,7 @@ const Editor = () => {
   );
 
   const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
+  const name = recordingManifest?.directory.split("/").at(-1) ?? "";
 
   useEffect(() => {
     const unlisten = listen(Events.RecordingComplete, (data) => {
@@ -63,6 +64,7 @@ const Editor = () => {
     const unlisten = listen(Events.ClosedEditor, () => {
       pause();
       seek(0);
+      setIsExportOptionsOpen(false);
     });
 
     return () => {
@@ -79,7 +81,7 @@ const Editor = () => {
         data-tauri-drag-region
       >
         {!recordingManifest && "No Recording Created"}
-        {recordingManifest && recordingManifest.directory.split("/").at(-1)}
+        {recordingManifest && name}
       </div>
 
       {!recordingManifest && (
@@ -105,12 +107,17 @@ const Editor = () => {
           />
 
           <Modal
+            className="max-w-lg"
             isOpen={isExportOptionsOpen}
             onOpenChange={setIsExportOptionsOpen}
-            isDismissable
           >
             <Dialog className="outline-none">
-              <ExportOptions />
+              <ExportOptions
+                fileName={name}
+                onCancel={() => {
+                  setIsExportOptionsOpen(false);
+                }}
+              />
             </Dialog>
           </Modal>
         </>

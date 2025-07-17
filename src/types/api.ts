@@ -34,4 +34,5 @@ export enum Commands {
   InitRecordingDock = "init_recording_dock",
   StartRecording = "start_recording",
   StopRecording = "stop_recording",
+  PathExists = "path_exists",
 }
