@@ -4,26 +4,26 @@ import { devtools, persist } from "zustand/middleware";
 const STORE_NAME = "exportPreferences";
 
 type ExportPreferencesState = {
-  defaultExportPath: string | null;
+  defaultExportDirectory: string | null;
   openFolderAfterExport: boolean;
   separateAudioTracks: boolean;
-  separateCameraTrack: boolean;
-  setDefaultExportPath: (defaultExportPath: string | null) => void;
+  separateCameraFile: boolean;
+  setDefaultExportDirectory: (defaultExportDirectory: string | null) => void;
   setOpenFolderAfterExport: (openFolderAfterExport: boolean) => void;
   setSeparateAudioTracks: (separateAudioTracks: boolean) => void;
-  setSeparateCameraTrack: (separateCameraTrack: boolean) => void;
+  setSeparateCameraFile: (separateCameraFile: boolean) => void;
 };
 
 export const useExportPreferencesStore = create<ExportPreferencesState>()(
   devtools(
     persist(
       (set) => ({
-        defaultExportPath: null,
+        defaultExportDirectory: null,
         openFolderAfterExport: true,
         separateAudioTracks: false,
-        separateCameraTrack: false,
-        setDefaultExportPath: (defaultExportPath) => {
-          set({ defaultExportPath });
+        separateCameraFile: false,
+        setDefaultExportDirectory: (defaultExportDirectory) => {
+          set({ defaultExportDirectory });
         },
         setOpenFolderAfterExport: (openFolderAfterExport) => {
           set({ openFolderAfterExport });
@@ -31,8 +31,8 @@ export const useExportPreferencesStore = create<ExportPreferencesState>()(
         setSeparateAudioTracks: (separateAudioTracks) => {
           set({ separateAudioTracks });
         },
-        setSeparateCameraTrack: (separateCameraTrack) => {
-          set({ separateCameraTrack });
+        setSeparateCameraFile: (separateCameraFile) => {
+          set({ separateCameraFile });
         },
       }),
       { name: STORE_NAME }

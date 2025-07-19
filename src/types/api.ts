@@ -35,4 +35,5 @@ export enum Commands {
   StartRecording = "start_recording",
   StopRecording = "stop_recording",
   PathExists = "path_exists",
+  ExportRecording = "export_recording",
 }

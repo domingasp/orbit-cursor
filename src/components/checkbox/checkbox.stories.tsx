@@ -18,7 +18,6 @@ const meta = {
   },
   args: {
     children: "Label",
-    name: "storybookCheckbox",
   },
   component: Checkbox,
   parameters: {
@@ -51,4 +50,16 @@ export const Sizes: Story = {
       ))}
     </div>
   ),
+};
+
+export const Disabled: Story = {
+  args: {
+    isDisabled: true,
+    isSelected: true,
+  },
+  parameters: {
+    controls: {
+      exclude: ["children"],
+    },
+  },
 };

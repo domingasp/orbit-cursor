@@ -1,8 +1,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { documentDir, join, sep } from "@tauri-apps/api/path";
 import { save } from "@tauri-apps/plugin-dialog";
-import { FolderSearch, Info, Upload } from "lucide-react";
-import { useEffect } from "react";
+import { FolderSearch, Upload } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Heading } from "react-aria-components";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -12,77 +12,141 @@ import Button from "../../../components/button/button";
 import Checkbox from "../../../components/checkbox/checkbox";
 import OverflowShadow from "../../../components/overflow-shadow/overflow-shadow";
 import { useExportPreferencesStore } from "../../../stores/editor/export-preferences.store";
-import { pathExists } from "../api/export";
+import { exportRecording, pathExists } from "../api/export";
+import { getFilenameAndDirFromPath } from "../utils/file";
 
 import MakeDefaultButton from "./make-default-button";
+
+const FILE_EXTENSION = "mp4";
 
 const exportInputSchema = z.object({
   filePath: z.string(),
   openFolderAfterExport: z.boolean(),
   separateAudioTracks: z.boolean(),
-  separateCameraTrack: z.boolean(),
+  separateCameraFile: z.boolean(),
 });
 
-type ExportInputSchema = z.infer<typeof exportInputSchema>;
+export type ExportInputSchema = z.infer<typeof exportInputSchema>;
 
 type ExportOptionsProps = {
-  fileName: string;
+  defaultFilename: string;
+  hasCamera: boolean;
+  recordingDirectory: string;
   onCancel?: () => void;
 };
-const ExportOptions = ({ fileName, onCancel }: ExportOptionsProps) => {
+const ExportOptions = ({
+  defaultFilename,
+  hasCamera,
+  onCancel,
+  recordingDirectory,
+}: ExportOptionsProps) => {
   const state = useExportPreferencesStore(useShallow((state) => state));
-
-  console.log(state);
 
   const { control, getValues, handleSubmit, setValue, watch } =
     useForm<ExportInputSchema>({
       defaultValues: {
-        filePath: state.defaultExportPath ?? "",
+        filePath: "",
         openFolderAfterExport: state.openFolderAfterExport,
         separateAudioTracks: state.separateAudioTracks,
-        separateCameraTrack: state.separateCameraTrack,
+        separateCameraFile: state.separateCameraFile,
       },
       resolver: zodResolver(exportInputSchema),
     });
 
+  // Enables support of camera toggle
+  const [existingBaseDir, setExistingBaseDir] = useState<string | null>(
+    state.defaultExportDirectory
+  );
+
   const filePath = watch("filePath", "");
+  const separateCameraFile = watch("separateCameraFile");
+
+  const onSubmit: SubmitHandler<ExportInputSchema> = ({
+    filePath,
+    openFolderAfterExport,
+    separateAudioTracks,
+    separateCameraFile,
+  }) => {
+    exportRecording({
+      destinationFilePath: filePath,
+      openFolderAfterExport,
+      separateAudioTracks,
+      separateCameraFile: hasCamera && separateCameraFile,
+      sourceFolderPath: recordingDirectory,
+    });
+  };
+
+  const onMakeDefault = () => {
+    state.setDefaultExportDirectory(
+      getValues("filePath").split(sep()).slice(0, -1).join(sep())
+    );
+    state.setSeparateAudioTracks(getValues("separateAudioTracks"));
+    state.setSeparateCameraFile(getValues("separateCameraFile"));
+    state.setOpenFolderAfterExport(getValues("openFolderAfterExport"));
+  };
 
   const openFolderPicker = () => {
     void save({
       defaultPath: filePath,
-      filters: [{ extensions: ["mp4"], name: "Video" }],
-    }).then((path) => {
-      setValue("filePath", path ?? filePath);
+      filters: [{ extensions: [FILE_EXTENSION], name: "Video" }],
+    }).then(async (selectedPath) => {
+      if (!selectedPath) return;
+      const { dir } = await getFilenameAndDirFromPath(selectedPath);
+      setExistingBaseDir(dir); // This is a real path
+
+      await updateExportPath(selectedPath);
     });
   };
 
-  const onSubmit: SubmitHandler<ExportInputSchema> = (data) => {
-    console.log(data);
-  };
+  const updateExportPath = async (selectedPath?: string) => {
+    let directory: string;
+    let filename: string;
 
-  const onMakeDefault = () => {
-    state.setDefaultExportPath(
-      getValues("filePath").split(sep()).slice(0, -1).join(sep())
+    try {
+      const { dir, file } = await getFilenameAndDirFromPath(
+        selectedPath ?? filePath
+      );
+
+      if (selectedPath) directory = dir;
+      // We use `existingBaseDir` instead of filePath as otherwise
+      // it would cause filename to keep being appended on toggle
+      else directory = existingBaseDir ?? dir;
+
+      filename = selectedPath || filePath ? file : defaultFilename;
+    } catch {
+      if (
+        state.defaultExportDirectory &&
+        (await pathExists(state.defaultExportDirectory))
+      ) {
+        directory = state.defaultExportDirectory;
+      } else {
+        directory = await documentDir();
+      }
+
+      filename = defaultFilename;
+    }
+
+    const withExtension = `${filename}.${FILE_EXTENSION}`;
+
+    setValue(
+      "filePath",
+      await join(
+        directory,
+        ...(hasCamera && separateCameraFile
+          ? // Additional subdirectory (to be created on export)
+            [filename, withExtension]
+          : [withExtension])
+      )
     );
-    state.setSeparateAudioTracks(getValues("separateAudioTracks"));
-    state.setSeparateCameraTrack(getValues("separateCameraTrack"));
-    state.setOpenFolderAfterExport(getValues("openFolderAfterExport"));
   };
 
   useEffect(() => {
-    void documentDir().then(async (path) => {
-      let basePath = path;
-
-      if (
-        state.defaultExportPath &&
-        (await pathExists(state.defaultExportPath))
-      ) {
-        basePath = state.defaultExportPath;
-      }
-
-      setValue("filePath", await join(basePath, fileName + ".mp4"));
-    });
+    void updateExportPath();
   }, []);
+
+  useEffect(() => {
+    void updateExportPath();
+  }, [separateCameraFile]);
 
   return (
     <form
@@ -113,12 +177,38 @@ const ExportOptions = ({ fileName, onCancel }: ExportOptionsProps) => {
         </div>
 
         <div className="grid grid-cols-2 gap-2 px-2">
+          <div>
+            <Controller
+              control={control}
+              name="separateAudioTracks"
+              render={({ field }) => (
+                <Checkbox
+                  {...field}
+                  isSelected={field.value}
+                  size="sm"
+                  value={field.name}
+                  onChange={(isSelected) => {
+                    field.onChange(isSelected);
+                  }}
+                >
+                  <div>
+                    <span className="text-xs">Separate audio tracks</span>
+                    <span className="col-span-2 text-xxs text-muted flex flex-row items-center gap-1">
+                      Bundled in main file as multiple tracks.
+                    </span>
+                  </div>
+                </Checkbox>
+              )}
+            />
+          </div>
+
           <Controller
             control={control}
-            name="separateAudioTracks"
+            name="separateCameraFile"
             render={({ field }) => (
               <Checkbox
                 {...field}
+                isDisabled={!hasCamera}
                 isSelected={field.value}
                 size="sm"
                 value={field.name}
@@ -126,34 +216,10 @@ const ExportOptions = ({ fileName, onCancel }: ExportOptionsProps) => {
                   field.onChange(isSelected);
                 }}
               >
-                <span className="text-xs">Separate audio tracks</span>
+                <span className="text-xs">Separate file for camera</span>
               </Checkbox>
             )}
           />
-
-          <Controller
-            control={control}
-            name="separateCameraTrack"
-            render={({ field }) => (
-              <Checkbox
-                {...field}
-                isSelected={field.value}
-                size="sm"
-                value={field.name}
-                onChange={(isSelected) => {
-                  field.onChange(isSelected);
-                }}
-              >
-                <span className="text-xs">Separate camera track</span>
-              </Checkbox>
-            )}
-          />
-
-          <span className="col-span-2 text-xxs text-muted flex flex-row items-center gap-1">
-            <Info size={12} />
-            Separate tracks in a single file - ideal for editing, not for
-            sharing.
-          </span>
         </div>
       </div>
 

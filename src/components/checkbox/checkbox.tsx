@@ -16,12 +16,22 @@ const checkboxVariants = tv({
     checkbox: [
       "border-1 border-muted/50 rounded-sm transition-colors",
       "flex items-center justify-center shrink-0",
+      "group-data-[hovered]:bg-info/10",
       "group-data-[selected]:border-info group-data-[selected]:bg-info",
     ],
     svg: "fill-none",
   },
 
   variants: {
+    disabled: {
+      true: {
+        base: "cursor-not-allowed",
+        checkbox: [
+          "bg-muted border-muted",
+          "group-data-[selected]:bg-muted group-data-[selected]:border-muted",
+        ],
+      },
+    },
     size: {
       md: {
         checkbox: "w-5 h-5",
@@ -45,7 +55,10 @@ type CheckboxProps = Omit<AriaCheckboxProps, "children"> &
   };
 
 const Checkbox = ({ children, size, ...props }: CheckboxProps) => {
-  const { base, checkbox, svg } = checkboxVariants({ size });
+  const { base, checkbox, svg } = checkboxVariants({
+    disabled: props.isDisabled,
+    size,
+  });
 
   return (
     <AriaCheckbox {...props} className={base()}>

@@ -55,7 +55,7 @@ use windows::{
 };
 
 use crate::{
-  export::commands::path_exists,
+  export::commands::{export_recording, path_exists},
   recording::models::RecordingManifest,
   screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
   windows::{
@@ -153,7 +153,8 @@ pub fn run() {
       init_recording_dock,
       start_recording,
       stop_recording,
-      path_exists
+      path_exists,
+      export_recording
     ])
     .manage(Mutex::new(AppState {
       open_windows: HashMap::from([

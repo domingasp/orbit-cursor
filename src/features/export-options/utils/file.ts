@@ -1,4 +1,4 @@
-import { sep } from "@tauri-apps/api/path";
+import { basename, extname, sep } from "@tauri-apps/api/path";
 
 /**
  * Truncate a file path to fit within `maxLength` characters.
@@ -64,3 +64,15 @@ const truncateFilePath = (
 };
 
 export default truncateFilePath;
+
+/**
+ * Return directory path, filename, and extension from path.
+ *
+ * Throws an error if no basename in path.
+ */
+export const getFilenameAndDirFromPath = async (path: string) => {
+  const file = await basename(path);
+  const dir = path.replace(new RegExp(`${file}$`), "");
+  const ext = await extname(file);
+  return { dir, ext, file: file.replace(new RegExp(`\\.${ext}$`), "") };
+};

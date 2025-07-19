@@ -113,7 +113,9 @@ const Editor = () => {
           >
             <Dialog className="outline-none">
               <ExportOptions
-                fileName={name}
+                defaultFilename={name}
+                hasCamera={recordingManifest.files.camera !== null}
+                recordingDirectory={recordingManifest.directory}
                 onCancel={() => {
                   setIsExportOptionsOpen(false);
                 }}
