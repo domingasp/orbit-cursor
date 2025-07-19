@@ -49,6 +49,12 @@ pub enum Events {
 
   #[strum(serialize = "closed_editor")]
   ClosedEditor,
+
+  #[strum(serialize = "export_progress")]
+  ExportProgress,
+
+  #[strum(serialize = "export_complete")]
+  ExportComplete,
 }
 
 #[derive(EnumString, AsRefStr, Display, Debug, Clone, Copy, PartialEq, Eq, Hash)]

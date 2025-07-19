@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use serde::Deserialize;
+use tauri::AppHandle;
 
 use crate::export::service::encode_recording;
 
@@ -21,8 +22,9 @@ pub struct ExportOptions {
   pub separate_camera_file: bool,
 }
 #[tauri::command]
-pub async fn export_recording(options: ExportOptions) {
+pub async fn export_recording(app_handle: AppHandle, options: ExportOptions) {
   encode_recording(
+    app_handle,
     options.source_folder_path,
     options.destination_file_path.clone(),
     options.separate_audio_tracks,

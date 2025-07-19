@@ -1,11 +1,17 @@
-use std::path::{Path, PathBuf};
+use std::{
+  io::{BufRead, BufReader},
+  path::{Path, PathBuf},
+  process::ChildStdout,
+};
 
 use ffmpeg_sidecar::command::FfmpegCommand;
+use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
 
-use crate::recording::models::RecordingFile;
+use crate::{constants::Events, recording::models::RecordingFile};
 
 pub fn encode_recording(
+  app_handle: AppHandle,
   source_folder_path: PathBuf,
   destination_file_path: PathBuf,
   separate_audio_tracks: bool,
@@ -18,14 +24,14 @@ pub fn encode_recording(
   let (output_path, camera_path) =
     prepare_output_path(&destination_file_path, separate_camera_file);
 
-  // THREAD TO COPY
-
   configure_input_streams(
     &mut child,
     &source_folder_path,
     &available_streams,
     separate_camera_file,
   );
+
+  configure_progress_options(&mut child);
 
   let video_filter = configure_video_tracks(
     &mut child,
@@ -54,6 +60,10 @@ pub fn encode_recording(
   configure_output_options(&mut child, &output_path);
 
   let mut ffmpeg_child = child.spawn().unwrap();
+
+  let stdout = ffmpeg_child.take_stdout().unwrap();
+  ffmpeg_progress(&app_handle, stdout);
+
   let _ = ffmpeg_child.wait();
 
   if let Some(camera_path) = camera_path {
@@ -62,6 +72,8 @@ pub fn encode_recording(
       camera_path,
     );
   }
+
+  let _ = app_handle.emit(Events::ExportComplete.as_ref(), output_path);
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -114,6 +126,11 @@ fn configure_input_streams(
         .to_string_lossy(),
     );
   }
+}
+
+fn configure_progress_options(child: &mut FfmpegCommand) {
+  child.args(["-progress", "pipe:1"]);
+  child.arg("-nostats");
 }
 
 /// Return filter_complex string for video tracks
@@ -269,4 +286,44 @@ fn prepare_output_path(
   } else {
     (unique_path(destination_file_path.to_path_buf()), None)
   }
+}
+
+/// Read FFmpeg progress, emitting `ExportProgress` with milliseconds.
+fn ffmpeg_progress(app_handle: &AppHandle, stdout: ChildStdout) {
+  let reader = BufReader::new(stdout);
+  for line in reader.lines().map_while(Result::ok) {
+    if let Some(timestamp_str) = line.strip_prefix("out_time=") {
+      if let Ok(milliseconds) = parse_timestamp_to_milliseconds(timestamp_str) {
+        let _ = app_handle.emit(Events::ExportProgress.as_ref(), milliseconds);
+      }
+    }
+  }
+}
+
+/// Parse FFmpeg timestamp string `HH:MM:SS.mmm` to milliseconds.
+fn parse_timestamp_to_milliseconds(ts: &str) -> Result<u64, ()> {
+  let parts: Vec<&str> = ts.trim().split(":").collect();
+  if parts.len() != 3 {
+    return Err(());
+  }
+
+  let hours: u64 = parts[0].parse().map_err(|_| ())?;
+  let minutes: u64 = parts[1].parse().map_err(|_| ())?;
+
+  let seconds_parts: Vec<&str> = parts[2].split(".").collect();
+  let seconds: u64 = seconds_parts[0].parse().map_err(|_| ())?;
+  let milliseconds: u64 = if seconds_parts.len() > 1 {
+    seconds_parts[1]
+      .chars()
+      .take(3)
+      .collect::<String>()
+      .parse()
+      .unwrap_or(0)
+  } else {
+    0
+  };
+
+  let total_milliseconds = (hours * 3600 + minutes * 60 + seconds) * 1000 + milliseconds;
+
+  Ok(total_milliseconds)
 }

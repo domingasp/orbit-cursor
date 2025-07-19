@@ -11,4 +11,6 @@ export enum Events {
   WindowThumbnailsGenerated = "window_thumbnails_generated",
   RecordingComplete = "recording_complete",
   ClosedEditor = "closed_editor",
+  ExportProgress = "export_progress",
+  ExportComplete = "export_complete",
 }
