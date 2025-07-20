@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { listen } from "@tauri-apps/api/event";
 import { documentDir, join, sep } from "@tauri-apps/api/path";
 import { save } from "@tauri-apps/plugin-dialog";
-import { Camera, FolderSearch, Upload } from "lucide-react";
+import { Camera, FolderSearch, TriangleAlert, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Heading } from "react-aria-components";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
@@ -65,6 +65,8 @@ const ExportOptions = ({
   const [existingBaseDir, setExistingBaseDir] = useState<string | null>(
     state.defaultExportDirectory
   );
+
+  const [showPathWarning, setShowPathWarning] = useState(false);
 
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
@@ -181,8 +183,13 @@ const ExportOptions = ({
     void updateExportPath();
   }, [separateCameraFile]);
 
+  useEffect(() => {
+    void pathExists(filePath).then((exists) => {
+      setShowPathWarning(exists);
+    });
+  }, [filePath]);
+
   // TODO export banner of location
-  // TODO warning message if path exists, telling user a unique path will be generated
 
   return (
     <form
@@ -220,22 +227,36 @@ const ExportOptions = ({
       </Heading>
 
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-2 justify-between max-w-full">
-          <span className="w-full text-sm overflow-hidden relative border border-muted/20 rounded-md">
-            <OverflowShadow
-              className="px-2 py-1"
-              orientation="horizontal"
-              noScrollbar
-              startAtEnd
-            >
-              {filePath}
-            </OverflowShadow>
-          </span>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2 justify-between max-w-full">
+            <span className="w-full text-sm overflow-hidden relative border border-muted/20 rounded-md">
+              <OverflowShadow
+                className="px-2 py-1"
+                orientation="horizontal"
+                noScrollbar
+                startAtEnd
+              >
+                {filePath}
+              </OverflowShadow>
+            </span>
 
-          <Button className="self-stretch" onPress={openFolderPicker} size="sm">
-            Destination
-            <FolderSearch size={16} />
-          </Button>
+            <Button
+              className="self-stretch"
+              onPress={openFolderPicker}
+              size="sm"
+            >
+              Destination
+              <FolderSearch size={16} />
+            </Button>
+          </div>
+
+          {showPathWarning && (
+            <span className="flex flex-row items-center text-muted text-xxs gap-1 pl-1">
+              <TriangleAlert className="text-warning" size={12} />
+              File with name already exists. A unique suffix will be
+              automatically added.
+            </span>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-2 px-2">
