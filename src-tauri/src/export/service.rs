@@ -24,6 +24,16 @@ pub fn encode_recording(
   let (output_path, camera_path) =
     prepare_output_path(&destination_file_path, separate_camera_file);
 
+  // Start with copying across camera if relevant, better UX for progress
+  // Instead of percentage 100% -> indeterminate, it goes the opposite
+  // thus 100% is when the export is finished (ffmpeg done)
+  if let Some(camera_path) = camera_path {
+    let _ = std::fs::copy(
+      source_folder_path.join(RecordingFile::Camera.to_string()),
+      camera_path,
+    );
+  }
+
   configure_input_streams(
     &mut child,
     &source_folder_path,
@@ -65,13 +75,6 @@ pub fn encode_recording(
   ffmpeg_progress(&app_handle, stdout);
 
   let _ = ffmpeg_child.wait();
-
-  if let Some(camera_path) = camera_path {
-    let _ = std::fs::copy(
-      source_folder_path.join(RecordingFile::Camera.to_string()),
-      camera_path,
-    );
-  }
 
   let _ = app_handle.emit(Events::ExportComplete.as_ref(), output_path);
 }

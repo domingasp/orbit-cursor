@@ -1,7 +1,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { listen } from "@tauri-apps/api/event";
 import { documentDir, join, sep } from "@tauri-apps/api/path";
 import { save } from "@tauri-apps/plugin-dialog";
-import { FolderSearch, Upload } from "lucide-react";
+import { Camera, FolderSearch, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Heading } from "react-aria-components";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
@@ -10,8 +11,12 @@ import { useShallow } from "zustand/react/shallow";
 
 import Button from "../../../components/button/button";
 import Checkbox from "../../../components/checkbox/checkbox";
+import CircularProgressBar from "../../../components/circular-progress-bar/circular-progress-bar";
 import OverflowShadow from "../../../components/overflow-shadow/overflow-shadow";
+import Overlay from "../../../components/overlay/overlay";
 import { useExportPreferencesStore } from "../../../stores/editor/export-preferences.store";
+import { usePlaybackStore } from "../../../stores/editor/playback.store";
+import { Events } from "../../../types/events";
 import { exportRecording, pathExists } from "../api/export";
 import { getFilenameAndDirFromPath } from "../utils/file";
 
@@ -40,6 +45,9 @@ const ExportOptions = ({
   onCancel,
   recordingDirectory,
 }: ExportOptionsProps) => {
+  const duration = usePlaybackStore(
+    useShallow((state) => state.shortestDuration)
+  );
   const state = useExportPreferencesStore(useShallow((state) => state));
 
   const { control, getValues, handleSubmit, setValue, watch } =
@@ -58,6 +66,9 @@ const ExportOptions = ({
     state.defaultExportDirectory
   );
 
+  const [exporting, setExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
+
   const filePath = watch("filePath", "");
   const separateCameraFile = watch("separateCameraFile");
 
@@ -67,6 +78,7 @@ const ExportOptions = ({
     separateAudioTracks,
     separateCameraFile,
   }) => {
+    setExporting(true);
     exportRecording({
       destinationFilePath: filePath,
       openFolderAfterExport,
@@ -142,17 +154,67 @@ const ExportOptions = ({
 
   useEffect(() => {
     void updateExportPath();
+
+    const unlistenProgress = listen(Events.ExportProgress, (data) => {
+      const millisecondsProcessed = data.payload as number;
+      if (duration) {
+        setExportProgress((millisecondsProcessed / 1000 / duration) * 100);
+      }
+    });
+    const unlistenExportComplete = listen(Events.ExportComplete, () => {
+      setExporting(false);
+      setExportProgress(0);
+      onCancel?.();
+    });
+
+    return () => {
+      void unlistenProgress.then((f) => {
+        f();
+      });
+      void unlistenExportComplete.then((f) => {
+        f();
+      });
+    };
   }, []);
 
   useEffect(() => {
     void updateExportPath();
   }, [separateCameraFile]);
 
+  // TODO export banner of location
+  // TODO warning message if path exists, telling user a unique path will be generated
+
   return (
     <form
-      className="flex flex-col gap-3"
+      className="flex flex-col gap-3 relative"
       onSubmit={(event) => void handleSubmit(onSubmit)(event)}
     >
+      <Overlay blur="lg" isOpen={exporting}>
+        <div className="flex flex-col items-center justify-center gap-2">
+          <CircularProgressBar
+            aria-label="Export progress"
+            value={exportProgress}
+            indeterminate={
+              exportProgress === 0 && hasCamera && separateCameraFile
+            }
+            renderLabel={
+              exportProgress === 0 && hasCamera && separateCameraFile
+                ? () => (
+                    <div className="absolute inset-0 flex items-center justify-center animate-pulse">
+                      <Camera size={28} />
+                    </div>
+                  )
+                : undefined
+            }
+          />
+          <span className="text-muted font-thin">
+            {exportProgress === 0 && hasCamera && separateCameraFile
+              ? "Exporting camera..."
+              : "Exporting recording..."}
+          </span>
+        </div>
+      </Overlay>
+
       <Heading className="text-lg font-thin" slot="title">
         Export
       </Heading>
