@@ -106,6 +106,7 @@ type ButtonProps = AriaButtonProps &
     className?: string;
     ref?: Ref<HTMLButtonElement>;
     shiny?: boolean;
+    slot?: string;
   };
 
 const MotionAriaButton = motion.create(AriaButton);
