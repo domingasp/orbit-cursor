@@ -1,18 +1,23 @@
+import { faker } from "@faker-js/faker";
 import { Meta, StoryObj } from "@storybook/react";
 import { Check } from "lucide-react";
 
 import Button from "../button/button";
 
-import Toast, { ToastContent } from "./toast";
+import Toast from "./toast";
 import ToastProvider, { useToast } from "./toast-provider";
 
-const ToastButton = ({ toastContent }: { toastContent: ToastContent }) => {
+const ToastButton = () => {
   const toast = useToast();
 
   return (
     <Button
       onClick={() => {
-        toast.add(toastContent);
+        toast.add({
+          description: faker.lorem.words({ max: 10, min: 1 }),
+          leftSection: <Check className="text-success" size={20} />,
+          title: faker.lorem.words({ max: 2, min: 1 }),
+        });
       }}
     >
       Toast
@@ -22,24 +27,18 @@ const ToastButton = ({ toastContent }: { toastContent: ToastContent }) => {
 
 const meta = {
   args: {
+    expanded: false,
     state: undefined,
     toast: {
       content: {
-        description: "A toast description",
+        description: faker.lorem.sentences({ max: 3, min: 1 }),
         leftSection: <Check className="text-success" size={20} />,
-        title: "Some Title",
+        title: faker.lorem.words(),
       },
       key: "1",
     },
   },
   component: Toast,
-  decorators: (_Story, context) => {
-    return (
-      <ToastProvider>
-        <ToastButton toastContent={context.args.toast.content} />
-      </ToastProvider>
-    );
-  },
   parameters: {
     controls: {
       exclude: ["toast", "state", "ref"],
@@ -54,4 +53,18 @@ type Story = StoryObj<typeof meta>;
 
 /* --------------------------------- Stories -------------------------------- */
 /** To be wrapped with a `ToastRegion` at the root of the app. */
-export const Default: Story = {};
+export const Top: Story = {
+  decorators: (_Story) => (
+    <ToastProvider position="top">
+      <ToastButton />
+    </ToastProvider>
+  ),
+};
+
+export const Bottom: Story = {
+  decorators: (_Story) => (
+    <ToastProvider position="bottom">
+      <ToastButton />
+    </ToastProvider>
+  ),
+};

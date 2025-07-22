@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { ComponentProps, createContext, useContext } from "react";
 import { ToastState, useToastState } from "react-stately";
 
 import { ToastContent } from "./toast";
@@ -16,11 +16,11 @@ export const useToast = () => {
   return ctx;
 };
 
-type ToastProviderProps = {
+type ToastProviderProps = Omit<ComponentProps<typeof ToastRegion>, "state"> & {
   children: React.ReactNode;
 };
 
-const ToastProvider = ({ children }: ToastProviderProps) => {
+const ToastProvider = ({ children, ...props }: ToastProviderProps) => {
   const state = useToastState<ToastContent>({
     maxVisibleToasts: 3,
   });
@@ -28,7 +28,7 @@ const ToastProvider = ({ children }: ToastProviderProps) => {
   return (
     <ToastContext.Provider value={state}>
       {children}
-      <ToastRegion state={state} />
+      <ToastRegion {...props} state={state} />
     </ToastContext.Provider>
   );
 };
