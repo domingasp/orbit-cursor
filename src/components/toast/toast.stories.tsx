@@ -13,9 +13,17 @@ const ToastButton = () => {
   return (
     <Button
       onClick={() => {
-        toast.add({
+        const key = toast.add({
           description: faker.lorem.words({ max: 10, min: 1 }),
-          leftSection: <Check className="text-success" size={20} />,
+          leftSection: (
+            <Check
+              className="text-success"
+              size={20}
+              onClick={() => {
+                toast.close(key);
+              }}
+            />
+          ),
           title: faker.lorem.words({ max: 2, min: 1 }),
         });
       }}

@@ -1,39 +1,20 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { listen } from "@tauri-apps/api/event";
-import { documentDir, join, sep } from "@tauri-apps/api/path";
-import { save } from "@tauri-apps/plugin-dialog";
-import {
-  Camera,
-  FolderOpen,
-  FolderSearch,
-  TriangleAlert,
-  Upload,
-} from "lucide-react";
-import { useEffect, useState } from "react";
+import { sep } from "@tauri-apps/api/path";
+import { Upload } from "lucide-react";
+import { useState } from "react";
 import { Heading } from "react-aria-components";
-import { Controller, SubmitHandler, useForm } from "react-hook-form";
+import { SubmitHandler, useForm } from "react-hook-form";
 import { z } from "zod";
 import { useShallow } from "zustand/react/shallow";
 
 import Button from "../../../components/button/button";
-import Checkbox from "../../../components/checkbox/checkbox";
-import CircularProgressBar from "../../../components/circular-progress-bar/circular-progress-bar";
-import OverflowShadow from "../../../components/overflow-shadow/overflow-shadow";
-import Overlay from "../../../components/overlay/overlay";
-import { useToast } from "../../../components/toast/toast-provider";
+import CheckboxControlled from "../../../components/checkbox/checkbox-controlled";
 import { useExportPreferencesStore } from "../../../stores/editor/export-preferences.store";
-import { usePlaybackStore } from "../../../stores/editor/playback.store";
-import { Events } from "../../../types/events";
-import {
-  exportRecording,
-  openPathInFileBrowser,
-  pathExists,
-} from "../api/export";
-import { getFilenameAndDirFromPath } from "../utils/file";
+import { exportRecording } from "../api/export";
 
+import ExportProgressOverlay from "./export-progress-overlay";
 import MakeDefaultButton from "./make-default-button";
-
-const FILE_EXTENSION = "mp4";
+import OutputPath from "./output-path";
 
 const exportInputSchema = z.object({
   filePath: z.string(),
@@ -56,10 +37,6 @@ const ExportOptions = ({
   onCancel,
   recordingDirectory,
 }: ExportOptionsProps) => {
-  const toast = useToast();
-  const duration = usePlaybackStore(
-    useShallow((state) => state.shortestDuration)
-  );
   const state = useExportPreferencesStore(useShallow((state) => state));
 
   const { control, getValues, handleSubmit, setValue, watch } =
@@ -73,15 +50,7 @@ const ExportOptions = ({
       resolver: zodResolver(exportInputSchema),
     });
 
-  // Enables support of camera toggle
-  const [existingBaseDir, setExistingBaseDir] = useState<string | null>(
-    state.defaultExportDirectory
-  );
-
-  const [showPathWarning, setShowPathWarning] = useState(false);
-
   const [exporting, setExporting] = useState(false);
-  const [exportProgress, setExportProgress] = useState(0);
 
   const filePath = watch("filePath", "");
   const separateCameraFile = watch("separateCameraFile");
@@ -111,227 +80,58 @@ const ExportOptions = ({
     state.setOpenFolderAfterExport(getValues("openFolderAfterExport"));
   };
 
-  const openFolderPicker = () => {
-    void save({
-      defaultPath: filePath,
-      filters: [{ extensions: [FILE_EXTENSION], name: "Video" }],
-    }).then(async (selectedPath) => {
-      if (!selectedPath) return;
-      const { dir } = await getFilenameAndDirFromPath(selectedPath);
-      setExistingBaseDir(dir); // This is a real path
-
-      await updateExportPath(selectedPath);
-    });
-  };
-
-  const updateExportPath = async (selectedPath?: string) => {
-    let directory: string;
-    let filename: string;
-
-    try {
-      const { dir, file } = await getFilenameAndDirFromPath(
-        selectedPath ?? filePath
-      );
-
-      if (selectedPath) directory = dir;
-      // We use `existingBaseDir` instead of filePath as otherwise
-      // it would cause filename to keep being appended on toggle
-      else directory = existingBaseDir ?? dir;
-
-      filename = selectedPath || filePath ? file : defaultFilename;
-    } catch {
-      if (
-        state.defaultExportDirectory &&
-        (await pathExists(state.defaultExportDirectory))
-      ) {
-        directory = state.defaultExportDirectory;
-      } else {
-        directory = await documentDir();
-      }
-
-      filename = defaultFilename;
-    }
-
-    const withExtension = `${filename}.${FILE_EXTENSION}`;
-
-    setValue(
-      "filePath",
-      await join(
-        directory,
-        ...(hasCamera && separateCameraFile
-          ? // Additional subdirectory (to be created on export)
-            [filename, withExtension]
-          : [withExtension])
-      )
-    );
-  };
-
-  useEffect(() => {
-    void updateExportPath();
-
-    const unlistenProgress = listen(Events.ExportProgress, (data) => {
-      const millisecondsProcessed = data.payload as number;
-      if (duration) {
-        setExportProgress((millisecondsProcessed / 1000 / duration) * 100);
-      }
-    });
-    const unlistenExportComplete = listen(Events.ExportComplete, (data) => {
-      toast.add({
-        description: "Click the folder to open export location.",
-        leftSection: (
-          <Button
-            aria-label="Open export folder"
-            className="p-2"
-            size="sm"
-            variant="ghost"
-            onPress={() => {
-              openPathInFileBrowser(data.payload as string);
-            }}
-            shiny
-          >
-            <FolderOpen className="animate-pulse" size={20} />
-          </Button>
-        ),
-        title: "Export Completed",
-      });
-
-      setExporting(false);
-      setExportProgress(0);
-      onCancel?.();
-    });
-
-    return () => {
-      void unlistenProgress.then((f) => {
-        f();
-      });
-      void unlistenExportComplete.then((f) => {
-        f();
-      });
-    };
-  }, []);
-
-  useEffect(() => {
-    void updateExportPath();
-  }, [separateCameraFile]);
-
-  useEffect(() => {
-    void pathExists(filePath).then((exists) => {
-      setShowPathWarning(exists);
-    });
-  }, [filePath]);
-
   return (
     <form
       className="flex flex-col gap-3 relative"
       onSubmit={(event) => void handleSubmit(onSubmit)(event)}
     >
-      <Overlay blur="lg" isOpen={exporting}>
-        <div className="flex flex-col items-center justify-center gap-2">
-          <CircularProgressBar
-            aria-label="Export progress"
-            value={exportProgress}
-            indeterminate={
-              exportProgress === 0 && hasCamera && separateCameraFile
-            }
-            renderLabel={
-              exportProgress === 0 && hasCamera && separateCameraFile
-                ? () => (
-                    <div className="absolute inset-0 flex items-center justify-center animate-pulse">
-                      <Camera size={28} />
-                    </div>
-                  )
-                : undefined
-            }
-          />
-          <span className="text-muted font-thin">
-            {exportProgress === 0 && hasCamera && separateCameraFile
-              ? "Exporting camera..."
-              : "Exporting recording..."}
-          </span>
-        </div>
-      </Overlay>
+      <ExportProgressOverlay
+        isOpen={exporting}
+        requiresCameraState={hasCamera && separateCameraFile}
+        onComplete={() => {
+          onCancel?.(); // Close modal
+        }}
+      />
 
       <Heading className="text-lg font-thin" slot="title">
         Export
       </Heading>
 
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2 justify-between max-w-full">
-            <span className="w-full text-sm overflow-hidden relative border border-muted/20 rounded-md">
-              <OverflowShadow
-                className="px-2 py-1"
-                orientation="horizontal"
-                noScrollbar
-                startAtEnd
-              >
-                {filePath}
-              </OverflowShadow>
-            </span>
-
-            <Button
-              className="self-stretch"
-              onPress={openFolderPicker}
-              size="sm"
-            >
-              Destination
-              <FolderSearch size={16} />
-            </Button>
-          </div>
-
-          {showPathWarning && (
-            <span className="flex flex-row items-center text-muted text-xxs gap-1 pl-1">
-              <TriangleAlert className="text-warning" size={12} />
-              File with name already exists. A unique suffix will be
-              automatically added.
-            </span>
-          )}
-        </div>
+        <OutputPath
+          defaultFilename={defaultFilename}
+          filePath={filePath}
+          hasCamera={hasCamera}
+          separateCameraFile={separateCameraFile}
+          onUpdate={(path) => {
+            setValue("filePath", path);
+          }}
+        />
 
         <div className="grid grid-cols-2 gap-2 px-2">
           <div>
-            <Controller
+            <CheckboxControlled
               control={control}
               name="separateAudioTracks"
-              render={({ field }) => (
-                <Checkbox
-                  {...field}
-                  isSelected={field.value}
-                  size="sm"
-                  value={field.name}
-                  onChange={(isSelected) => {
-                    field.onChange(isSelected);
-                  }}
-                >
-                  <div>
-                    <span className="text-xs">Separate audio tracks</span>
-                    <span className="col-span-2 text-xxs text-muted flex flex-row items-center gap-1">
-                      Bundled in main file as multiple tracks.
-                    </span>
-                  </div>
-                </Checkbox>
-              )}
-            />
+              size="sm"
+            >
+              <div>
+                <span className="text-xs">Separate audio tracks</span>
+                <span className="col-span-2 text-xxs text-muted flex flex-row items-center gap-1">
+                  Bundled in main file as multiple tracks.
+                </span>
+              </div>
+            </CheckboxControlled>
           </div>
 
-          <Controller
+          <CheckboxControlled
             control={control}
+            isDisabled={!hasCamera}
             name="separateCameraFile"
-            render={({ field }) => (
-              <Checkbox
-                {...field}
-                isDisabled={!hasCamera}
-                isSelected={field.value}
-                size="sm"
-                value={field.name}
-                onChange={(isSelected) => {
-                  field.onChange(isSelected);
-                }}
-              >
-                <span className="text-xs">Separate file for camera</span>
-              </Checkbox>
-            )}
-          />
+            size="sm"
+          >
+            <span className="text-xs">Separate file for camera</span>
+          </CheckboxControlled>
         </div>
       </div>
 
@@ -364,25 +164,13 @@ const ExportOptions = ({
             </Button>
           </div>
 
-          <Controller
+          <CheckboxControlled
             control={control}
             name="openFolderAfterExport"
-            render={({ field }) => (
-              <Checkbox
-                {...field}
-                isSelected={field.value}
-                size="xs"
-                value={field.name}
-                onChange={(isSelected) => {
-                  field.onChange(isSelected);
-                }}
-              >
-                <span className="text-xs text-muted">
-                  Open folder after export
-                </span>
-              </Checkbox>
-            )}
-          />
+            size="sm"
+          >
+            <span className="text-xs text-muted">Open folder after export</span>
+          </CheckboxControlled>
         </div>
       </div>
     </form>
