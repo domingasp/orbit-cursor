@@ -1,3 +1,4 @@
+use std::process::Command;
 use std::{
   io::{BufRead, BufReader},
   path::{Path, PathBuf},
@@ -16,7 +17,7 @@ pub fn encode_recording(
   destination_file_path: PathBuf,
   separate_audio_tracks: bool,
   separate_camera_file: bool,
-) {
+) -> PathBuf {
   let mut child = FfmpegCommand::new();
 
   let available_streams = check_recording_files(source_folder_path.as_path());
@@ -76,7 +77,9 @@ pub fn encode_recording(
 
   let _ = ffmpeg_child.wait();
 
-  let _ = app_handle.emit(Events::ExportComplete.as_ref(), output_path);
+  let _ = app_handle.emit(Events::ExportComplete.as_ref(), output_path.clone());
+
+  output_path
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -329,4 +332,21 @@ fn parse_timestamp_to_milliseconds(ts: &str) -> Result<u64, ()> {
   let total_milliseconds = (hours * 3600 + minutes * 60 + seconds) * 1000 + milliseconds;
 
   Ok(total_milliseconds)
+}
+
+/// Open path in file manager.
+///
+/// Opens to the folder rather than the file, if provided.
+pub fn open_path_in_file_browser(path: PathBuf) {
+  let target = if path.is_dir() {
+    path
+  } else {
+    path.parent().unwrap_or(path.as_path()).to_path_buf()
+  };
+
+  #[cfg(target_os = "macos")]
+  let _ = Command::new("open").arg(target).status();
+
+  #[cfg(target_os = "windows")]
+  unimplemented!("Windows does not support opening folders after export")
 }

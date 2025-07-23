@@ -55,7 +55,7 @@ use windows::{
 };
 
 use crate::{
-  export::commands::{export_recording, path_exists},
+  export::commands::{export_recording, open_path_in_file_browser, path_exists},
   recording::models::RecordingManifest,
   screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
   windows::{
@@ -153,6 +153,7 @@ pub fn run() {
       init_recording_dock,
       start_recording,
       stop_recording,
+      open_path_in_file_browser,
       path_exists,
       export_recording
     ])

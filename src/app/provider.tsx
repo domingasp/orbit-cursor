@@ -1,5 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+import ToastProvider from "../components/toast/toast-provider";
+
 const QUERY_CLIENT = new QueryClient();
 
 type AppProviderProps = {
@@ -9,7 +11,9 @@ type AppProviderProps = {
 export const AppProvider = ({ children }: AppProviderProps) => {
   return (
     <QueryClientProvider client={QUERY_CLIENT}>
-      <main className="container min-w-dvw min-h-dvh">{children}</main>
+      <ToastProvider className="top-8">
+        <main className="container min-w-dvw min-h-dvh">{children}</main>
+      </ToastProvider>
     </QueryClientProvider>
   );
 };

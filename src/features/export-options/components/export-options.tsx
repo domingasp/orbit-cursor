@@ -2,7 +2,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { listen } from "@tauri-apps/api/event";
 import { documentDir, join, sep } from "@tauri-apps/api/path";
 import { save } from "@tauri-apps/plugin-dialog";
-import { Camera, FolderSearch, TriangleAlert, Upload } from "lucide-react";
+import {
+  Camera,
+  FolderOpen,
+  FolderSearch,
+  TriangleAlert,
+  Upload,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Heading } from "react-aria-components";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
@@ -14,10 +20,15 @@ import Checkbox from "../../../components/checkbox/checkbox";
 import CircularProgressBar from "../../../components/circular-progress-bar/circular-progress-bar";
 import OverflowShadow from "../../../components/overflow-shadow/overflow-shadow";
 import Overlay from "../../../components/overlay/overlay";
+import { useToast } from "../../../components/toast/toast-provider";
 import { useExportPreferencesStore } from "../../../stores/editor/export-preferences.store";
 import { usePlaybackStore } from "../../../stores/editor/playback.store";
 import { Events } from "../../../types/events";
-import { exportRecording, pathExists } from "../api/export";
+import {
+  exportRecording,
+  openPathInFileBrowser,
+  pathExists,
+} from "../api/export";
 import { getFilenameAndDirFromPath } from "../utils/file";
 
 import MakeDefaultButton from "./make-default-button";
@@ -45,6 +56,7 @@ const ExportOptions = ({
   onCancel,
   recordingDirectory,
 }: ExportOptionsProps) => {
+  const toast = useToast();
   const duration = usePlaybackStore(
     useShallow((state) => state.shortestDuration)
   );
@@ -163,7 +175,26 @@ const ExportOptions = ({
         setExportProgress((millisecondsProcessed / 1000 / duration) * 100);
       }
     });
-    const unlistenExportComplete = listen(Events.ExportComplete, () => {
+    const unlistenExportComplete = listen(Events.ExportComplete, (data) => {
+      toast.add({
+        description: "Click the folder to open export location.",
+        leftSection: (
+          <Button
+            aria-label="Open export folder"
+            className="p-2"
+            size="sm"
+            variant="ghost"
+            onPress={() => {
+              openPathInFileBrowser(data.payload as string);
+            }}
+            shiny
+          >
+            <FolderOpen className="animate-pulse" size={20} />
+          </Button>
+        ),
+        title: "Export Completed",
+      });
+
       setExporting(false);
       setExportProgress(0);
       onCancel?.();
@@ -188,8 +219,6 @@ const ExportOptions = ({
       setShowPathWarning(exists);
     });
   }, [filePath]);
-
-  // TODO export banner of location
 
   return (
     <form

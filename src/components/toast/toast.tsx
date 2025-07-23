@@ -1,5 +1,12 @@
 import { X } from "lucide-react";
-import { Ref, RefObject, useImperativeHandle, useRef } from "react";
+import {
+  Ref,
+  RefObject,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import React from "react";
 import { AriaToastProps, useFocusRing, useToast } from "react-aria";
 import { ToastState } from "react-stately";
@@ -12,12 +19,12 @@ const toastVariants = tv({
   slots: {
     base: [
       "bg-content text-content-fg rounded-md p-2 outline-none border-1 border-neutral shadow-md",
-      "flex grow gap-6 items-center transition-shadow max-w-100",
+      "flex grow gap-6 items-center transition-shadow max-w-85",
       elementFocus,
       focusStyles,
     ],
     closeButton: "p-0.5 self-stretch",
-    content: "flex flex-col shrink",
+    content: "flex flex-col grow transition-opacity duration 350",
     contentWrapper: "flex items-center gap-2 grow",
     description: "text-muted text-xs font-light",
     title: "font-bold text-xs whitespace-nowrap",
@@ -26,7 +33,7 @@ const toastVariants = tv({
     behind: {
       true: {
         closeButton: "invisible",
-        contentWrapper: "invisible",
+        content: "opacity-0",
       },
     },
   },
@@ -71,6 +78,12 @@ const Toast = ({
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   useImperativeHandle(outerRef, () => ref.current!, []);
 
+  const [width, setWidth] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    if (!ref.current) return;
+    setWidth(ref.current.getBoundingClientRect().width);
+  }, [ref]);
+
   return (
     <div
       {...toastProps}
@@ -81,6 +94,14 @@ const Toast = ({
         if (forwardedRef) forwardedRef.current = el;
       }}
       className={base()}
+      style={{
+        // When element is popped the width is rounded to nearest number
+        // Something like 327.33 would become 327 - this can cause layout
+        // shifts which only appear in the exit animations
+        minWidth: ref.current?.hasAttribute("data-motion-pop-id")
+          ? width
+          : undefined,
+      }}
     >
       <div {...contentProps} className={contentWrapper()}>
         {props.toast.content.leftSection && (

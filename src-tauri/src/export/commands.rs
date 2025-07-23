@@ -1,11 +1,14 @@
 use std::path::PathBuf;
-#[cfg(target_os = "macos")]
-use std::process::Command;
 
 use serde::Deserialize;
 use tauri::AppHandle;
 
-use crate::export::service::encode_recording;
+use crate::export::service::{self, encode_recording};
+
+#[tauri::command]
+pub fn open_path_in_file_browser(path: PathBuf) {
+  service::open_path_in_file_browser(path);
+}
 
 #[tauri::command]
 pub fn path_exists(path: String) -> bool {
@@ -23,7 +26,7 @@ pub struct ExportOptions {
 }
 #[tauri::command]
 pub async fn export_recording(app_handle: AppHandle, options: ExportOptions) {
-  encode_recording(
+  let output_path = encode_recording(
     app_handle,
     options.source_folder_path,
     options.destination_file_path.clone(),
@@ -32,13 +35,6 @@ pub async fn export_recording(app_handle: AppHandle, options: ExportOptions) {
   );
 
   if options.open_folder_after_export {
-    // Open the folder containing exported file
-    #[cfg(target_os = "macos")]
-    let _ = Command::new("open")
-      .arg(options.destination_file_path.parent().unwrap())
-      .status();
-
-    #[cfg(target_os = "windows")]
-    unimplemented!("Windows does not support opening folders after export")
+    service::open_path_in_file_browser(output_path);
   }
 }

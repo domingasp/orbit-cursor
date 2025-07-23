@@ -36,4 +36,5 @@ export enum Commands {
   StopRecording = "stop_recording",
   PathExists = "path_exists",
   ExportRecording = "export_recording",
+  OpenPathInFileBrowser = "open_path_in_file_browser",
 }
