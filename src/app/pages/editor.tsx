@@ -1,8 +1,15 @@
 import { listen } from "@tauri-apps/api/event";
 import { CircleSlash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Dialog } from "react-aria-components";
+import { useShallow } from "zustand/react/shallow";
 
+import Modal from "../../components/modal/modal";
+import { useToast } from "../../components/toast/toast-provider";
+import ExportOptions from "../../features/export-options/components/export-options";
 import PreviewPlayer from "../../features/preview-player/components/preview-player";
+import Toolbar from "../../features/toolbar/components/toolbar";
+import { usePlaybackStore } from "../../stores/editor/playback.store";
 import { Events } from "../../types/events";
 
 type RecordingManifest = {
@@ -26,11 +33,17 @@ const Editor = () => {
     "h-dvh"
   );
 
+  const toasts = useToast();
   const [recordingManifest, setRecordingManifest] = useState<
     RecordingManifest | undefined
   >();
 
-  const [currentTime, setCurrentTime] = useState(0);
+  const [pause, seek] = usePlaybackStore(
+    useShallow((state) => [state.pause, state.seek])
+  );
+
+  const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
+  const name = recordingManifest?.directory.split("/").at(-1) ?? "";
 
   useEffect(() => {
     const unlisten = listen(Events.RecordingComplete, (data) => {
@@ -49,6 +62,21 @@ const Editor = () => {
     return recordingManifest.directory + "/" + file;
   };
 
+  useEffect(() => {
+    const unlisten = listen(Events.ClosedEditor, () => {
+      pause();
+      seek(0);
+      setIsExportOptionsOpen(false);
+      toasts.closeAll();
+    });
+
+    return () => {
+      void unlisten.then((f) => {
+        f();
+      });
+    };
+  }, []);
+
   return (
     <div className="text-content-fg bg-transparent relative h-dvh">
       <div
@@ -56,7 +84,7 @@ const Editor = () => {
         data-tauri-drag-region
       >
         {!recordingManifest && "No Recording Created"}
-        {recordingManifest && recordingManifest.directory.split("/").at(-1)}
+        {recordingManifest && name}
       </div>
 
       {!recordingManifest && (
@@ -66,14 +94,38 @@ const Editor = () => {
       )}
 
       {recordingManifest && (
-        <PreviewPlayer
-          cameraPath={createPath(recordingManifest.files.camera)}
-          currentTime={currentTime}
-          microphonePath={createPath(recordingManifest.files.microphone)}
-          screenPath={createPath(recordingManifest.files.screen) ?? ""}
-          setCurrentTime={setCurrentTime}
-          systemAudioPath={createPath(recordingManifest.files.systemAudio)}
-        />
+        <>
+          <PreviewPlayer
+            cameraPath={createPath(recordingManifest.files.camera)}
+            microphonePath={createPath(recordingManifest.files.microphone)}
+            screenPath={createPath(recordingManifest.files.screen) ?? ""}
+            systemAudioPath={createPath(recordingManifest.files.systemAudio)}
+          />
+
+          <Toolbar
+            hotkeysEnabled={!isExportOptionsOpen}
+            openExportOptions={() => {
+              setIsExportOptionsOpen(true);
+            }}
+          />
+
+          <Modal
+            className="max-w-lg"
+            isOpen={isExportOptionsOpen}
+            onOpenChange={setIsExportOptionsOpen}
+          >
+            <Dialog className="outline-none">
+              <ExportOptions
+                defaultFilename={name}
+                hasCamera={recordingManifest.files.camera !== null}
+                recordingDirectory={recordingManifest.directory}
+                onCancel={() => {
+                  setIsExportOptionsOpen(false);
+                }}
+              />
+            </Dialog>
+          </Modal>
+        </>
       )}
     </div>
   );

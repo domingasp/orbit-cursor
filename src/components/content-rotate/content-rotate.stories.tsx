@@ -46,6 +46,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/* --------------------------------- Stories -------------------------------- */
 export const Default: Story = {
   render: ({ children: _children, ...args }) => (
     <ContentRotate {...args}>{childrenOptions[args.contentKey]}</ContentRotate>

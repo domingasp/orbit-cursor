@@ -20,6 +20,7 @@ type ActionMetadata = {
 export enum AvailableActions {
   EditorTogglePlay = "editor.togglePlay",
   EditorBackToStart = "editor.backToStart",
+  EditorExport = "editor.export",
 }
 
 export const ActionsMetadata: Record<AvailableActions, ActionMetadata> = {
@@ -31,6 +32,10 @@ export const ActionsMetadata: Record<AvailableActions, ActionMetadata> = {
     defaultHotkey: { macos: "space", windows: "space" },
     description: "Toggles the pause/play state of the video.",
   },
+  [AvailableActions.EditorExport]: {
+    defaultHotkey: { macos: "meta+e", windows: "ctrl+e" },
+    description: "Open the Export modal.",
+  },
 };
 
 const getDefaultHotkeys = (): Record<AvailableActions, string> =>
@@ -41,12 +46,12 @@ const getDefaultHotkeys = (): Record<AvailableActions, string> =>
     ])
   ) as Record<AvailableActions, string>;
 
-type HotkeyStore = {
+type HotkeyState = {
   getHotkey: (action: AvailableActions) => string;
   hotkeys: Record<AvailableActions, string>;
 };
 
-export const useHotkeyStore = create<HotkeyStore>()(
+export const useHotkeyStore = create<HotkeyState>()(
   devtools(
     persist(
       (_set, get) => ({

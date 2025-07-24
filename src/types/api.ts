@@ -34,4 +34,8 @@ export enum Commands {
   InitRecordingDock = "init_recording_dock",
   StartRecording = "start_recording",
   StopRecording = "stop_recording",
+  PathExists = "path_exists",
+  ExportRecording = "export_recording",
+  OpenPathInFileBrowser = "open_path_in_file_browser",
+  CancelExport = "cancel_export",
 }

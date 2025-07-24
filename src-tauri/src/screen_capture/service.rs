@@ -46,7 +46,7 @@ pub fn create_screen_recording_capturer(app_handle: AppHandle, target: Option<Ta
     show_cursor: false,
     show_highlight: false,
     excluded_targets: Some(targets_to_exclude),
-    output_type: scap::frame::FrameType::BGRAFrame,
+    output_type: scap::frame::FrameType::YUVFrame,
     ..Default::default()
   };
 

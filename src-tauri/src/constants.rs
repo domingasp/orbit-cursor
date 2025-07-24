@@ -46,6 +46,15 @@ pub enum Events {
 
   #[strum(serialize = "recording_complete")]
   RecordingComplete,
+
+  #[strum(serialize = "closed_editor")]
+  ClosedEditor,
+
+  #[strum(serialize = "export_progress")]
+  ExportProgress,
+
+  #[strum(serialize = "export_complete")]
+  ExportComplete,
 }
 
 #[derive(EnumString, AsRefStr, Display, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -78,12 +87,14 @@ pub enum WindowLabel {
 #[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PanelLevel {
-  RegionSelector = 1,
-  StartRecordingDock = 2,
-  RecordingSourceSelector = 3,
-  RecordingInputOptions = 4,
-  StandaloneListBox = 5,
-  RecordingDock = 6,
+  // Starts at 3 as at 1 was causing issues rendering over certain
+  // fullscreen apps
+  RegionSelector = 3,
+  StartRecordingDock = 4,
+  RecordingSourceSelector = 5,
+  RecordingInputOptions = 6,
+  StandaloneListBox = 7,
+  RecordingDock = 8,
 }
 
 impl PanelLevel {

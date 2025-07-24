@@ -70,6 +70,8 @@ const InputToggleGroup = ({
     setMicrophone,
     systemAudio,
     setSystemAudio,
+    setCameraHasWarning,
+    setMicrophoneHasWarning,
   ] = useRecordingStateStore(
     useShallow((state) => [
       state.camera,
@@ -78,6 +80,8 @@ const InputToggleGroup = ({
       state.setMicrophone,
       state.systemAudio,
       state.setSystemAudio,
+      state.setCameraHasWarning,
+      state.setMicrophoneHasWarning,
     ])
   );
 
@@ -112,6 +116,14 @@ const InputToggleGroup = ({
       });
     }
   }, [selectedCamera, startRecordingDockOpened, recordingInputOptionsOpened]);
+
+  useEffect(() => {
+    setMicrophoneHasWarning(microphoneWarning !== undefined);
+  }, [microphoneWarning]);
+
+  useEffect(() => {
+    setCameraHasWarning(cameraWarning !== undefined);
+  }, [cameraWarning]);
 
   return (
     <div className="flex flex-row justify-between px-2 text-content-fg">

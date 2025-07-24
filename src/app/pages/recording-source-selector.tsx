@@ -137,7 +137,7 @@ const RecordingSourceSelector = () => {
           </SelectorWrapper>
         ))}
 
-      {startRecordingDockOpened && <RecordingSource onPress={onToggle} />}
+      <RecordingSource onPress={onToggle} />
     </div>
   );
 };

@@ -19,17 +19,21 @@ export type Region = {
   size: { height: number; width: number };
 };
 
-type RecordingStateProps = {
+type RecordingState = {
   camera: boolean;
+  cameraHasWarning: boolean;
   isRecording: boolean;
   microphone: boolean;
+  microphoneHasWarning: boolean;
   recordingType: RecordingType;
   region: Region;
   selectedMonitor: MonitorDetails | null;
   selectedWindow: WindowDetails | null;
   setCamera: (camera: boolean) => void;
+  setCameraHasWarning: (camera: boolean) => void;
   setIsRecording: (isRecording: boolean) => void;
   setMicrophone: (microphone: boolean) => void;
+  setMicrophoneHasWarning: (microphone: boolean) => void;
   setRecordingType: (recordingType: RecordingType) => void;
   setRegion: (region: Region) => void;
   setSelectedMonitor: (selectedMonitor: MonitorDetails) => void;
@@ -38,13 +42,15 @@ type RecordingStateProps = {
   systemAudio: boolean;
 };
 
-export const useRecordingStateStore = create<RecordingStateProps>()(
+export const useRecordingStateStore = create<RecordingState>()(
   devtools(
     persist(
       (set) => ({
         camera: false,
+        cameraHasWarning: false,
         isRecording: false,
         microphone: false,
+        microphoneHasWarning: false,
         recordingType: RecordingType.Region,
         region: {
           position: { x: 30, y: 30 },
@@ -55,11 +61,17 @@ export const useRecordingStateStore = create<RecordingStateProps>()(
         setCamera: (camera) => {
           set({ camera });
         },
+        setCameraHasWarning: (cameraHasWarning) => {
+          set({ cameraHasWarning });
+        },
         setIsRecording: (isRecording) => {
           set({ isRecording });
         },
         setMicrophone: (microphone) => {
           set({ microphone });
+        },
+        setMicrophoneHasWarning: (microphoneHasWarning) => {
+          set({ microphoneHasWarning });
         },
         setRecordingType: (recordingType) => {
           set({ recordingType });

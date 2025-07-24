@@ -6,6 +6,7 @@ use tauri_nspanel::{panel_delegate, ManagerExt};
 
 use crate::{
   constants::{Events, PanelLevel, WindowLabel},
+  windows::service::handle_dock_positioning,
   AppState,
 };
 
@@ -27,6 +28,21 @@ pub struct Bounds {
   pub start_point: LogicalPosition<f64>,
   pub end_point: LogicalPosition<f64>,
   pub display_id: Option<String>,
+}
+
+pub fn init_start_recording_dock(app_handle: &AppHandle) {
+  let window = app_handle
+    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
+    .unwrap();
+
+  #[cfg(target_os = "macos")]
+  {
+    add_border(&window);
+    add_animation(&window, 3);
+    let _ = convert_to_stationary_panel(&window, PanelLevel::StartRecordingDock);
+  }
+
+  handle_dock_positioning(&window);
 }
 
 #[tauri::command]

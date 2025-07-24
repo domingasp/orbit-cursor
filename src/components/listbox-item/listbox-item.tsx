@@ -43,10 +43,14 @@ const listBoxItemVariants = tv({
 });
 
 type ListBoxItemProps = AriaListBoxItemProps &
-  VariantProps<typeof listBoxItemVariants> & { children?: React.ReactNode };
+  VariantProps<typeof listBoxItemVariants> & {
+    children?: React.ReactNode;
+    className?: string;
+  };
 
 const ListBoxItem = ({
   children,
+  className,
   compact,
   size,
   ...props
@@ -54,7 +58,7 @@ const ListBoxItem = ({
   return (
     <AriaListBoxItem
       {...props}
-      className={listBoxItemVariants({ compact, size })}
+      className={listBoxItemVariants({ className, compact, size })}
     >
       {({ isSelected }) => (
         <>

@@ -59,6 +59,8 @@ const RecordingControls = () => {
     systemAudio,
     microphone,
     camera,
+    microphoneHasWarning,
+    cameraHasWarning,
   ] = useRecordingStateStore(
     useShallow((state) => [
       state.recordingType,
@@ -68,6 +70,8 @@ const RecordingControls = () => {
       state.systemAudio,
       state.microphone,
       state.camera,
+      state.microphoneHasWarning,
+      state.cameraHasWarning,
     ])
   );
 
@@ -111,15 +115,17 @@ const RecordingControls = () => {
     }
 
     startRecording({
-      cameraName: camera
-        ? selectedItem(cameraListBox?.selectedItems ?? [])?.id?.toString() ??
-          undefined
-        : undefined,
-      inputAudioName: microphone
-        ? selectedItem(
-            microphoneListBox?.selectedItems ?? []
-          )?.id?.toString() ?? undefined
-        : undefined,
+      cameraName:
+        camera && !cameraHasWarning
+          ? selectedItem(cameraListBox?.selectedItems ?? [])?.id?.toString() ??
+            undefined
+          : undefined,
+      inputAudioName:
+        microphone && !microphoneHasWarning
+          ? selectedItem(
+              microphoneListBox?.selectedItems ?? []
+            )?.id?.toString() ?? undefined
+          : undefined,
       monitorName: selectedMonitor.name,
       recordingType,
       region: {
@@ -140,6 +146,10 @@ const RecordingControls = () => {
       showRegionSelector(selectedMonitor.position, selectedMonitor.size);
     }
   }, [recordingType, startRecordingDockOpened, selectedMonitor]);
+
+  useEffect(() => {
+    if (recordingType !== RecordingType.Region) hideRegionSelector();
+  }, [recordingType]);
 
   return (
     <div className="flex items-center justify-center">

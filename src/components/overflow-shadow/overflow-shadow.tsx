@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../tailwind-merge.config";
@@ -24,13 +24,19 @@ const overflowShadowVariants = tv({
     orientation: "vertical",
   },
   slots: {
-    content: "overflow-scroll h-full p-2",
+    content: "overflow-scroll h-full p-2 overscroll-none",
     end: "",
     start: "",
   },
   variants: {
+    noScrollbar: {
+      true: {
+        content: "scrollbar-hidden",
+      },
+    },
     orientation: {
       horizontal: {
+        content: "text-nowrap",
         end: "right-0 bg-gradient-to-l",
         start: "left-0 bg-gradient-to-r",
       },
@@ -44,51 +50,81 @@ const overflowShadowVariants = tv({
 
 type OverflowShadowProps = VariantProps<typeof overflowShadowVariants> & {
   children?: React.ReactNode;
+  className?: string;
+  startAtEnd?: boolean;
 };
-const OverflowShadow = ({ children, orientation }: OverflowShadowProps) => {
-  const { content, end, start } = overflowShadowVariants({ orientation });
+const OverflowShadow = ({
+  children,
+  className,
+  noScrollbar,
+  orientation,
+  startAtEnd,
+}: OverflowShadowProps) => {
+  const { content, end, start } = overflowShadowVariants({
+    noScrollbar,
+    orientation,
+  });
   const startRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const [scrollTotal, setScrollTotal] = useState(0);
-
-  const onScroll = () => {
+  const updateShadows = () => {
     if (!contentRef.current || !startRef.current || !endRef.current) return;
 
-    const { scrollLeft, scrollTop } = contentRef.current;
-    const scrollAmount =
-      (orientation === "vertical" ? scrollTop : scrollLeft) / scrollTotal;
+    const {
+      clientHeight,
+      clientWidth,
+      scrollHeight,
+      scrollLeft,
+      scrollTop,
+      scrollWidth,
+    } = contentRef.current;
 
-    startRef.current.style.opacity = scrollAmount.toString();
-    endRef.current.style.opacity = (1 - scrollAmount).toString();
+    const scrollPosition = orientation === "vertical" ? scrollTop : scrollLeft;
+    const scrollSize = orientation === "vertical" ? scrollHeight : scrollWidth;
+    const clientSize = orientation === "vertical" ? clientHeight : clientWidth;
+
+    const maxScroll = scrollSize - clientSize;
+
+    const hasOverflow = scrollSize > clientSize;
+    if (hasOverflow) {
+      const scrollAmount = scrollPosition / maxScroll;
+      startRef.current.style.opacity = scrollAmount.toString();
+      endRef.current.style.opacity = (1 - scrollAmount).toString();
+    } else {
+      startRef.current.style.opacity = "0";
+      endRef.current.style.opacity = "0";
+    }
   };
 
   useEffect(() => {
-    if (contentRef.current && contentRef.current.parentElement) {
-      const { parentElement, scrollHeight, scrollWidth } = contentRef.current;
-      setScrollTotal(
-        (orientation === "vertical" ? scrollHeight : scrollWidth) -
-          parentElement.offsetWidth
-      );
-    }
-  }, [orientation]);
+    if (!contentRef.current) return;
 
-  useEffect(() => {
-    if (scrollTotal > 0) {
-      contentRef.current?.addEventListener("scroll", onScroll);
+    contentRef.current.addEventListener("scroll", updateShadows);
+    window.addEventListener("resize", updateShadows);
+
+    if (startAtEnd) {
+      if (orientation === "vertical") {
+        contentRef.current.scrollTop = contentRef.current.scrollHeight;
+      } else {
+        contentRef.current.scrollLeft = contentRef.current.scrollWidth;
+      }
     }
+
+    updateShadows(); // Initial call to set opacity
 
     return () => {
-      contentRef.current?.removeEventListener("scroll", onScroll);
+      contentRef.current?.removeEventListener("scroll", updateShadows);
+      window.removeEventListener("resize", updateShadows);
     };
-  }, [scrollTotal]);
+  }, [orientation, children]);
 
   return (
     <>
       <div ref={startRef} className={start()} style={{ opacity: "0" }} />
       <div ref={endRef} className={end()} style={{ opacity: "1" }} />
-      <div ref={contentRef} className={content()}>
+
+      <div ref={contentRef} className={content({ className })}>
         {children}
       </div>
     </>

@@ -1,6 +1,7 @@
 mod audio;
 mod camera;
 mod constants;
+mod export;
 mod global_inputs;
 #[cfg(target_os = "macos")]
 mod permissions;
@@ -26,6 +27,7 @@ use constants::{
 };
 use cpal::Stream;
 
+use ffmpeg_sidecar::child::FfmpegChild;
 use nokhwa::CallbackCamera;
 use permissions::{
   commands::{check_permissions, open_system_settings, request_permission},
@@ -50,17 +52,15 @@ use windows::{
     quit_app, reset_panels, show_recording_input_options, show_region_selector,
     show_standalone_listbox, show_start_recording_dock, update_dock_opacity,
   },
-  service::{
-    add_animation, add_border, convert_to_stationary_panel, handle_dock_positioning,
-    open_permissions,
-  },
+  service::open_permissions,
 };
 
 use crate::{
+  export::commands::{cancel_export, export_recording, open_path_in_file_browser, path_exists},
   recording::models::RecordingManifest,
   screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
   windows::{
-    commands::passthrough_region_selector,
+    commands::{init_start_recording_dock, passthrough_region_selector},
     service::{editor_close_listener, spawn_window_close_manager},
   },
 };
@@ -81,6 +81,7 @@ struct AppState {
   recording_manifest: Option<RecordingManifest>,
   // Editing related
   is_editing: bool,
+  export_process: Option<Arc<Mutex<FfmpegChild>>>,
 }
 
 async fn setup_store(app: &App) -> Arc<Store<Wry>> {
@@ -107,18 +108,6 @@ async fn setup_store(app: &App) -> Arc<Store<Wry>> {
   }
 
   store
-}
-
-fn init_start_recording_dock(app_handle: &AppHandle) {
-  let window = app_handle
-    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
-    .unwrap();
-
-  add_border(&window);
-  add_animation(&window, 3);
-  handle_dock_positioning(&window);
-
-  let _ = convert_to_stationary_panel(&window, constants::PanelLevel::StartRecordingDock);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -166,6 +155,10 @@ pub fn run() {
       init_recording_dock,
       start_recording,
       stop_recording,
+      open_path_in_file_browser,
+      path_exists,
+      export_recording,
+      cancel_export
     ])
     .manage(Mutex::new(AppState {
       open_windows: HashMap::from([
@@ -183,12 +176,14 @@ pub fn run() {
       stop_barrier: None,
       recording_manifest: None,
       is_editing: false,
+      export_process: None,
     }))
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_os::init())
     .plugin(tauri_plugin_macos_permissions::init())
     .plugin(tauri_nspanel::init())
     .plugin(tauri_plugin_shell::init())
+    .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_store::Builder::new().build())
     .setup(|app: &mut App| {
       let store = tauri::async_runtime::block_on(setup_store(app));
