@@ -37,7 +37,9 @@ jobs:
           components: clippy, rustfmt
 
       - name: clippy
+        working-directory: src-tauri
         run: cargo clippy --all-targets --all-features -- -D warnings
 
       - name: Cargo fmt check
+        working-directory: src-tauri
         run: cargo fmt --all -- --check
