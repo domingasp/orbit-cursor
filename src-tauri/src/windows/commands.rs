@@ -191,7 +191,7 @@ pub fn show_standalone_listbox(
   let _ = window.set_size(size);
 
   if let Err(e) = window.show() {
-    eprintln!("Failed to show standalone listbox: {}", e);
+    eprintln!("Failed to show standalone listbox: {e}");
   }
 }
 
@@ -212,7 +212,7 @@ pub fn show_recording_input_options(
     .get_webview_window(WindowLabel::RecordingInputOptions.as_ref())
     .unwrap();
   if let Err(e) = window.show() {
-    eprintln!("Failed to show recording input options: {}", e);
+    eprintln!("Failed to show recording input options: {e}");
   }
 
   let _ = app_handle
@@ -243,7 +243,7 @@ pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<
     .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
     .unwrap();
   if let Err(e) = window.show() {
-    eprintln!("Failed to show start recording dock: {}", e);
+    eprintln!("Failed to show start recording dock: {e}");
   }
 
   // Showing/hiding doesn't remount component, instead we emit event to UI
@@ -269,7 +269,7 @@ pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<
       .unwrap();
     position_recording_source_selector(app_handle, &recording_source_selector_window);
     if let Err(e) = recording_source_selector.show() {
-      eprintln!("Failed to show recording source selector: {}", e);
+      eprintln!("Failed to show recording source selector: {e}");
     }
   }
 }
@@ -287,7 +287,7 @@ pub fn show_region_selector(
   let _ = window.set_position(position);
 
   if let Err(e) = window.show() {
-    eprintln!("Failed to show region selector: {}", e);
+    eprintln!("Failed to show region selector: {e}");
   }
 
   let _ = window.set_focus();

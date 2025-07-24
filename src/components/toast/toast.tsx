@@ -13,7 +13,7 @@ import { ToastState } from "react-stately";
 
 import { tv } from "../../../tailwind-merge.config";
 import { elementFocus, focusStyles } from "../../lib/styling";
-import Button from "../button/button";
+import { Button } from "../button/button";
 
 const toastVariants = tv({
   slots: {
@@ -52,7 +52,7 @@ type ToastProps = AriaToastProps<ToastContent> & {
   ref?: Ref<HTMLDivElement>;
 };
 
-const Toast = ({
+export const Toast = ({
   expanded,
   forwardedRef,
   ref: outerRef,
@@ -138,5 +138,3 @@ const Toast = ({
     </div>
   );
 };
-
-export default Toast;

@@ -155,7 +155,7 @@ type SparklesProps = {
   sparklesCount?: number;
 };
 
-const Sparkles = ({
+export const Sparkles = ({
   children,
   colors,
   duration = { max: 1.2, min: 0.4 },
@@ -190,5 +190,3 @@ const Sparkles = ({
     </div>
   );
 };
-
-export default Sparkles;

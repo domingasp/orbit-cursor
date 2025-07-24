@@ -214,25 +214,19 @@ fn configure_audio_tracks(
     let mut audio_index = mic_input_index;
 
     if has_microphone {
-      ffmpeg.map(format!("{}:a", audio_index));
+      ffmpeg.map(format!("{audio_index}:a"));
       audio_index += 1;
     }
 
     if has_system_audio {
-      ffmpeg.map(format!("{}:a", audio_index));
+      ffmpeg.map(format!("{audio_index}:a"));
     }
 
     None
   } else if has_microphone && has_system_audio {
     ffmpeg.map("[aout]");
 
-    Some(
-      format!(
-        "[{}:a][{}:a]amix=inputs=2[aout]",
-        mic_input_index, sys_input_index
-      )
-      .to_string(),
-    )
+    Some(format!("[{mic_input_index}:a][{sys_input_index}:a]amix=inputs=2[aout]").to_string())
   } else if has_microphone || has_system_audio {
     let audio_index = if has_microphone {
       mic_input_index
@@ -240,7 +234,7 @@ fn configure_audio_tracks(
       sys_input_index
     };
 
-    ffmpeg.map(format!("{}:a", audio_index));
+    ffmpeg.map(format!("{audio_index}:a"));
 
     None
   } else {
@@ -286,8 +280,8 @@ fn unique_path(base: PathBuf) -> PathBuf {
   loop {
     let uuid = Uuid::new_v4();
     let candidate_name = match &extension {
-      Some(ext) => format!("{}_{}.{}", stem, uuid, ext),
-      None => format!("{}_{}", stem, uuid),
+      Some(ext) => format!("{stem}_{uuid}.{ext}"),
+      None => format!("{stem}_{uuid}"),
     };
 
     let candidate_path = parent.join(candidate_name);
@@ -312,7 +306,7 @@ fn prepare_output_path(
       .map_or("".into(), |e| format!("{}", e.to_string_lossy()));
 
     let recording_file = unique_dir.join(file_name);
-    let camera_file = unique_dir.join(format!("{}_camera.{}", stem, ext));
+    let camera_file = unique_dir.join(format!("{stem}_camera.{ext}"));
 
     (recording_file, Some(camera_file))
   } else {
@@ -369,7 +363,7 @@ fn handle_cancellation(output_path: PathBuf, camera_path: Option<PathBuf>) {
       if exists {
         if let Some(folder) = camera_path.parent() {
           if let Err(e) = std::fs::remove_dir_all(folder) {
-            eprintln!("Failed to remove folder {:?}: {}", folder, e);
+            eprintln!("Failed to remove folder {folder:?}: {e}");
           }
           return;
         }
@@ -380,7 +374,7 @@ fn handle_cancellation(output_path: PathBuf, camera_path: Option<PathBuf>) {
   if let Ok(exists) = output_path.try_exists() {
     if exists {
       if let Err(e) = std::fs::remove_file(&output_path) {
-        eprintln!("Failed to remove output file {:?}: {}", output_path, e);
+        eprintln!("Failed to remove output file {output_path:?}: {e}");
       }
     }
   }

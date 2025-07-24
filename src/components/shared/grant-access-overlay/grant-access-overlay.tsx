@@ -6,15 +6,20 @@ import {
   PermissionStatus,
   PermissionType,
 } from "../../../stores/permissions.store";
-import Button from "../../button/button";
-import Overlay from "../../overlay/overlay";
+import { Button } from "../../button/button";
+import { Overlay } from "../../overlay/overlay";
 
 type GrantAccessProps = {
   permission: PermissionStatus | undefined;
   type: PermissionType;
   icon?: React.ReactNode;
 };
-const GrantAccessOverlay = ({ icon, permission, type }: GrantAccessProps) => {
+
+export const GrantAccessOverlay = ({
+  icon,
+  permission,
+  type,
+}: GrantAccessProps) => {
   const onPressGrant = () => {
     if (permission?.canRequest) requestPermissions(type);
     else openSystemSettings();
@@ -33,5 +38,3 @@ const GrantAccessOverlay = ({ icon, permission, type }: GrantAccessProps) => {
     </Overlay>
   );
 };
-
-export default GrantAccessOverlay;

@@ -2,12 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { formatTime } from "../../../lib/time";
 
-import NumberRotate from "./number-rotate";
+import { NumberRotate } from "./number-rotate";
 
 type ElapsedTimeProps = {
   isRecording: boolean;
 };
-const ElapsedTime = ({ isRecording }: ElapsedTimeProps) => {
+
+export const ElapsedTime = ({ isRecording }: ElapsedTimeProps) => {
   const interval = useRef<NodeJS.Timeout>(null);
   const [secondsElapsed, setSecondsElapsed] = useState(0);
 
@@ -45,5 +46,3 @@ const ElapsedTime = ({ isRecording }: ElapsedTimeProps) => {
     </div>
   );
 };
-
-export default ElapsedTime;

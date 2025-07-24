@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/react";
 
-import Checkbox from "./checkbox";
+import { Checkbox } from "./checkbox";
 
 const sizes: React.ComponentProps<typeof Checkbox>["size"][] = [
   "md",

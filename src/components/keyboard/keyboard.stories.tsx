@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/react";
 
-import Keyboard from "./keyboard";
+import { Keyboard } from "./keyboard";
 
 const sizes: React.ComponentProps<typeof Keyboard>["size"][] = [
   "md",

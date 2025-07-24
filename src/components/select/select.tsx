@@ -14,9 +14,9 @@ import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../tailwind-merge.config";
 import { elementFocus, focusStyles } from "../../lib/styling";
-import ListBox from "../listbox/listbox";
+import { ListBox } from "../listbox/listbox";
 
-import ClearButton from "./components/clear-button";
+import { ClearButton } from "./components/clear-button";
 
 const ICON_SIZES = {
   md: 16,
@@ -81,7 +81,7 @@ type SelectProps<T extends object> = AriaSelectProps<T> &
     triggerRef?: Ref<HTMLButtonElement>;
   };
 
-const Select = <T extends object>({
+export const Select = <T extends object>({
   children,
   className,
   clearable = true,
@@ -182,5 +182,3 @@ const Select = <T extends object>({
     </AriaSelect>
   );
 };
-
-export default Select;

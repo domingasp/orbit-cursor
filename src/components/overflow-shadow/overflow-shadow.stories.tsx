@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/react";
 
-import OverflowShadow from "./overflow-shadow";
+import { OverflowShadow } from "./overflow-shadow";
 
 /** Parent container must have `relative` and `overflow-hidden` applied. */
 const meta = {

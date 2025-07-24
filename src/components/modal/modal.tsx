@@ -22,7 +22,7 @@ const modalVariants = tv({
 type ModalProps = AriaModalOverlayProps &
   VariantProps<typeof modalVariants> & { className?: string };
 
-const Modal = ({ children, className, ...props }: ModalProps) => {
+export const Modal = ({ children, className, ...props }: ModalProps) => {
   const { modal, overlay } = modalVariants();
   return (
     <AriaModalOverlay {...props} className={overlay()}>
@@ -30,5 +30,3 @@ const Modal = ({ children, className, ...props }: ModalProps) => {
     </AriaModalOverlay>
   );
 };
-
-export default Modal;

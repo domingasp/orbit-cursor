@@ -1,4 +1,4 @@
-import { AnimationProps, motion, MotionProps } from "motion/react";
+import { motion, MotionProps } from "motion/react";
 import { Ref } from "react";
 import { AriaButtonProps } from "react-aria";
 import { Button as AriaButton } from "react-aria-components";
@@ -98,7 +98,7 @@ const shinyAnimationProps = () =>
       stiffness: 20,
       type: "spring",
     },
-  } as AnimationProps);
+  } as MotionProps);
 
 type ButtonProps = AriaButtonProps &
   VariantProps<typeof buttonVariants> &
@@ -111,7 +111,7 @@ type ButtonProps = AriaButtonProps &
 
 const MotionAriaButton = motion.create(AriaButton);
 
-const Button = ({
+export const Button = ({
   children,
   className,
   color,
@@ -138,5 +138,3 @@ const Button = ({
     </MotionAriaButton>
   );
 };
-
-export default Button;

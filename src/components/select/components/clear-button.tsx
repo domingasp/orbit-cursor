@@ -31,7 +31,8 @@ type ClearButtonProps = MotionProps &
     onClear?: () => void;
     size?: number;
   };
-const ClearButton = ({
+
+export const ClearButton = ({
   className,
   onClear,
   size = 14,
@@ -56,5 +57,3 @@ const ClearButton = ({
     </div>
   );
 };
-
-export default ClearButton;

@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { Dialog } from "react-aria-components";
 import { useShallow } from "zustand/react/shallow";
 
-import Modal from "../../components/modal/modal";
+import { Modal } from "../../components/modal/modal";
 import { useToast } from "../../components/toast/toast-provider";
-import ExportOptions from "../../features/export-options/components/export-options";
-import PreviewPlayer from "../../features/preview-player/components/preview-player";
-import Toolbar from "../../features/toolbar/components/toolbar";
+import { ExportOptions } from "../../features/export-options/components/export-options";
+import { PreviewPlayer } from "../../features/preview-player/components/preview-player";
+import { Toolbar } from "../../features/toolbar/components/toolbar";
 import { usePlaybackStore } from "../../stores/editor/playback.store";
 import { Events } from "../../types/events";
 
@@ -24,7 +24,7 @@ type RecordingManifest = {
   };
 };
 
-const Editor = () => {
+export const Editor = () => {
   // top level background color
   document.documentElement.classList.add(
     "bg-content",
@@ -130,5 +130,3 @@ const Editor = () => {
     </div>
   );
 };
-
-export default Editor;

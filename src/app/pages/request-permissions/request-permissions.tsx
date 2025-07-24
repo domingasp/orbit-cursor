@@ -1,13 +1,10 @@
 import { Disc, Mic, PersonStanding, Video } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 
-import {
-  quitApp,
-  requestPermissions,
-} from "../../../api/permissions";
-import Button from "../../../components/button/button";
-import PermissionRow from "../../../features/permissions/components/permission-row";
-import Gradients from "../../../features/permissions/types/gradients";
+import { quitApp, requestPermissions } from "../../../api/permissions";
+import { Button } from "../../../components/button/button";
+import { PermissionRow } from "../../../features/permissions/components/permission-row";
+import { Gradients } from "../../../features/permissions/types/gradients";
 import {
   PermissionType,
   usePermissionsStore,
@@ -15,7 +12,7 @@ import {
 
 const ICON_SIZE = 40;
 
-const RequestPermissions = () => {
+export const RequestPermissions = () => {
   const permissions = usePermissionsStore((state) => state.permissions);
 
   return (
@@ -26,8 +23,8 @@ const RequestPermissions = () => {
         </p>
 
         <AnimatePresence>
-          {permissions.accessibility?.hasAccess &&
-            permissions.screen?.hasAccess && (
+          {permissions.accessibility.hasAccess &&
+            permissions.screen.hasAccess && (
               <motion.div
                 animate={{ opacity: 1, scale: 1 }}
                 className="text-content-fg"
@@ -84,5 +81,3 @@ const RequestPermissions = () => {
     </div>
   );
 };
-
-export default RequestPermissions;

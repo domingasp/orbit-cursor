@@ -48,7 +48,7 @@ type ListBoxItemProps = AriaListBoxItemProps &
     className?: string;
   };
 
-const ListBoxItem = ({
+export const ListBoxItem = ({
   children,
   className,
   compact,
@@ -83,5 +83,3 @@ const ListBoxItem = ({
     </AriaListBoxItem>
   );
 };
-
-export default ListBoxItem;

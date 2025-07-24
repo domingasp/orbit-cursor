@@ -1,9 +1,9 @@
 import { Meta, StoryObj } from "@storybook/react";
 import { Dialog, DialogTrigger } from "react-aria-components";
 
-import Button from "../button/button";
+import { Button } from "../button/button";
 
-import Modal from "./modal";
+import { Modal } from "./modal";
 
 const meta = {
   args: { children: "Modal Content" },

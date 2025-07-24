@@ -3,8 +3,8 @@ import { AppWindowMac, Monitor } from "lucide-react";
 import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import Button from "../../../components/button/button";
-import ContentRotate from "../../../components/content-rotate/content-rotate";
+import { Button } from "../../../components/button/button";
+import { ContentRotate } from "../../../components/content-rotate/content-rotate";
 import {
   RecordingType,
   useRecordingStateStore,
@@ -13,7 +13,8 @@ import {
 type RecordingSourceProps = {
   onPress: () => void;
 };
-const RecordingSource = ({ onPress }: RecordingSourceProps) => {
+
+export const RecordingSource = ({ onPress }: RecordingSourceProps) => {
   const [recordingType, selectedMonitor, selectedWindow] =
     useRecordingStateStore(
       useShallow((state) => [
@@ -84,5 +85,3 @@ const RecordingSource = ({ onPress }: RecordingSourceProps) => {
     </div>
   );
 };
-
-export default RecordingSource;

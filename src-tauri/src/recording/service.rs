@@ -114,12 +114,12 @@ pub fn spawn_mouse_event_recorder(
 
           if let Some(mouse_event) = mouse_event_option {
             if let Err(e) = write(&mut mouse_events_file, &mouse_event) {
-              eprintln!("Failed to write mouse event: {}", e);
+              eprintln!("Failed to write mouse event: {e}");
             }
           }
         }
         Err(e) => {
-          eprintln!("Failed to receive input event: {}", e);
+          eprintln!("Failed to receive input event: {e}");
         }
       }
     }
@@ -313,7 +313,7 @@ fn spawn_camera_with_send(
 
   std::thread::spawn(move || {
     if let Err(e) = camera.open_stream() {
-      eprintln!("Failed to start camera: {}", e);
+      eprintln!("Failed to start camera: {e}");
     }
 
     let _ = stop_rx.blocking_recv(); // Keeps camera alive
@@ -353,7 +353,7 @@ fn spawn_ffmpeg_frame_writer(
     }
 
     if let Err(e) = stdin.flush() {
-      eprintln!("Failed to flush ffmpeg stdin: {}", e);
+      eprintln!("Failed to flush ffmpeg stdin: {e}");
     }
 
     drop(stdin); // signals EOF to ffmpeg
@@ -505,7 +505,7 @@ pub fn start_input_audio_recording(
   if let Some((device, config)) = get_input_audio_device(device_name.clone()) {
     start_audio_recording(synchronization, file_path, device, config);
   } else {
-    eprintln!("Failed to get input audio device: {}", device_name);
+    eprintln!("Failed to get input audio device: {device_name}");
   }
 }
 

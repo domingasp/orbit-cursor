@@ -12,7 +12,7 @@ import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../tailwind-merge.config";
 
-import Toast, { ToastContent } from "./toast";
+import { Toast, ToastContent } from "./toast";
 
 const toastRegionVariants = tv({
   defaultVariants: {
@@ -50,7 +50,7 @@ type ToastRegionProps = AriaToastRegionProps &
     className?: string;
   };
 
-const ToastRegion = ({
+export const ToastRegion = ({
   className,
   position = "top",
   state,
@@ -165,5 +165,3 @@ const ToastRegion = ({
     </div>
   );
 };
-
-export default ToastRegion;

@@ -6,7 +6,7 @@ type ContentRotateProps = MotionProps & {
   contentKey: string;
   className?: string;
 };
-const ContentRotate = ({
+export const ContentRotate = ({
   children,
   className,
   contentKey,
@@ -36,5 +36,3 @@ const ContentRotate = ({
     </div>
   );
 };
-
-export default ContentRotate;

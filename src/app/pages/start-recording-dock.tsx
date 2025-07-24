@@ -5,8 +5,8 @@ import { useEffect } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import { isStartRecordingDockOpen } from "../../api/windows";
-import Overlay from "../../components/overlay/overlay";
-import RecordingControls from "../../features/recording-controls/components/recording-controls";
+import { Overlay } from "../../components/overlay/overlay";
+import { RecordingControls } from "../../features/recording-controls/components/recording-controls";
 import { usePermissionsStore } from "../../stores/permissions.store";
 import { useRecordingStateStore } from "../../stores/recording-state.store";
 import {
@@ -15,7 +15,7 @@ import {
 } from "../../stores/window-open-state.store";
 import { Events } from "../../types/events";
 
-const StartRecordingDock = () => {
+export const StartRecordingDock = () => {
   const [{ accessibility, screen }, canUnlock] = usePermissionsStore(
     useShallow((state) => [state.permissions, state.canUnlock])
   );
@@ -29,7 +29,7 @@ const StartRecordingDock = () => {
   );
 
   const noPermissions =
-    !accessibility?.hasAccess || !screen?.hasAccess || !canUnlock;
+    !accessibility.hasAccess || !screen.hasAccess || !canUnlock;
 
   useEffect(() => {
     setIsRecording(false); // On first mount reset recording state
@@ -67,5 +67,3 @@ const StartRecordingDock = () => {
     </div>
   );
 };
-
-export default StartRecordingDock;

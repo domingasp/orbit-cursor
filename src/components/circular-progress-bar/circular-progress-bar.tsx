@@ -24,7 +24,7 @@ type CircularProgressBarProps = AriaProgressBarProps & {
   strokeWidth?: number;
 };
 
-const CircularProgressBar = ({
+export const CircularProgressBar = ({
   hideBackdrop = false,
   indeterminate = false,
   renderLabel,
@@ -128,5 +128,3 @@ const CircularProgressBar = ({
     </AriaProgressBar>
   );
 };
-
-export default CircularProgressBar;

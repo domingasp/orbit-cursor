@@ -1,8 +1,8 @@
 import { Meta, StoryObj } from "@storybook/react";
 
-import ListBoxItem from "../listbox-item/listbox-item";
+import { ListBoxItem } from "../listbox-item/listbox-item";
 
-import ListBox from "./listbox";
+import { ListBox } from "./listbox";
 
 const meta = {
   argTypes: {

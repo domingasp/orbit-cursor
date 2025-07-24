@@ -4,11 +4,11 @@ import { TooltipTrigger } from "react-aria-components";
 import { twMerge } from "tailwind-merge";
 
 import { openSystemSettings } from "../../../api/permissions";
-import Button from "../../../components/button/button";
-import Sparkles from "../../../components/sparkles/sparkles";
-import Tooltip from "../../../components/tooltip/tooltip";
+import { Button } from "../../../components/button/button";
+import { Sparkles } from "../../../components/sparkles/sparkles";
+import { Tooltip } from "../../../components/tooltip/tooltip";
 import { Permissions } from "../../../stores/permissions.store";
-import Gradients from "../types/gradients";
+import { Gradients } from "../types/gradients";
 
 const sparkles = {
   colors: ["#FFFFFF"],
@@ -28,7 +28,8 @@ type PermissionProps = {
   onClick?: () => void;
   status?: Permissions[keyof Permissions];
 };
-const PermissionRow = ({
+
+export const PermissionRow = ({
   color = Gradients.Gray,
   description,
   icon,
@@ -86,5 +87,3 @@ const PermissionRow = ({
     </div>
   );
 };
-
-export default PermissionRow;

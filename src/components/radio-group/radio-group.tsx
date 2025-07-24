@@ -20,7 +20,7 @@ const radioGroupVariants = tv({
 type RadioGroupProps = AriaRadioGroupProps &
   VariantProps<typeof radioGroupVariants>;
 
-const RadioGroup = ({ className, ...props }: RadioGroupProps) => {
+export const RadioGroup = ({ className, ...props }: RadioGroupProps) => {
   return (
     <AriaRadioGroup
       {...props}
@@ -30,5 +30,3 @@ const RadioGroup = ({ className, ...props }: RadioGroupProps) => {
     />
   );
 };
-
-export default RadioGroup;

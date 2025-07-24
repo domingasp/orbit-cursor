@@ -19,7 +19,7 @@ import { basename, extname, sep } from "@tauri-apps/api/path";
  * @param maxLength Max string length in output.
  * @returns Truncated file path.
  */
-const truncateFilePath = (
+export const truncateFilePath = (
   path: string,
   delimiter = sep(),
   maxLength = 45
@@ -62,8 +62,6 @@ const truncateFilePath = (
     return [prefix, shortenedFilename].join(delimiter);
   }
 };
-
-export default truncateFilePath;
 
 /**
  * Return directory path, filename, and extension from path.

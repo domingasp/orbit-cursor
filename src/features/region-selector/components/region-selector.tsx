@@ -22,9 +22,9 @@ import {
   useWindowReopenStore,
 } from "../../../stores/window-open-state.store";
 import { ResizeDirection } from "../types";
-import getRectProximity from "../utils/rect-proximity";
+import { getRectProximity } from "../utils/rect-proximity";
 
-import Magnifier from "./magnifier/magnifier";
+import { Magnifier } from "./magnifier/magnifier";
 
 const handleStyle: React.CSSProperties = {
   background: "var(--color-content)",
@@ -92,7 +92,7 @@ const handleClasses: HandleClasses = {
   topRight: "topRight",
 };
 
-const RegionSelector = () => {
+export const RegionSelector = () => {
   const startRecordingDockOpened = useWindowReopenStore(
     useShallow((state) => state.windows[AppWindow.StartRecordingDock])
   );
@@ -283,5 +283,3 @@ const RegionSelector = () => {
     </div>
   );
 };
-
-export default RegionSelector;

@@ -5,8 +5,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import GrantAccessOverlay from "../../../components/shared/grant-access-overlay/grant-access-overlay";
-import InputSelect from "../../../components/shared/input-select/input-select";
+import { GrantAccessOverlay } from "../../../components/shared/grant-access-overlay/grant-access-overlay";
+import { InputSelect } from "../../../components/shared/input-select/input-select";
 import { cn } from "../../../lib/styling";
 import {
   PermissionType,
@@ -29,7 +29,7 @@ import {
   stopCameraStream,
 } from "../api/camera";
 
-const CameraSelect = () => {
+export const CameraSelect = () => {
   const permission = usePermissionsStore((state) => state.permissions.camera);
   const recordingInputOptionsOpened = useWindowReopenStore(
     useShallow((state) => state.windows[AppWindow.RecordingInputOptions])
@@ -125,7 +125,7 @@ const CameraSelect = () => {
     <div
       className={cn(
         "relative flex flex-col gap-2 items-center rounded-md",
-        !permission?.hasAccess && "bg-content"
+        !permission.hasAccess && "bg-content"
       )}
     >
       <GrantAccessOverlay
@@ -168,5 +168,3 @@ const CameraSelect = () => {
     </div>
   );
 };
-
-export default CameraSelect;

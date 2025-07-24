@@ -1,7 +1,7 @@
 import { CircleOff, TriangleAlert } from "lucide-react";
 import { AnimatePresence, motion, MotionProps } from "motion/react";
 
-import Button from "../../../components/button/button";
+import { Button } from "../../../components/button/button";
 import { PermissionStatus } from "../../../stores/permissions.store";
 
 import { WarningType } from "./input-toggle-groups";
@@ -15,7 +15,8 @@ type InputToggleProps = {
   value: boolean;
   warning?: WarningType;
 };
-const InputToggle = ({
+
+export const InputToggle = ({
   offIcon,
   onIcon,
   openRecordingInputOptions,
@@ -81,5 +82,3 @@ const InputToggle = ({
     </Button>
   );
 };
-
-export default InputToggle;

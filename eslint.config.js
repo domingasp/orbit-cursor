@@ -140,6 +140,24 @@ export default defineConfig([
           allowLineSeparatedGroups: true,
         },
       ],
+      "no-restricted-exports": [
+        "error",
+        { restrictDefaultExports: { direct: true } },
+      ],
+    },
+  },
+  // #endregion
+
+  // #region Overrides
+  {
+    files: [
+      "vite.config.ts",
+      "vitest.workspace.ts",
+      ".storybook/*",
+      "**/*.stories.tsx",
+    ],
+    rules: {
+      "no-restricted-exports": "off",
     },
   },
   // #endregion

@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/react";
 
-import Switch from "./switch";
+import { Switch } from "./switch";
 
 const sizes: React.ComponentProps<typeof Switch>["size"][] = ["md", "xs"];
 

@@ -2,9 +2,9 @@ import { Meta, StoryObj } from "@storybook/react";
 import { IceCream } from "lucide-react";
 import { ReactNode } from "react";
 
-import Button from "../button/button";
+import { Button } from "../button/button";
 
-import ContentRotate from "./content-rotate";
+import { ContentRotate } from "./content-rotate";
 
 const childrenOptions: Record<string, ReactNode> = {
   textOnly: "Chocolate",

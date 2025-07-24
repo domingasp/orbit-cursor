@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ComponentProps, useState } from "react";
 import { PressEvent } from "react-aria";
 
-import Button from "../../../components/button/button";
+import { Button } from "../../../components/button/button";
 import { cn } from "../../../lib/styling";
 
 type MakeDefaultButtonProps = ComponentProps<typeof Button>;
@@ -12,7 +12,7 @@ type MakeDefaultButtonProps = ComponentProps<typeof Button>;
 // One-shot action button
 
 /** Shows a check after pressing, has no concept of success/fail. */
-const MakeDefaultButton = ({
+export const MakeDefaultButton = ({
   children,
   className,
   onPress,
@@ -59,5 +59,3 @@ const MakeDefaultButton = ({
     </Button>
   );
 };
-
-export default MakeDefaultButton;

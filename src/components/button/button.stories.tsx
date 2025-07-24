@@ -1,7 +1,7 @@
 import { Meta, StoryObj } from "@storybook/react";
 import { DoorOpen, HandMetal } from "lucide-react";
 
-import Button from "./button";
+import { Button } from "./button";
 
 const sizes: React.ComponentProps<typeof Button>["size"][] = [
   "lg",

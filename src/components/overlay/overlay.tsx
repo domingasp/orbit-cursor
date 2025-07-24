@@ -28,7 +28,7 @@ type OverlayProps = AriaOverlayProps &
     className?: string;
   };
 
-const Overlay = ({
+export const Overlay = ({
   blur,
   children,
   className,
@@ -58,5 +58,3 @@ const Overlay = ({
     </div>
   );
 };
-
-export default Overlay;

@@ -15,7 +15,7 @@ import { LogicalPosition } from "@tauri-apps/api/dpi";
  * @returns Value between 0 and 1 - 0 meaning intersecting and 1 meaning further
  * than `maxProximity`
  */
-const getRectProximity = (
+export const getRectProximity = (
   rect1: {
     position: { x: number; y: number };
     size: { height: number; width: number };
@@ -59,5 +59,3 @@ const getRectProximity = (
 
   return Math.min(1, distance / maxProximity);
 };
-
-export default getRectProximity;

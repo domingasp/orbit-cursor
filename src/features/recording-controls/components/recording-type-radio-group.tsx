@@ -2,21 +2,21 @@ import { AppWindowMac, Monitor, SquareDashed } from "lucide-react";
 import { ComponentProps } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import Keyboard from "../../../components/keyboard/keyboard";
-import RadioGroup from "../../../components/radio-group/radio-group";
+import { Keyboard } from "../../../components/keyboard/keyboard";
+import { RadioGroup } from "../../../components/radio-group/radio-group";
 import {
   RecordingType,
   useRecordingStateStore,
 } from "../../../stores/recording-state.store";
 
-import IconRadio from "./icon-radio";
+import { IconRadio } from "./icon-radio";
 
 const KEYBOARD_STYLE: ComponentProps<typeof Keyboard> = {
   size: "xs",
   variant: "ghost",
 };
 
-const RecordingTypeRadioGroup = () => {
+export const RecordingTypeRadioGroup = () => {
   const [recordingType, setRecordingType] = useRecordingStateStore(
     useShallow((state) => [state.recordingType, state.setRecordingType])
   );
@@ -57,5 +57,3 @@ const RecordingTypeRadioGroup = () => {
     </RadioGroup>
   );
 };
-
-export default RecordingTypeRadioGroup;

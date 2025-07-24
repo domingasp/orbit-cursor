@@ -48,7 +48,7 @@ pub fn create_camera(
   match CallbackCamera::new(camera_index, requested, callback) {
     Ok(camera) => Some(camera),
     Err(e) => {
-      eprintln!("Failed to initialize camera: {}", e);
+      eprintln!("Failed to initialize camera: {e}");
       None
     }
   }

@@ -1,9 +1,9 @@
 import { Meta, StoryObj } from "@storybook/react";
 import { TooltipTrigger } from "react-aria-components";
 
-import Button from "../button/button";
+import { Button } from "../button/button";
 
-import Tooltip from "./tooltip";
+import { Tooltip } from "./tooltip";
 
 const sizes: React.ComponentProps<typeof Tooltip>["size"][] = [
   "md",
