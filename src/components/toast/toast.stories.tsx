@@ -7,29 +7,39 @@ import Button from "../button/button";
 import Toast from "./toast";
 import ToastProvider, { useToast } from "./toast-provider";
 
-const ToastButton = () => {
+const ToastButtons = () => {
   const toast = useToast();
 
   return (
-    <Button
-      onClick={() => {
-        const key = toast.add({
-          description: faker.lorem.words({ max: 10, min: 1 }),
-          leftSection: (
-            <Check
-              className="text-success"
-              size={20}
-              onClick={() => {
-                toast.close(key);
-              }}
-            />
-          ),
-          title: faker.lorem.words({ max: 2, min: 1 }),
-        });
-      }}
-    >
-      Toast
-    </Button>
+    <div className="flex gap-2">
+      <Button
+        onClick={() => {
+          const key = toast.add({
+            description: faker.lorem.words({ max: 10, min: 1 }),
+            leftSection: (
+              <Check
+                className="text-success"
+                size={20}
+                onClick={() => {
+                  toast.close(key);
+                }}
+              />
+            ),
+            title: faker.lorem.words({ max: 2, min: 1 }),
+          });
+        }}
+      >
+        Toast
+      </Button>
+
+      <Button
+        onPress={() => {
+          toast.closeAll();
+        }}
+      >
+        Close All
+      </Button>
+    </div>
   );
 };
 
@@ -64,7 +74,7 @@ type Story = StoryObj<typeof meta>;
 export const Top: Story = {
   decorators: (_Story) => (
     <ToastProvider position="top">
-      <ToastButton />
+      <ToastButtons />
     </ToastProvider>
   ),
 };
@@ -72,7 +82,7 @@ export const Top: Story = {
 export const Bottom: Story = {
   decorators: (_Story) => (
     <ToastProvider position="bottom">
-      <ToastButton />
+      <ToastButtons />
     </ToastProvider>
   ),
 };

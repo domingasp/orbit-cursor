@@ -1,10 +1,13 @@
 import { ComponentProps, createContext, useContext } from "react";
-import { ToastState, useToastState } from "react-stately";
 
+import {
+  ExtendedToastState,
+  useExtendedToastState,
+} from "./extended-toast-state";
 import { ToastContent } from "./toast";
 import ToastRegion from "./toast-region";
 
-type ToastContextType = ToastState<ToastContent> | null;
+type ToastContextType = ExtendedToastState<ToastContent> | null;
 
 const ToastContext = createContext<ToastContextType>(null);
 
@@ -21,7 +24,7 @@ type ToastProviderProps = Omit<ComponentProps<typeof ToastRegion>, "state"> & {
 };
 
 const ToastProvider = ({ children, ...props }: ToastProviderProps) => {
-  const state = useToastState<ToastContent>({
+  const state = useExtendedToastState<ToastContent>({
     maxVisibleToasts: 3,
   });
 

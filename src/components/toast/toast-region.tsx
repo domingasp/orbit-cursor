@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   AriaToastRegionProps,
   useFocusVisible,
@@ -22,7 +22,7 @@ const toastRegionVariants = tv({
     // Required for central alignment of toasts - without it
     // and with translateX final toast exit moves due to the
     // width reducing to 0
-    container: "fixed w-full left-0 flex justify-center",
+    container: "fixed w-full left-0 flex justify-center z-100",
     region: "flex gap-2 items-center",
   },
   variants: {
@@ -80,8 +80,11 @@ const ToastRegion = ({
     },
   });
 
-  const expanded =
-    (frontToastWasHovered && isHovered) || (isFocusVisible && isFocusWithin);
+  const expanded = useMemo(
+    () =>
+      (frontToastWasHovered && isHovered) || (isFocusVisible && isFocusWithin),
+    [frontToastWasHovered, isHovered, isFocusVisible, isFocusWithin]
+  );
 
   // Track the front toast, other toasts get resized to the same size when
   // collapsed for consistent UI.
@@ -90,6 +93,11 @@ const ToastRegion = ({
     height: number;
     width: number;
   }>({ height: 0, width: 0 });
+
+  useEffect(() => {
+    if (expanded) state.pauseAll();
+    else state.resumeAll();
+  }, [expanded]);
 
   useLayoutEffect(() => {
     if (!frontToastRef.current) return;

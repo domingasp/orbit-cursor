@@ -1,4 +1,5 @@
 use std::process::Command;
+use std::sync::{Arc, Mutex};
 use std::{
   io::{BufRead, BufReader},
   path::{Path, PathBuf},
@@ -6,9 +7,10 @@ use std::{
 };
 
 use ffmpeg_sidecar::command::FfmpegCommand;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager, State};
 use uuid::Uuid;
 
+use crate::AppState;
 use crate::{constants::Events, recording::models::RecordingFile};
 
 pub fn encode_recording(
@@ -17,7 +19,8 @@ pub fn encode_recording(
   destination_file_path: PathBuf,
   separate_audio_tracks: bool,
   separate_camera_file: bool,
-) -> PathBuf {
+  open_folder_after_export: bool,
+) {
   let mut child = FfmpegCommand::new();
 
   let available_streams = check_recording_files(source_folder_path.as_path());
@@ -28,7 +31,7 @@ pub fn encode_recording(
   // Start with copying across camera if relevant, better UX for progress
   // Instead of percentage 100% -> indeterminate, it goes the opposite
   // thus 100% is when the export is finished (ffmpeg done)
-  if let Some(camera_path) = camera_path {
+  if let Some(camera_path) = camera_path.clone() {
     let _ = std::fs::copy(
       source_folder_path.join(RecordingFile::Camera.to_string()),
       camera_path,
@@ -70,16 +73,39 @@ pub fn encode_recording(
 
   configure_output_options(&mut child, &output_path);
 
-  let mut ffmpeg_child = child.spawn().unwrap();
+  let ffmpeg_child = child.spawn().unwrap();
 
-  let stdout = ffmpeg_child.take_stdout().unwrap();
-  ffmpeg_progress(&app_handle, stdout);
+  let ffmpeg_arc = Arc::new(Mutex::new(ffmpeg_child));
 
-  let _ = ffmpeg_child.wait();
+  // Store in state for cancellation
+  {
+    let state: State<'_, Mutex<AppState>> = app_handle.state();
+    if let Ok(mut state_guard) = state.lock() {
+      state_guard.export_process = Some(ffmpeg_arc.clone());
+    };
+  }
 
-  let _ = app_handle.emit(Events::ExportComplete.as_ref(), output_path.clone());
+  let stdout = ffmpeg_arc.clone().lock().unwrap().take_stdout().unwrap();
+  let app_handle_for_reader = app_handle.clone();
+  std::thread::spawn(move || {
+    ffmpeg_progress_reader(app_handle_for_reader, stdout);
 
-  output_path
+    if let Ok(mut ffmpeg_guard) = ffmpeg_arc.lock() {
+      let status = ffmpeg_guard.wait(); // Clean up resources
+
+      let success = status.as_ref().map(|s| s.success()).unwrap_or(false);
+
+      if success {
+        let _ = app_handle.emit(Events::ExportComplete.as_ref(), output_path.clone());
+
+        if open_folder_after_export {
+          open_path_in_file_browser(output_path);
+        }
+      } else {
+        handle_cancellation(output_path, camera_path);
+      }
+    }
+  });
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -294,8 +320,10 @@ fn prepare_output_path(
   }
 }
 
-/// Read FFmpeg progress, emitting `ExportProgress` with milliseconds.
-fn ffmpeg_progress(app_handle: &AppHandle, stdout: ChildStdout) {
+/// Spawn a FFmpeg progress thread.
+///
+/// Emits `ExportProgress` with milliseconds processed.
+fn ffmpeg_progress_reader(app_handle: AppHandle, stdout: ChildStdout) {
   let reader = BufReader::new(stdout);
   for line in reader.lines().map_while(Result::ok) {
     if let Some(timestamp_str) = line.strip_prefix("out_time=") {
@@ -332,6 +360,30 @@ fn parse_timestamp_to_milliseconds(ts: &str) -> Result<u64, ()> {
   let total_milliseconds = (hours * 3600 + minutes * 60 + seconds) * 1000 + milliseconds;
 
   Ok(total_milliseconds)
+}
+
+/// Delete generated files (including new folder, if relevant)
+fn handle_cancellation(output_path: PathBuf, camera_path: Option<PathBuf>) {
+  if let Some(camera_path) = camera_path {
+    if let Ok(exists) = camera_path.try_exists() {
+      if exists {
+        if let Some(folder) = camera_path.parent() {
+          if let Err(e) = std::fs::remove_dir_all(folder) {
+            eprintln!("Failed to remove folder {:?}: {}", folder, e);
+          }
+          return;
+        }
+      }
+    }
+  }
+
+  if let Ok(exists) = output_path.try_exists() {
+    if exists {
+      if let Err(e) = std::fs::remove_file(&output_path) {
+        eprintln!("Failed to remove output file {:?}: {}", output_path, e);
+      }
+    }
+  }
 }
 
 /// Open path in file manager.

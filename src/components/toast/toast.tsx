@@ -32,8 +32,8 @@ const toastVariants = tv({
   variants: {
     behind: {
       true: {
-        closeButton: "invisible",
-        content: "opacity-0",
+        closeButton: "invisible opacity-0",
+        contentWrapper: "opacity-0",
       },
     },
   },
@@ -59,9 +59,10 @@ const Toast = ({
   state,
   ...props
 }: ToastProps) => {
+  const behind = forwardedRef === undefined && !expanded;
   const { base, closeButton, content, contentWrapper, description, title } =
     toastVariants({
-      behind: forwardedRef === undefined && !expanded,
+      behind,
     });
 
   const ref = useRef<HTMLDivElement>(null);
@@ -98,9 +99,13 @@ const Toast = ({
         // When element is popped the width is rounded to nearest number
         // Something like 327.33 would become 327 - this can cause layout
         // shifts which only appear in the exit animations
-        minWidth: ref.current?.hasAttribute("data-motion-pop-id")
-          ? width
-          : undefined,
+        minWidth:
+          (expanded || forwardedRef !== undefined) &&
+          ref.current?.hasAttribute("data-motion-pop-id")
+            ? width
+            : // If closing all it should keep the animated width UNLESS it is
+              // the top toast
+              undefined,
       }}
     >
       <div {...contentProps} className={contentWrapper()}>

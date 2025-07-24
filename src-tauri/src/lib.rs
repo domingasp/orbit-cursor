@@ -27,6 +27,7 @@ use constants::{
 };
 use cpal::Stream;
 
+use ffmpeg_sidecar::child::FfmpegChild;
 use nokhwa::CallbackCamera;
 use permissions::{
   commands::{check_permissions, open_system_settings, request_permission},
@@ -55,7 +56,7 @@ use windows::{
 };
 
 use crate::{
-  export::commands::{export_recording, open_path_in_file_browser, path_exists},
+  export::commands::{cancel_export, export_recording, open_path_in_file_browser, path_exists},
   recording::models::RecordingManifest,
   screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
   windows::{
@@ -80,6 +81,7 @@ struct AppState {
   recording_manifest: Option<RecordingManifest>,
   // Editing related
   is_editing: bool,
+  export_process: Option<Arc<Mutex<FfmpegChild>>>,
 }
 
 async fn setup_store(app: &App) -> Arc<Store<Wry>> {
@@ -155,7 +157,8 @@ pub fn run() {
       stop_recording,
       open_path_in_file_browser,
       path_exists,
-      export_recording
+      export_recording,
+      cancel_export
     ])
     .manage(Mutex::new(AppState {
       open_windows: HashMap::from([
@@ -173,6 +176,7 @@ pub fn run() {
       stop_barrier: None,
       recording_manifest: None,
       is_editing: false,
+      export_process: None,
     }))
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_os::init())

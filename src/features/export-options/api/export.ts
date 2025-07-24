@@ -19,3 +19,7 @@ type ExportRecordingOptions = {
 export const exportRecording = (options: ExportRecordingOptions) => {
   void invoke(Commands.ExportRecording, { options });
 };
+
+export const cancelExport = () => {
+  void invoke(Commands.CancelExport);
+};

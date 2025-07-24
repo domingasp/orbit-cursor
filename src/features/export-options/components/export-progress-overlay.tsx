@@ -1,5 +1,5 @@
 import { listen } from "@tauri-apps/api/event";
-import { Camera, FolderOpen } from "lucide-react";
+import { Camera, FolderOpen, FolderX } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
@@ -14,10 +14,12 @@ import { openPathInFileBrowser } from "../api/export";
 type ExportProgressOverlayProps = {
   isOpen: boolean;
   requiresCameraState: boolean;
+  onCancel?: () => void;
   onComplete?: () => void;
 };
 const ExportProgressOverlay = ({
   isOpen,
+  onCancel,
   onComplete,
   requiresCameraState,
 }: ExportProgressOverlayProps) => {
@@ -28,6 +30,21 @@ const ExportProgressOverlay = ({
 
   const [progress, setProgress] = useState(0);
   const showingCameraState = progress === 0 && requiresCameraState;
+
+  const handleCancel = () => {
+    toast.add(
+      {
+        leftSection: (
+          <div className="px-1">
+            <FolderX className="text-muted" size={20} />
+          </div>
+        ),
+        title: "Export Cancelled",
+      },
+      { timeout: 5000 }
+    );
+    onCancel?.();
+  };
 
   useEffect(() => {
     const unlistenProgress = listen(Events.ExportProgress, (data) => {
@@ -92,11 +109,16 @@ const ExportProgressOverlay = ({
               : undefined
           }
         />
+
         <span className="text-muted font-thin">
           {showingCameraState
             ? "Exporting camera..."
             : "Exporting recording..."}
         </span>
+
+        <Button onPress={handleCancel} size="sm">
+          Cancel
+        </Button>
       </div>
     </Overlay>
   );

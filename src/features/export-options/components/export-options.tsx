@@ -10,7 +10,7 @@ import { useShallow } from "zustand/react/shallow";
 import Button from "../../../components/button/button";
 import CheckboxControlled from "../../../components/checkbox/checkbox-controlled";
 import { useExportPreferencesStore } from "../../../stores/editor/export-preferences.store";
-import { exportRecording } from "../api/export";
+import { cancelExport, exportRecording } from "../api/export";
 
 import ExportProgressOverlay from "./export-progress-overlay";
 import MakeDefaultButton from "./make-default-button";
@@ -88,6 +88,10 @@ const ExportOptions = ({
       <ExportProgressOverlay
         isOpen={exporting}
         requiresCameraState={hasCamera && separateCameraFile}
+        onCancel={() => {
+          setExporting(false);
+          cancelExport();
+        }}
         onComplete={() => {
           onCancel?.(); // Close modal
         }}
