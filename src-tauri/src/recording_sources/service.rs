@@ -177,7 +177,7 @@ fn get_app_icon(dir_path: PathBuf, pid: i32) -> Option<PathBuf> {
 
     let cstr: *const c_char = msg_send![bundle_id_obj, UTF8String];
     let bundle_id = CStr::from_ptr(cstr).to_string_lossy().into_owned();
-    let file_path = dir_path.join(format!("{}.png", bundle_id));
+    let file_path = dir_path.join(format!("{bundle_id}.png"));
     if file_path.exists() {
       return Some(file_path);
     }
@@ -217,12 +217,12 @@ fn get_app_icon(dir_path: PathBuf, pid: i32) -> Option<PathBuf> {
     let slice = std::slice::from_raw_parts(bytes, length);
 
     if let Err(e) = fs::create_dir_all(&dir_path) {
-      eprintln!("Failed to create directory: {}", e);
+      eprintln!("Failed to create directory: {e}");
       return None;
     }
 
     if let Err(e) = File::create(&file_path).and_then(|mut f| f.write_all(slice)) {
-      eprintln!("Failed to write PNG file: {}", e);
+      eprintln!("Failed to write PNG file: {e}");
       return None;
     }
 
@@ -255,7 +255,7 @@ fn get_app_icon(dir_path: PathBuf, pid: i32) -> Option<PathBuf> {
 
 pub fn generate_thumbnail_path(dir_path: PathBuf) -> PathBuf {
   let uuid = Uuid::new_v4();
-  dir_path.join(format!("{}.png", uuid))
+  dir_path.join(format!("{uuid}.png"))
 }
 
 /// Save screenshot of app with `app_pid`

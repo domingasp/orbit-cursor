@@ -49,7 +49,7 @@ pub fn build_audio_live_monitoring_stream(
         if let Some(to_emit) = &emit_on_err {
           let _ = APP_HANDLE.get().unwrap().emit(to_emit.as_str(), ());
         } else {
-          eprintln!("{:?}", err);
+          eprintln!("{err:?}");
         }
       },
       None,
@@ -90,7 +90,7 @@ pub fn build_audio_into_file_stream(
         }
       },
       move |err| {
-        eprintln!("Stream error: {}", err);
+        eprintln!("Stream error: {err}");
       },
       None,
     )

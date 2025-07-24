@@ -25,7 +25,7 @@ pub async fn request_permission(
 ) -> Result<(), String> {
   match service::request_permission(app_handle.store(STORE_NAME).unwrap(), permission).await {
     Ok(()) => Ok(()),
-    Err(e) => Err(format!("Error: {}", e)),
+    Err(e) => Err(format!("Error: {e}")),
   }
 }
 

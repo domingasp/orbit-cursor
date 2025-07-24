@@ -221,7 +221,7 @@ pub fn run() {
       #[cfg(target_os = "macos")]
       tauri::async_runtime::spawn(async move {
         if let Err(e) = monitor_permissions(app_handle_clone).await {
-          eprintln!("Permission monitoring error: {}", e);
+          eprintln!("Permission monitoring error: {e}");
         }
       });
 
@@ -230,7 +230,7 @@ pub fn run() {
         if let Err(error) = listen(move |e| {
           global_inputs::service::global_input_event_handler(e, input_event_tx.clone());
         }) {
-          eprintln!("Failed to listen: {:?}", error)
+          eprintln!("Failed to listen: {error:?}")
         }
       });
 
