@@ -70,7 +70,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /* --------------------------------- Stories -------------------------------- */
-/** To be wrapped with a `ToastRegion` at the root of the app. */
+/** App to be wrapped with `ToastProvider`, toasts added through `useToast()`. */
 export const Top: Story = {
   decorators: (_Story) => (
     <ToastProvider position="top">
