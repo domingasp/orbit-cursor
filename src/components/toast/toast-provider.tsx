@@ -5,7 +5,7 @@ import {
   useExtendedToastState,
 } from "./extended-toast-state";
 import { ToastContent } from "./toast";
-import ToastRegion from "./toast-region";
+import { ToastRegion } from "./toast-region";
 
 type ToastContextType = ExtendedToastState<ToastContent> | null;
 
@@ -23,7 +23,7 @@ type ToastProviderProps = Omit<ComponentProps<typeof ToastRegion>, "state"> & {
   children: React.ReactNode;
 };
 
-const ToastProvider = ({ children, ...props }: ToastProviderProps) => {
+export const ToastProvider = ({ children, ...props }: ToastProviderProps) => {
   const state = useExtendedToastState<ToastContent>({
     maxVisibleToasts: 3,
   });
@@ -35,5 +35,3 @@ const ToastProvider = ({ children, ...props }: ToastProviderProps) => {
     </ToastContext.Provider>
   );
 };
-
-export default ToastProvider;

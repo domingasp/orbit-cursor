@@ -1,9 +1,9 @@
 import { Meta, StoryObj } from "@storybook/react";
 import { Volume2 } from "lucide-react";
 
-import ListBoxItem from "../listbox-item/listbox-item";
+import { ListBoxItem } from "../listbox-item/listbox-item";
 
-import Select from "./select";
+import { Select } from "./select";
 
 const sizes: React.ComponentProps<typeof Select>["size"][] = [
   "md",

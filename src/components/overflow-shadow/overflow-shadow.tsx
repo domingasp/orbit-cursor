@@ -53,7 +53,8 @@ type OverflowShadowProps = VariantProps<typeof overflowShadowVariants> & {
   className?: string;
   startAtEnd?: boolean;
 };
-const OverflowShadow = ({
+
+export const OverflowShadow = ({
   children,
   className,
   noScrollbar,
@@ -130,5 +131,3 @@ const OverflowShadow = ({
     </>
   );
 };
-
-export default OverflowShadow;

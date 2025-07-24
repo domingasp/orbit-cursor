@@ -1,9 +1,10 @@
-import ContentRotate from "../../../components/content-rotate/content-rotate";
+import { ContentRotate } from "../../../components/content-rotate/content-rotate";
 
 type NumberRotateProps = {
   children: string;
 };
-const NumberRotate = ({ children }: NumberRotateProps) => {
+
+export const NumberRotate = ({ children }: NumberRotateProps) => {
   const values = children.split("");
 
   return values.map((v, i) => (
@@ -12,5 +13,3 @@ const NumberRotate = ({ children }: NumberRotateProps) => {
     </ContentRotate>
   ));
 };
-
-export default NumberRotate;

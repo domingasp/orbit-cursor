@@ -4,7 +4,11 @@ type SelectorWrapperProps = {
   children?: React.ReactNode;
   className?: string;
 };
-const SelectorWrapper = ({ children, className }: SelectorWrapperProps) => {
+
+export const SelectorWrapper = ({
+  children,
+  className,
+}: SelectorWrapperProps) => {
   return (
     <div
       className={cn(
@@ -16,5 +20,3 @@ const SelectorWrapper = ({ children, className }: SelectorWrapperProps) => {
     </div>
   );
 };
-
-export default SelectorWrapper;

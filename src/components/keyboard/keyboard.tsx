@@ -25,7 +25,7 @@ const keyboardVariants = tv({
 type KeyboardProps = React.HTMLAttributes<HTMLElement> &
   VariantProps<typeof keyboardVariants> & { ref?: Ref<HTMLElement> };
 
-const Keyboard = ({
+export const Keyboard = ({
   children,
   className,
   ref,
@@ -43,5 +43,3 @@ const Keyboard = ({
     </kbd>
   );
 };
-
-export default Keyboard;

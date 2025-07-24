@@ -4,7 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { CircleSlash2, LoaderCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import Button from "../../../components/button/button";
+import { Button } from "../../../components/button/button";
 import { Events } from "../../../types/events";
 import { listWindows, WindowDetails } from "../api/recording-sources";
 
@@ -13,7 +13,8 @@ type WindowSelectorProps = {
   onSelect: (window: WindowDetails | null) => void;
   selectedWindow: WindowDetails | null;
 };
-const WindowSelector = ({
+
+export const WindowSelector = ({
   isExpanded,
   onSelect,
   selectedWindow,
@@ -102,5 +103,3 @@ const WindowSelector = ({
     </div>
   );
 };
-
-export default WindowSelector;

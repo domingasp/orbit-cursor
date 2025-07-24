@@ -23,7 +23,7 @@ import {
 import { listAudioInputs } from "../../audio-inputs/api/audio-listeners";
 import { listCameras } from "../../camera-select/api/camera";
 
-import InputToggle from "./input-toggle";
+import { InputToggle } from "./input-toggle";
 
 export enum WarningType {
   Empty = "empty",
@@ -33,7 +33,8 @@ export enum WarningType {
 type InputToggleGroupProps = {
   openRecordingInputOptions: () => Promise<void>;
 };
-const InputToggleGroup = ({
+
+export const InputToggleGroup = ({
   openRecordingInputOptions,
 }: InputToggleGroupProps) => {
   const permissions = usePermissionsStore((state) => state.permissions);
@@ -86,7 +87,7 @@ const InputToggleGroup = ({
   );
 
   useEffect(() => {
-    if (permissions.microphone?.hasAccess) {
+    if (permissions.microphone.hasAccess) {
       void listAudioInputs().then((microphones) => {
         if (selectedMicrophone === null || selectedMicrophone.id === null) {
           setMicrophoneWarning(WarningType.Empty);
@@ -104,7 +105,7 @@ const InputToggleGroup = ({
   ]);
 
   useEffect(() => {
-    if (permissions.camera?.hasAccess) {
+    if (permissions.camera.hasAccess) {
       void listCameras().then((cameras) => {
         if (selectedCamera === null || selectedCamera.id === null) {
           setCameraWarning(WarningType.Empty);
@@ -127,7 +128,7 @@ const InputToggleGroup = ({
 
   return (
     <div className="flex flex-row justify-between px-2 text-content-fg">
-      {permissions.screen && (
+      {permissions.screen.hasAccess && (
         <InputToggle
           offIcon={<VolumeOff size={16} />}
           onIcon={<Volume2 size={16} />}
@@ -138,7 +139,7 @@ const InputToggleGroup = ({
         />
       )}
 
-      {permissions.microphone && (
+      {permissions.microphone.hasAccess && (
         <InputToggle
           offIcon={<MicOff size={16} />}
           onIcon={<Mic size={16} />}
@@ -150,7 +151,7 @@ const InputToggleGroup = ({
         />
       )}
 
-      {permissions.camera && (
+      {permissions.camera.hasAccess && (
         <InputToggle
           offIcon={<CameraOff size={16} />}
           onIcon={<Camera size={16} />}
@@ -164,5 +165,3 @@ const InputToggleGroup = ({
     </div>
   );
 };
-
-export default InputToggleGroup;

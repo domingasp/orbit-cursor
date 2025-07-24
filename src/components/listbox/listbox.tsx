@@ -22,7 +22,7 @@ type ListBoxProps<T extends object> = AriaListBoxProps<T> &
     ref?: Ref<HTMLDivElement>;
   };
 
-const ListBox = <T extends object>({
+export const ListBox = <T extends object>({
   children,
   className,
   ref,
@@ -44,5 +44,3 @@ const ListBox = <T extends object>({
     </AriaListBox>
   );
 };
-
-export default ListBox;

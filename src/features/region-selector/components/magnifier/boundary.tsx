@@ -17,7 +17,8 @@ const boundaryMap: Record<
 type BoundaryProps = {
   direction: ResizeDirection;
 };
-const Boundary = ({ direction }: BoundaryProps) => {
+
+export const Boundary = ({ direction }: BoundaryProps) => {
   const { rotation, type } = boundaryMap[direction];
 
   const fill = "fill-content-fg/10";
@@ -35,5 +36,3 @@ const Boundary = ({ direction }: BoundaryProps) => {
     </svg>
   );
 };
-
-export default Boundary;

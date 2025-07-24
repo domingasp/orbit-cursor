@@ -1,7 +1,7 @@
 import { Meta, StoryObj } from "@storybook/react";
 import { LoaderCircle } from "lucide-react";
 
-import Overlay from "./overlay";
+import { Overlay } from "./overlay";
 
 const blurs: React.ComponentProps<typeof Overlay>["blur"][] = [
   "lg",

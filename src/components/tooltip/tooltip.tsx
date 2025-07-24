@@ -32,7 +32,7 @@ type TooltipProps = AriaTooltipProps &
     withArrow?: boolean;
   };
 
-const Tooltip = ({
+export const Tooltip = ({
   children,
   className,
   size,
@@ -67,5 +67,3 @@ const Tooltip = ({
     </AriaTooltip>
   );
 };
-
-export default Tooltip;

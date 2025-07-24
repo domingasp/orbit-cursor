@@ -1,8 +1,8 @@
 import { ArrowLeft, Command } from "lucide-react";
 import { TooltipTrigger } from "react-aria-components";
 
-import Keyboard from "../../keyboard/keyboard";
-import Tooltip from "../../tooltip/tooltip";
+import { Keyboard } from "../../keyboard/keyboard";
+import { Tooltip } from "../../tooltip/tooltip";
 
 const mapKeyToIcon = (hotkey: string) => {
   const iconSize = 14;
@@ -21,7 +21,8 @@ type HotkeyTooltipProps = {
   children: React.ReactNode;
   hotkey: string;
 };
-const HotkeyTooltip = ({ children, hotkey }: HotkeyTooltipProps) => {
+
+export const HotkeyTooltip = ({ children, hotkey }: HotkeyTooltipProps) => {
   return (
     <TooltipTrigger isDisabled={!hotkey}>
       {children}
@@ -46,5 +47,3 @@ const HotkeyTooltip = ({ children, hotkey }: HotkeyTooltipProps) => {
     </TooltipTrigger>
   );
 };
-
-export default HotkeyTooltip;

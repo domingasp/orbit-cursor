@@ -14,10 +14,10 @@ import {
   MonitorDetails,
   WindowDetails,
 } from "../../features/recording-source/api/recording-sources";
-import MonitorSelector from "../../features/recording-source/components/monitor-selector";
-import RecordingSource from "../../features/recording-source/components/recording-source";
-import SelectorWrapper from "../../features/recording-source/components/selector-wrapper";
-import WindowSelector from "../../features/recording-source/components/window-selector";
+import { MonitorSelector } from "../../features/recording-source/components/monitor-selector";
+import { RecordingSource } from "../../features/recording-source/components/recording-source";
+import { SelectorWrapper } from "../../features/recording-source/components/selector-wrapper";
+import { WindowSelector } from "../../features/recording-source/components/window-selector";
 import {
   RecordingType,
   useRecordingStateStore,
@@ -28,7 +28,7 @@ import {
 } from "../../stores/window-open-state.store";
 import { Events } from "../../types/events";
 
-const RecordingSourceSelector = () => {
+export const RecordingSourceSelector = () => {
   const startRecordingDockOpened = useWindowReopenStore(
     useShallow((state) => state.windows[AppWindow.StartRecordingDock])
   );
@@ -141,5 +141,3 @@ const RecordingSourceSelector = () => {
     </div>
   );
 };
-
-export default RecordingSourceSelector;

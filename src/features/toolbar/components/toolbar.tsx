@@ -5,8 +5,8 @@ import { Group } from "react-aria-components";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useShallow } from "zustand/react/shallow";
 
-import Button from "../../../components/button/button";
-import HotkeyTooltip from "../../../components/shared/hotkey-tooltip/hotkey-tooltip";
+import { Button } from "../../../components/button/button";
+import { HotkeyTooltip } from "../../../components/shared/hotkey-tooltip/hotkey-tooltip";
 import { cn } from "../../../lib/styling";
 import { formatTime } from "../../../lib/time";
 import { usePlaybackStore } from "../../../stores/editor/playback.store";
@@ -45,7 +45,11 @@ type ToolbarProps = {
   hotkeysEnabled: boolean;
   openExportOptions: () => void;
 };
-const Toolbar = ({ hotkeysEnabled, openExportOptions }: ToolbarProps) => {
+
+export const Toolbar = ({
+  hotkeysEnabled,
+  openExportOptions,
+}: ToolbarProps) => {
   const getHotkey = useHotkeyStore(useShallow((state) => state.getHotkey));
 
   const [playing, currentTime, seek, togglePlay] = usePlaybackStore(
@@ -150,5 +154,3 @@ const Toolbar = ({ hotkeysEnabled, openExportOptions }: ToolbarProps) => {
     </div>
   );
 };
-
-export default Toolbar;

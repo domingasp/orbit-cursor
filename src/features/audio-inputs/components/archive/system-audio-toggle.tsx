@@ -4,7 +4,7 @@ import { Volume2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import Switch from "../../../../components/switch/switch";
+import { Switch } from "../../../../components/switch/switch";
 import { cn } from "../../../../lib/styling";
 import { useRecordingStateStore } from "../../../../stores/recording-state.store";
 import {
@@ -19,9 +19,9 @@ import {
   stopAudioListener,
 } from "../../api/audio-listeners";
 import { usePeak } from "../../hooks/use-peak";
-import AudioMeter from "../audio-meter";
+import { AudioMeter } from "../audio-meter";
 
-const SystemAudioToggle = () => {
+export const SystemAudioToggle = () => {
   const channel = useRef<Channel<AudioStreamChannel>>(null);
   const startRecordingDockOpened = useWindowReopenStore(
     useShallow((state) => state.windows[AppWindow.StartRecordingDock])
@@ -96,5 +96,3 @@ const SystemAudioToggle = () => {
     </div>
   );
 };
-
-export default SystemAudioToggle;

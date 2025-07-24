@@ -3,6 +3,8 @@ import { z } from "zod";
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 
+import { getPlatform } from "./hotkeys.store";
+
 export enum PermissionType {
   Accessibility = "accessibility",
   Screen = "screen",
@@ -16,7 +18,7 @@ const PermissionStatusSchema = z.object({
 });
 
 export const PermissionsSchema = z.record(
-  z.nativeEnum(PermissionType),
+  z.enum(PermissionType),
   PermissionStatusSchema
 );
 
@@ -33,13 +35,30 @@ type PermissionsState = {
 export const usePermissionsStore = create<PermissionsState>()(
   devtools(
     (set, get) => ({
-      canUnlock: false,
-      permissions: {},
+      // Only `MacOS` has permissions
+      canUnlock: getPlatform() !== "macos",
+      permissions: {
+        [PermissionType.Accessibility]: {
+          canRequest: true,
+          hasAccess: getPlatform() !== "macos",
+        },
+        [PermissionType.Screen]: {
+          canRequest: true,
+          hasAccess: getPlatform() !== "macos",
+        },
+        [PermissionType.Microphone]: {
+          canRequest: true,
+          hasAccess: getPlatform() !== "macos",
+        },
+        [PermissionType.Camera]: {
+          canRequest: true,
+          hasAccess: getPlatform() !== "macos",
+        },
+      } satisfies Permissions,
       setCanUnlock: (permissions) => {
         set({
           canUnlock:
-            permissions.accessibility?.hasAccess &&
-            permissions.screen?.hasAccess,
+            permissions.accessibility.hasAccess && permissions.screen.hasAccess,
         });
       },
       setPermissions: (permissions) => {

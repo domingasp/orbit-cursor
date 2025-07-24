@@ -3,8 +3,8 @@ import { useLayoutEffect, useRef } from "react";
 import { Selection } from "react-aria-components";
 import { useShallow } from "zustand/react/shallow";
 
-import ListBox from "../../components/listbox/listbox";
-import ListBoxItem from "../../components/listbox-item/listbox-item";
+import { ListBox } from "../../components/listbox/listbox";
+import { ListBoxItem } from "../../components/listbox-item/listbox-item";
 import {
   Item,
   useStandaloneListBoxStore,
@@ -13,7 +13,7 @@ import {
 const MAX_HEIGHT = 110;
 const PADDING = 2;
 
-const StandaloneListBox = () => {
+export const StandaloneListBox = () => {
   const listBoxRef = useRef<HTMLDivElement>(null);
   const [openListBoxId, setSelectedItems] = useStandaloneListBoxStore(
     useShallow((state) => [state.openListBoxId, state.setSelectedItems])
@@ -99,5 +99,3 @@ const StandaloneListBox = () => {
     )
   );
 };
-
-export default StandaloneListBox;

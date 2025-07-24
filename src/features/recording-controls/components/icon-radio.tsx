@@ -28,7 +28,12 @@ type IconRadioProps = AriaRadioProps &
     shortcut?: React.ReactNode;
   };
 
-const IconRadio = ({ icon, shortcut, subtext, ...props }: IconRadioProps) => {
+export const IconRadio = ({
+  icon,
+  shortcut,
+  subtext,
+  ...props
+}: IconRadioProps) => {
   const { base, icon: _icon, subtext: _subtext } = radioVariants();
 
   return (
@@ -39,5 +44,3 @@ const IconRadio = ({ icon, shortcut, subtext, ...props }: IconRadioProps) => {
     </AriaRadio>
   );
 };
-
-export default IconRadio;

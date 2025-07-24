@@ -10,7 +10,8 @@ type PreviewPlayerProps = {
   microphonePath?: string;
   systemAudioPath?: string;
 };
-const PreviewPlayer = ({
+
+export const PreviewPlayer = ({
   cameraPath,
   microphonePath,
   screenPath,
@@ -213,5 +214,3 @@ const PreviewPlayer = ({
     </div>
   );
 };
-
-export default PreviewPlayer;

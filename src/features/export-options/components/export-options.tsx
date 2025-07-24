@@ -7,14 +7,14 @@ import { SubmitHandler, useForm } from "react-hook-form";
 import { z } from "zod";
 import { useShallow } from "zustand/react/shallow";
 
-import Button from "../../../components/button/button";
-import CheckboxControlled from "../../../components/checkbox/checkbox-controlled";
+import { Button } from "../../../components/button/button";
+import { CheckboxControlled } from "../../../components/checkbox/checkbox-controlled";
 import { useExportPreferencesStore } from "../../../stores/editor/export-preferences.store";
 import { cancelExport, exportRecording } from "../api/export";
 
-import ExportProgressOverlay from "./export-progress-overlay";
-import MakeDefaultButton from "./make-default-button";
-import OutputPath from "./output-path";
+import { ExportProgressOverlay } from "./export-progress-overlay";
+import { MakeDefaultButton } from "./make-default-button";
+import { OutputPath } from "./output-path";
 
 const exportInputSchema = z.object({
   filePath: z.string(),
@@ -31,7 +31,8 @@ type ExportOptionsProps = {
   recordingDirectory: string;
   onCancel?: () => void;
 };
-const ExportOptions = ({
+
+export const ExportOptions = ({
   defaultFilename,
   hasCamera,
   onCancel,
@@ -180,5 +181,3 @@ const ExportOptions = ({
     </form>
   );
 };
-
-export default ExportOptions;

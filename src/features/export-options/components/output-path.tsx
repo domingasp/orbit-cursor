@@ -4,8 +4,8 @@ import { FolderSearch, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import Button from "../../../components/button/button";
-import OverflowShadow from "../../../components/overflow-shadow/overflow-shadow";
+import { Button } from "../../../components/button/button";
+import { OverflowShadow } from "../../../components/overflow-shadow/overflow-shadow";
 import { useExportPreferencesStore } from "../../../stores/editor/export-preferences.store";
 import { pathExists } from "../api/export";
 import { getFilenameAndDirFromPath } from "../utils/file";
@@ -20,7 +20,7 @@ type OutputPathProps = {
   separateCameraFile: boolean;
 };
 
-const OutputPath = ({
+export const OutputPath = ({
   defaultFilename,
   filePath,
   hasCamera,
@@ -136,5 +136,3 @@ const OutputPath = ({
     </div>
   );
 };
-
-export default OutputPath;

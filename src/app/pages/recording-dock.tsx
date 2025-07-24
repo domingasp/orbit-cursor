@@ -3,13 +3,13 @@ import { CircleStop, GripVertical, LoaderCircle } from "lucide-react";
 import { useEffect } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import Button from "../../components/button/button";
-import ElapsedTime from "../../features/elapsed-time/components/elapsed-time";
+import { Button } from "../../components/button/button";
+import { ElapsedTime } from "../../features/elapsed-time/components/elapsed-time";
 import { stopRecording } from "../../features/recording-controls/api/recording-state";
 import { useRecordingStateStore } from "../../stores/recording-state.store";
 import { Events } from "../../types/events";
 
-const RecordingDock = () => {
+export const RecordingDock = () => {
   const [isRecording, setIsRecording] = useRecordingStateStore(
     useShallow((state) => [state.isRecording, state.setIsRecording])
   );
@@ -56,5 +56,3 @@ const RecordingDock = () => {
     </div>
   );
 };
-
-export default RecordingDock;

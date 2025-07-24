@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/react";
 
-import AudioMeter from "./audio-meter";
+import { AudioMeter } from "./audio-meter";
 
 const meta: Meta<typeof AudioMeter> = {
   argTypes: {

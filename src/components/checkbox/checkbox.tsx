@@ -54,7 +54,7 @@ type CheckboxProps = Omit<AriaCheckboxProps, "children"> &
     children?: React.ReactNode;
   };
 
-const Checkbox = ({ children, size, ...props }: CheckboxProps) => {
+export const Checkbox = ({ children, size, ...props }: CheckboxProps) => {
   const { base, checkbox, svg } = checkboxVariants({
     disabled: props.isDisabled,
     size,
@@ -95,5 +95,3 @@ const Checkbox = ({ children, size, ...props }: CheckboxProps) => {
     </AriaCheckbox>
   );
 };
-
-export default Checkbox;

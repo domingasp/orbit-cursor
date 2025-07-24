@@ -2,10 +2,10 @@ import { faker } from "@faker-js/faker";
 import { Meta, StoryObj } from "@storybook/react";
 import { Check } from "lucide-react";
 
-import Button from "../button/button";
+import { Button } from "../button/button";
 
-import Toast from "./toast";
-import ToastProvider, { useToast } from "./toast-provider";
+import { Toast } from "./toast";
+import { ToastProvider, useToast } from "./toast-provider";
 
 const ToastButtons = () => {
   const toast = useToast();

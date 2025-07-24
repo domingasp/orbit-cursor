@@ -3,9 +3,9 @@ import { Camera, FolderOpen, FolderX } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import Button from "../../../components/button/button";
-import CircularProgressBar from "../../../components/circular-progress-bar/circular-progress-bar";
-import Overlay from "../../../components/overlay/overlay";
+import { Button } from "../../../components/button/button";
+import { CircularProgressBar } from "../../../components/circular-progress-bar/circular-progress-bar";
+import { Overlay } from "../../../components/overlay/overlay";
 import { useToast } from "../../../components/toast/toast-provider";
 import { usePlaybackStore } from "../../../stores/editor/playback.store";
 import { Events } from "../../../types/events";
@@ -17,7 +17,8 @@ type ExportProgressOverlayProps = {
   onCancel?: () => void;
   onComplete?: () => void;
 };
-const ExportProgressOverlay = ({
+
+export const ExportProgressOverlay = ({
   isOpen,
   onCancel,
   onComplete,
@@ -123,5 +124,3 @@ const ExportProgressOverlay = ({
     </Overlay>
   );
 };
-
-export default ExportProgressOverlay;

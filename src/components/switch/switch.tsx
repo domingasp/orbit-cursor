@@ -63,7 +63,12 @@ const sizeToWidth = (
   return { animate: 22, rest: 20 };
 };
 
-const Switch = ({ children, className, size, ...props }: SwitchProps) => {
+export const Switch = ({
+  children,
+  className,
+  size,
+  ...props
+}: SwitchProps) => {
   const { base, container, innerLabel, thumb } = switchVariants({ size });
   // Track if animating, otherwise initial render and tap cancel cause animate to run
   const [isAnimating, setIsAnimating] = useState(false);
@@ -108,5 +113,3 @@ const Switch = ({ children, className, size, ...props }: SwitchProps) => {
     </AriaSwitch>
   );
 };
-
-export default Switch;

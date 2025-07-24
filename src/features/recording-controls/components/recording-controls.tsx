@@ -14,10 +14,10 @@ import {
   showRegionSelector,
   passthroughRegionSelector,
 } from "../../../api/windows";
-import Button from "../../../components/button/button";
-import Keyboard from "../../../components/keyboard/keyboard";
-import Separator from "../../../components/separator/separator";
-import Sparkles from "../../../components/sparkles/sparkles";
+import { Button } from "../../../components/button/button";
+import { Keyboard } from "../../../components/keyboard/keyboard";
+import { Separator } from "../../../components/separator/separator";
+import { Sparkles } from "../../../components/sparkles/sparkles";
 import { clearInteractionAttributes } from "../../../lib/styling";
 import {
   RecordingType,
@@ -34,15 +34,15 @@ import {
 } from "../../../stores/window-open-state.store";
 import { startRecording } from "../api/recording-state";
 
-import InputToggleGroup from "./input-toggle-groups";
-import RecordingTypeRadioGroup from "./recording-type-radio-group";
+import { InputToggleGroup } from "./input-toggle-groups";
+import { RecordingTypeRadioGroup } from "./recording-type-radio-group";
 
 const KEYBOARD_STYLE: ComponentProps<typeof Keyboard> = {
   size: "xs",
   variant: "ghost",
 };
 
-const RecordingControls = () => {
+export const RecordingControls = () => {
   const optionsButtonRef = useRef<HTMLButtonElement>(null);
   const [startRecordingDockOpened, setWindowOpenState] = useWindowReopenStore(
     useShallow((state) => [
@@ -218,5 +218,3 @@ const RecordingControls = () => {
     </div>
   );
 };
-
-export default RecordingControls;

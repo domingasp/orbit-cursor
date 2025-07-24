@@ -13,14 +13,15 @@ import {
 } from "../../api/magnifier";
 import { ResizeDirection } from "../../types";
 
-import Boundary from "./boundary";
+import { Boundary } from "./boundary";
 
 type MagnifierProps = {
   activeHandle: RefObject<HTMLElement | null>;
   resizeDirection: ResizeDirection | undefined;
   zoomFactor?: number;
 };
-const Magnifier = ({
+
+export const Magnifier = ({
   activeHandle,
   resizeDirection,
   zoomFactor = 5,
@@ -214,5 +215,3 @@ const Magnifier = ({
     </AnimatePresence>
   );
 };
-
-export default Magnifier;

@@ -1,7 +1,7 @@
 import { Meta, StoryObj } from "@storybook/react";
 import { Cog } from "lucide-react";
 
-import CircularProgressBar from "./circular-progress-bar";
+import { CircularProgressBar } from "./circular-progress-bar";
 
 const meta = {
   argTypes: {

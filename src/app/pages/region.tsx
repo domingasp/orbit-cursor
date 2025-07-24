@@ -1,7 +1,5 @@
-import RegionSelector from "../../features/region-selector/components/region-selector";
+import { RegionSelector } from "../../features/region-selector/components/region-selector";
 
-const Region = () => {
+export const Region = () => {
   return <RegionSelector />;
 };
-
-export default Region;

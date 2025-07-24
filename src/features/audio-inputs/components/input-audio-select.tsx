@@ -4,8 +4,8 @@ import { Mic } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import GrantAccessOverlay from "../../../components/shared/grant-access-overlay/grant-access-overlay";
-import InputSelect from "../../../components/shared/input-select/input-select";
+import { GrantAccessOverlay } from "../../../components/shared/grant-access-overlay/grant-access-overlay";
+import { InputSelect } from "../../../components/shared/input-select/input-select";
 import { cn } from "../../../lib/styling";
 import {
   PermissionType,
@@ -27,9 +27,9 @@ import {
 } from "../api/audio-listeners";
 import { usePeak } from "../hooks/use-peak";
 
-import AudioMeter from "./audio-meter";
+import { AudioMeter } from "./audio-meter";
 
-const InputAudioSelect = () => {
+export const InputAudioSelect = () => {
   const permission = usePermissionsStore(
     (state) => state.permissions.microphone
   );
@@ -92,7 +92,7 @@ const InputAudioSelect = () => {
     <div
       className={cn(
         "flex flex-col gap-1 min-w-full relative",
-        !permission?.hasAccess && "bg-content"
+        !permission.hasAccess && "bg-content"
       )}
     >
       <GrantAccessOverlay
@@ -120,5 +120,3 @@ const InputAudioSelect = () => {
     </div>
   );
 };
-
-export default InputAudioSelect;

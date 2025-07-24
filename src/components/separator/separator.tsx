@@ -36,7 +36,7 @@ const separatorVariants = tv({
 type SeparatorProps = AriaSeparatorProps &
   VariantProps<typeof separatorVariants> & { className?: string };
 
-const Separator = ({
+export const Separator = ({
   className,
   orientation,
   spacing,
@@ -51,5 +51,3 @@ const Separator = ({
     />
   );
 };
-
-export default Separator;

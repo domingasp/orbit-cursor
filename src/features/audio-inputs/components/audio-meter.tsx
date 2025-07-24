@@ -80,7 +80,7 @@ type AudioMeterProps = {
   width?: number | string;
 };
 
-const AudioMeter = ({
+export const AudioMeter = ({
   decibels,
   disabled,
   height = 10,
@@ -172,5 +172,3 @@ const AudioMeter = ({
     </div>
   );
 };
-
-export default AudioMeter;

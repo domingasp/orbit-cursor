@@ -6,14 +6,16 @@ import {
   useController,
 } from "react-hook-form";
 
-import Checkbox from "./checkbox";
+import { Checkbox } from "./checkbox";
 
 type CheckboxControlledProps<TFieldValues extends FieldValues = FieldValues> =
   ComponentProps<typeof Checkbox> & {
     control: Control<TFieldValues>;
     name: FieldPathByValue<TFieldValues, boolean>;
   };
-const CheckboxControlled = <TFieldValues extends FieldValues = FieldValues>({
+export const CheckboxControlled = <
+  TFieldValues extends FieldValues = FieldValues
+>({
   control,
   name,
   ...props
@@ -33,5 +35,3 @@ const CheckboxControlled = <TFieldValues extends FieldValues = FieldValues>({
     />
   );
 };
-
-export default CheckboxControlled;

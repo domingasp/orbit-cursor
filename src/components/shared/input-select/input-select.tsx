@@ -17,8 +17,8 @@ import {
   AppWindow,
   useWindowReopenStore,
 } from "../../../stores/window-open-state.store";
-import ListBoxItem from "../../listbox-item/listbox-item";
-import Select from "../../select/select";
+import { ListBoxItem } from "../../listbox-item/listbox-item";
+import { Select } from "../../select/select";
 
 type InputSelectProps = {
   fetchItems: () => Item[] | Promise<Item[]>;
@@ -31,7 +31,8 @@ type InputSelectProps = {
     isPanelOpen: boolean
   ) => void | Promise<void>;
 };
-const InputSelect = ({
+
+export const InputSelect = ({
   fetchItems,
   icon,
   id,
@@ -136,5 +137,3 @@ const InputSelect = ({
     </Select>
   );
 };
-
-export default InputSelect;

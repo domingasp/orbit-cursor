@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 
-import Button from "../../../components/button/button";
+import { Button } from "../../../components/button/button";
 import { listMonitors, MonitorDetails } from "../api/recording-sources";
 
 type MonitorSelectorProps = {
   onSelect: (monitor: MonitorDetails) => void;
   selectedMonitor: MonitorDetails | null;
 };
-const MonitorSelector = ({
+
+export const MonitorSelector = ({
   onSelect,
   selectedMonitor,
 }: MonitorSelectorProps) => {
@@ -84,5 +85,3 @@ const MonitorSelector = ({
     </div>
   );
 };
-
-export default MonitorSelector;

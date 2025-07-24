@@ -1,7 +1,7 @@
 import { Meta, StoryObj } from "@storybook/react";
 import { Hand, Sparkle } from "lucide-react";
 
-import Sparkles from "./sparkles";
+import { Sparkles } from "./sparkles";
 
 const meta = {
   argTypes: {
