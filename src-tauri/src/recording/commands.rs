@@ -46,6 +46,8 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
   // Setup in a separate thread, this way we don't block UI and the
   // recording dock will show
   std::thread::spawn(move || {
+    log::info!("Starting recording");
+
     let state: State<'_, Mutex<AppState>> = app_handle.state();
     let mut state = state.lock().unwrap();
     let recording_dir = create_recording_directory(&app_handle);
@@ -77,35 +79,42 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
 
     // Optional
     if options.system_audio {
+      log::info!("Starting system audio recorder");
       recording_file_set.system_audio = Some(RecordingFile::SystemAudio);
       start_system_audio_recording(
         synchronization.clone(),
         recording_dir.join(RecordingFile::SystemAudio.as_ref()),
       );
+      log::info!("System audio recorder ready");
     }
 
     if let Some(device_name) = options.input_audio_name {
+      log::info!("Starting input audio recorder");
       recording_file_set.microphone = Some(RecordingFile::InputAudio);
       start_input_audio_recording(
         synchronization.clone(),
         recording_dir.join(RecordingFile::InputAudio.as_ref()),
         device_name,
       );
+      log::info!("Input audio recorder ready");
     }
 
     if let Some(camera_name) = options.camera_name {
+      log::info!("Starting camera recorder");
       recording_file_set.camera = Some(RecordingFile::Camera);
       start_camera_recording(
         synchronization.clone(),
         recording_dir.join(RecordingFile::Camera.as_ref()),
         camera_name,
       );
+      log::info!("Camera recorder ready");
     }
 
     // Always
     // MUST be after the optionals
     // Window capture causes empty frames if this comes first - not sure why, only happens
     // when multiple streams
+    log::info!("Starting screen recorder");
     let (recording_origin, scale_factor) = start_screen_recording(
       synchronization.clone(),
       recording_dir.join(RecordingFile::Screen.as_ref()),
@@ -115,7 +124,9 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
       options.window_id,
       options.region,
     );
+    log::info!("Screen recorder ready");
 
+    log::info!("Starting extra writers: mouse_events, metadata");
     spawn_mouse_event_recorder(
       synchronization.clone(),
       recording_dir.join(RecordingFile::MouseEvents.as_ref()),
@@ -129,6 +140,7 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
         scale_factor,
       },
     );
+    log::info!("Extra writers ready");
 
     start_writing.store(true, Ordering::SeqCst);
     let _ = app_handle.emit(Events::RecordingStarted.as_ref(), ());
@@ -140,6 +152,7 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
       directory: recording_dir,
       files: recording_file_set,
     });
+    log::info!("Recording started");
   });
 
   Ok(())

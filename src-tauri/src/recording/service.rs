@@ -179,6 +179,7 @@ fn create_screen_capturer(
   window_id: Option<u32>,
   region: Region,
 ) -> CapturerInfo {
+  log::info!("Fetching display data");
   let monitors = list_monitors(app_handle.clone());
   let monitor = monitors
     .iter()
@@ -196,18 +197,22 @@ fn create_screen_capturer(
   let mut crop_origin: Option<PhysicalPosition<f64>> = None;
 
   let mut recording_origin = monitor.position;
+  log::info!("Monitor details ready");
 
   if let (RecordingType::Window, Some(window_id)) = (recording_type, window_id) {
+    log::info!("Fetching window details");
     let windows = get_visible_windows(app_handle.clone().available_monitors().unwrap(), None);
     let window_details = windows.into_iter().find(|w| w.id == window_id);
 
     // Details are not the same as scap::Target
     if let Some(window_details) = window_details {
+      log::info!("Window details found, fetching window target");
       let window_size = window_details.size.to_physical(window_details.scale_factor);
       let window_target = get_window(window_id);
 
       // Only if we can find the target will we use it, otherwise use default (screen)
       if let Some(window_target) = window_target {
+        log::info!("Window target found, configuring window details");
         target = Some(window_target);
         width = window_size.width;
         height = window_size.height;
@@ -215,6 +220,7 @@ fn create_screen_capturer(
       }
     }
   } else if recording_type == RecordingType::Region {
+    log::info!("Configuring region details");
     crop_size = Some(region.size.to_physical(scale_factor));
     crop_origin = Some(region.position.to_physical(scale_factor));
     recording_origin = region.position;
@@ -222,7 +228,8 @@ fn create_screen_capturer(
 
   // We don't use scap crop area due to strange behaviour with ffmpeg, instead we crop directly
   // in ffmpeg
-  let capturer = create_screen_recording_capturer(app_handle, target);
+  let capturer = create_screen_recording_capturer(target);
+  log::info!("Screen capturer created");
 
   (
     capturer,
@@ -241,12 +248,14 @@ pub fn start_camera_recording(
   file_path: PathBuf,
   camera_name: String,
 ) {
+  log::info!("Search for camera: {camera_name}");
   let available_cameras = nokhwa::query(nokhwa::utils::ApiBackend::Auto).unwrap();
   let camera_info = available_cameras
     .iter()
     .find(|c| c.human_name() == camera_name)
     .unwrap();
   let camera_index = camera_info.index().clone();
+  log::info!("Camera found");
 
   let start_writing_for_writer = synchronization.start_writing.clone();
 
@@ -292,8 +301,10 @@ fn spawn_camera_with_send(
   start_writing: Arc<AtomicBool>,
   mut stop_rx: broadcast::Receiver<()>,
 ) -> (nokhwa::utils::Resolution, u32, String) {
+  log::info!("Creating camera");
   let mut camera = create_camera(camera_index, move |frame| {
     if let Some(tx) = camera_ready_tx.lock().unwrap().take() {
+      log::info!("Camera started reading frames");
       let _ = tx.send(());
     }
 
@@ -312,11 +323,13 @@ fn spawn_camera_with_send(
   );
 
   std::thread::spawn(move || {
+    log::info!("Opening camera stream");
     if let Err(e) = camera.open_stream() {
       eprintln!("Failed to start camera: {e}");
     }
 
     let _ = stop_rx.blocking_recv(); // Keeps camera alive
+    log::info!("Camera received stop signal")
   });
 
   (resolution, frame_rate, frame_format.to_string())
@@ -331,9 +344,11 @@ fn spawn_ffmpeg_frame_writer(
   stop_barrier: Arc<Barrier>,
 ) {
   std::thread::spawn(move || {
+    log::info!("Starting ffmpeg writer thread");
     let mut stdin = std::io::BufWriter::new(ffmpeg_child.take_stdin().unwrap());
     loop {
       if stop_rx.try_recv().is_ok() {
+        log::info!("Ffmpeg received stop signal");
         break;
       }
 
@@ -352,12 +367,18 @@ fn spawn_ffmpeg_frame_writer(
       }
     }
 
+    log::info!("Flushing ffmpeg");
     if let Err(e) = stdin.flush() {
       eprintln!("Failed to flush ffmpeg stdin: {e}");
     }
 
+    log::info!("Dropping stdin");
     drop(stdin); // signals EOF to ffmpeg
+
+    log::info!("Clearing ffmpeg child process resources");
     let _ = ffmpeg_child.wait();
+
+    log::info!("Ffmpeg writer finished");
     stop_barrier.wait();
   });
 }
@@ -371,6 +392,7 @@ fn spawn_capturer_with_send(
   start_writing: Arc<AtomicBool>,
   mut stop_rx: broadcast::Receiver<()>,
 ) {
+  log::info!("Starting screen capturer");
   capturer.start_capture();
 
   std::thread::spawn(move || {
@@ -380,6 +402,7 @@ fn spawn_capturer_with_send(
 
     loop {
       if stop_rx.try_recv().is_ok() {
+        log::info!("Screen capturer received stop signal");
         break;
       }
 
@@ -443,6 +466,10 @@ fn create_ffmpeg_writer(
   crop_size: Option<PhysicalSize<f64>>,
   crop_origin: Option<PhysicalPosition<f64>>,
 ) -> FfmpegChild {
+  log::info!(
+    "Initializing ffmpeg writer for {}",
+    file_path.file_stem().unwrap().to_string_lossy()
+  );
   let mut child = FfmpegCommand::new();
 
   if let Some(ref frame_rate) = frame_rate {
@@ -516,13 +543,19 @@ fn start_audio_recording(
   device: Device,
   config: StreamConfig,
 ) {
+  let file_stem = file_path.file_stem().unwrap().to_string_lossy().to_string();
+
+  log::info!("Building audio stream {file_stem}");
   let (stream, wav_writer) =
     build_audio_into_file_stream(&device, &config, &file_path, synchronization.start_writing);
   stream.play().expect("Failed to start system audio stream");
+  log::info!("Audio stream {file_stem} started");
 
   let mut stop_rx = synchronization.stop_tx.subscribe();
   tauri::async_runtime::spawn(async move {
     let _ = stop_rx.recv().await;
+    log::info!("Audio stream {file_stem} received stop signal");
+
     drop(stream); // cpal has no stop capability, stream cleaned on drop
 
     let mut writer_lock = wav_writer.lock().unwrap();
@@ -530,6 +563,7 @@ fn start_audio_recording(
       writer.finalize().unwrap();
     }
 
+    log::info!("Audio stream {file_stem} has shut down");
     synchronization.stop_barrier.wait();
   });
 }
