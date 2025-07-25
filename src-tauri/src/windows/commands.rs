@@ -1,5 +1,6 @@
 use std::sync::{Mutex, Once};
 
+use once_cell::sync::OnceCell;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, State};
 use tauri_nspanel::{panel_delegate, ManagerExt};
@@ -14,6 +15,10 @@ use super::service::{
   add_animation, add_border, add_close_panel_listener, animate_resize, convert_to_stationary_panel,
   position_recording_dock, position_recording_source_selector, position_window_above_dock, Anchor,
 };
+
+// We use static variable as storing in state was causing a lock contention
+// when input options open and straight to start recording
+pub static APP_WEBVIEW_TITLES: OnceCell<Vec<String>> = OnceCell::new();
 
 pub static INIT_RECORDING_SOURCE_SELECTOR: Once = Once::new();
 
@@ -157,6 +162,15 @@ pub fn init_recording_dock(app_handle: AppHandle) {
     }
 
     position_recording_dock(&window);
+
+    // Capture all available webview window titles
+    let titles = app_handle
+      .webview_windows()
+      .iter()
+      .map(|w| w.1.title().unwrap())
+      .collect();
+
+    APP_WEBVIEW_TITLES.set(titles).ok();
   });
 }
 

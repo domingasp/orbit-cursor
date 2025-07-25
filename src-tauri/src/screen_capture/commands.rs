@@ -4,19 +4,15 @@ use std::{
 };
 
 use scap::frame::Frame;
-use tauri::{ipc::Channel, AppHandle, Manager, State};
+use tauri::{ipc::Channel, Manager, State};
 
 use crate::{AppState, APP_HANDLE};
 
 use super::service::{self, bgra_frame_to_rgba_buffer};
 
 #[tauri::command]
-pub fn init_magnifier_capturer(
-  app_handle: AppHandle,
-  state: State<'_, Mutex<AppState>>,
-  display_name: String,
-) {
-  service::init_magnifier_capturer(app_handle, state, display_name);
+pub fn init_magnifier_capturer(state: State<'_, Mutex<AppState>>, display_name: String) {
+  service::init_magnifier_capturer(state, display_name);
 }
 
 #[tauri::command]

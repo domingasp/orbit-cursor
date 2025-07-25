@@ -5,17 +5,13 @@ use scap::{
   frame::BGRAFrame,
   get_all_targets, Target,
 };
-use tauri::{AppHandle, Manager, State};
+use tauri::State;
 use yuv::bgra_to_rgba;
 
-use crate::AppState;
+use crate::{windows::commands::APP_WEBVIEW_TITLES, AppState};
 
-pub fn init_magnifier_capturer(
-  app_handle: AppHandle,
-  state: State<'_, Mutex<AppState>>,
-  display_name: String,
-) {
-  let targets_to_exclude = get_app_targets(app_handle);
+pub fn init_magnifier_capturer(state: State<'_, Mutex<AppState>>, display_name: String) {
+  let targets_to_exclude = get_app_targets();
   let display = get_display(display_name);
 
   let options = Options {
@@ -37,8 +33,9 @@ pub fn init_magnifier_capturer(
 }
 
 /// Create and return a capturer with specified target (display, or window)
-pub fn create_screen_recording_capturer(app_handle: AppHandle, target: Option<Target>) -> Capturer {
-  let targets_to_exclude = get_app_targets(app_handle);
+pub fn create_screen_recording_capturer(target: Option<Target>) -> Capturer {
+  log::info!("Fetching screen capturer data");
+  let targets_to_exclude = get_app_targets();
 
   let options = Options {
     fps: 60,
@@ -50,23 +47,23 @@ pub fn create_screen_recording_capturer(app_handle: AppHandle, target: Option<Ta
     ..Default::default()
   };
 
+  log::info!("Building screen capturer");
   Capturer::build(options).unwrap()
 }
 
 /// Return targets which are part of the app
-fn get_app_targets(app_handle: AppHandle) -> Vec<Target> {
+fn get_app_targets() -> Vec<Target> {
+  log::info!("Fetching all available targets");
   let targets = get_all_targets();
 
-  let app_window_titles_to_exclude: Vec<String> = app_handle
-    .webview_windows()
-    .iter()
-    .map(|w| w.1.title().unwrap())
-    .collect();
-
+  log::info!("Filtering available targets");
   targets
     .into_iter()
     .filter(|t| match t {
-      Target::Window(window) => app_window_titles_to_exclude.contains(&window.title),
+      Target::Window(window) => APP_WEBVIEW_TITLES
+        .get()
+        .unwrap_or(&Vec::new())
+        .contains(&window.title),
       _ => false,
     })
     .collect()
