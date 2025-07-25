@@ -248,7 +248,7 @@ pub fn start_camera_recording(
   file_path: PathBuf,
   camera_name: String,
 ) {
-  log::info!("Search for camera: {}", camera_name);
+  log::info!("Search for camera: {camera_name}");
   let available_cameras = nokhwa::query(nokhwa::utils::ApiBackend::Auto).unwrap();
   let camera_info = available_cameras
     .iter()
@@ -545,16 +545,16 @@ fn start_audio_recording(
 ) {
   let file_stem = file_path.file_stem().unwrap().to_string_lossy().to_string();
 
-  log::info!("Building audio stream {}", file_stem);
+  log::info!("Building audio stream {file_stem}");
   let (stream, wav_writer) =
     build_audio_into_file_stream(&device, &config, &file_path, synchronization.start_writing);
   stream.play().expect("Failed to start system audio stream");
-  log::info!("Audio stream {} started", file_stem);
+  log::info!("Audio stream {file_stem} started");
 
   let mut stop_rx = synchronization.stop_tx.subscribe();
   tauri::async_runtime::spawn(async move {
     let _ = stop_rx.recv().await;
-    log::info!("Audio stream {} received stop signal", file_stem);
+    log::info!("Audio stream {file_stem} received stop signal");
 
     drop(stream); // cpal has no stop capability, stream cleaned on drop
 
@@ -563,7 +563,7 @@ fn start_audio_recording(
       writer.finalize().unwrap();
     }
 
-    log::info!("Audio stream {} has shut down", file_stem);
+    log::info!("Audio stream {file_stem} has shut down");
     synchronization.stop_barrier.wait();
   });
 }
