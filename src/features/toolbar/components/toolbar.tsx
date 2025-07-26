@@ -1,11 +1,11 @@
 import { Pause, Play, SkipBack, Upload } from "lucide-react";
-import { AnimatePresence, motion, MotionProps } from "motion/react";
 import { useMemo } from "react";
 import { Group } from "react-aria-components";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useShallow } from "zustand/react/shallow";
 
 import { Button } from "../../../components/button/button";
+import { ToggleButton } from "../../../components/button/toggle-button";
 import { HotkeyTooltip } from "../../../components/shared/hotkey-tooltip/hotkey-tooltip";
 import { cn } from "../../../lib/styling";
 import { formatTime } from "../../../lib/time";
@@ -16,9 +16,9 @@ import {
 } from "../../../stores/hotkeys.store";
 
 const controlButtonStyles =
-  "cursor-default relative p-1 transition-transform transform data-[pressed]:scale-105 data-[hovered]:scale-110 justify-center";
+  "transition-transform transform data-[pressed]:scale-105 data-[hovered]:scale-110";
 
-const iconSize = 18;
+const iconSize = 16;
 
 const splitLeadingZeros = (time: string) => {
   let i = 0;
@@ -33,12 +33,6 @@ const splitLeadingZeros = (time: string) => {
     muted: time.slice(0, i),
     normal: time.slice(i),
   };
-};
-
-const toggleAnimationProps: MotionProps = {
-  animate: { opacity: 1, scale: 1 },
-  exit: { opacity: 0, scale: 0 },
-  initial: { opacity: 0, scale: 0 },
 };
 
 type ToolbarProps = {
@@ -86,49 +80,36 @@ export const Toolbar = ({
     <div className="flex flex-row justify-center py-0.5 relative">
       <Group className="flex flex-row items-center">
         <HotkeyTooltip hotkey={getHotkey(AvailableActions.EditorBackToStart)}>
-          <Button
-            className={controlButtonStyles}
-            onPress={backToStart}
-            variant="ghost"
-          >
+          <Button onPress={backToStart} size="sm" variant="ghost" icon>
             {/* Scaling to match height of play icon, inconsistent Lucide icon design */}
-            <SkipBack className="fill-content-fg scale-115" size={iconSize} />
+            <SkipBack
+              className="fill-content-fg scale-115"
+              size={iconSize - 1}
+            />
           </Button>
         </HotkeyTooltip>
 
         <HotkeyTooltip hotkey={getHotkey(AvailableActions.EditorTogglePlay)}>
-          <Button
-            className={controlButtonStyles}
+          <ToggleButton
+            className="w-6 h-6"
+            isSelected={playing}
             onPress={togglePlay}
-            variant="ghost"
-          >
-            <div className="invisible">
-              <Pause size={iconSize} />
-            </div>
-
-            <AnimatePresence>
-              {playing ? (
-                <motion.div
-                  key="pause"
-                  {...toggleAnimationProps}
-                  className="absolute"
-                >
-                  <Pause className="fill-content-fg" size={iconSize} />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="play"
-                  {...toggleAnimationProps}
-                  className="absolute"
-                >
-                  <Play className="fill-content-fg" size={iconSize} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </Button>
+            off={
+              <Play
+                className="fill-content-fg stroke-content-fg"
+                size={iconSize}
+              />
+            }
+            on={
+              <Pause
+                className="fill-content-fg stroke-content-fg"
+                size={iconSize}
+              />
+            }
+          />
         </HotkeyTooltip>
 
-        <span className="text-lg tabular-nums font-light select-none">
+        <span className="text-lg tabular-nums font-light select-none w-[100px]">
           <span className="text-muted font-thin">{time.muted}</span>
           <span>{time.normal}</span>
         </span>
@@ -141,6 +122,7 @@ export const Toolbar = ({
             variant="ghost"
             className={cn(
               controlButtonStyles,
+              "p-1",
               "text-xs",
               "font-light",
               "text-muted"

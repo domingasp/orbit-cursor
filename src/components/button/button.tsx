@@ -36,6 +36,9 @@ const buttonVariants = tv({
       color: "neutral",
       variant: "soft",
     },
+    { class: "justify-center h-10 w-10 p-1.5", icon: true, size: "lg" },
+    { class: "justify-center h-9 w-9 p-1.5", icon: true, size: "md" },
+    { class: "justify-center h-6 w-6 p-1", icon: true, size: "sm" },
   ],
   defaultVariants: {
     color: "neutral",
@@ -61,6 +64,7 @@ const buttonVariants = tv({
         "data-[pressed]:bg-success/80",
       ],
     },
+    icon: { true: [] },
     shiny: {
       true: [
         "relative",
@@ -115,6 +119,7 @@ export const Button = ({
   children,
   className,
   color,
+  icon,
   shiny,
   showFocus,
   size,
@@ -128,6 +133,7 @@ export const Button = ({
       className={buttonVariants({
         className,
         color,
+        icon,
         shiny,
         showFocus,
         size,
