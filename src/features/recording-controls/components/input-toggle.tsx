@@ -1,7 +1,7 @@
 import { CircleOff, TriangleAlert } from "lucide-react";
-import { AnimatePresence, motion, MotionProps } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 
-import { Button } from "../../../components/button/button";
+import { ToggleButton } from "../../../components/button/toggle-button";
 import { PermissionStatus } from "../../../stores/permissions.store";
 
 import { WarningType } from "./input-toggle-groups";
@@ -25,12 +25,6 @@ export const InputToggle = ({
   value,
   warning,
 }: InputToggleProps) => {
-  const animationProps: MotionProps = {
-    animate: { opacity: 1, scale: 1 },
-    exit: { opacity: 0, scale: 0 },
-    initial: { opacity: 0, scale: 0 },
-  };
-
   const onToggle = () => {
     if (permission.hasAccess && warning !== WarningType.Disconnected)
       setValue(!value);
@@ -38,12 +32,7 @@ export const InputToggle = ({
   };
 
   return (
-    <Button
-      className="cursor-default relative p-1 transition-transform transform data-[hovered]:scale-110 justify-center"
-      onPress={onToggle}
-      showFocus={false}
-      variant="ghost"
-    >
+    <div className="relative flex justify-center">
       <AnimatePresence>
         {warning &&
           ((warning === WarningType.Empty && value) ||
@@ -62,23 +51,14 @@ export const InputToggle = ({
           )}
       </AnimatePresence>
 
-      <div className="invisible">{onIcon}</div>
-
-      <AnimatePresence>
-        {value ? (
-          <motion.div key="on" {...animationProps} className="absolute">
-            {onIcon}
-          </motion.div>
-        ) : (
-          <motion.div
-            key="off"
-            {...animationProps}
-            className="absolute text-muted"
-          >
-            {offIcon}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </Button>
+      <ToggleButton
+        isSelected={value}
+        off={offIcon}
+        on={onIcon}
+        onChange={() => {
+          onToggle();
+        }}
+      />
+    </div>
   );
 };
