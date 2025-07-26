@@ -19,6 +19,15 @@ const colors: React.ComponentProps<typeof Button>["color"][] = [
   "info",
 ];
 
+const iconSizes: Record<
+  NonNullable<React.ComponentProps<typeof Button>["size"]>,
+  number
+> = {
+  lg: 30,
+  md: 24,
+  sm: 16,
+};
+
 const meta = {
   argTypes: {
     color: {
@@ -98,7 +107,7 @@ export const Colors: Story = {
   ),
 };
 
-export const Icons: Story = {
+export const WithElements: Story = {
   args: {
     children: (
       <>
@@ -112,12 +121,21 @@ export const Icons: Story = {
 };
 
 /** Set the `aria-label` prop! */
-export const IconOnly: Story = {
+export const Icon: Story = {
   args: {
     "aria-label": "Sign out",
-    children: <DoorOpen size={18} />,
+    icon: true,
   },
   parameters: { controls: { disable: true } },
+  render: (args) => (
+    <div className="flex gap-2 items-center">
+      {sizes.map((size) => (
+        <Button key={size} color="info" size={size} {...args}>
+          <DoorOpen size={iconSizes[size as keyof typeof iconSizes]} />
+        </Button>
+      ))}
+    </div>
+  ),
 };
 
 export const Shiny: Story = {

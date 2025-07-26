@@ -18,7 +18,7 @@ import {
 const controlButtonStyles =
   "cursor-default relative p-1 transition-transform transform data-[pressed]:scale-105 data-[hovered]:scale-110 justify-center";
 
-const iconSize = 18;
+const iconSize = 16;
 
 const splitLeadingZeros = (time: string) => {
   let i = 0;
@@ -89,7 +89,9 @@ export const Toolbar = ({
           <Button
             className={controlButtonStyles}
             onPress={backToStart}
+            size="sm"
             variant="ghost"
+            icon
           >
             {/* Scaling to match height of play icon, inconsistent Lucide icon design */}
             <SkipBack className="fill-content-fg scale-115" size={iconSize} />
