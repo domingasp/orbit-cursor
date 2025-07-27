@@ -3,6 +3,10 @@ use nokhwa::{
   utils::{CameraIndex, FrameFormat, RequestedFormat, RequestedFormatType},
   Buffer, CallbackCamera,
 };
+use rayon::{
+  iter::{IndexedParallelIterator, ParallelIterator},
+  slice::ParallelSliceMut,
+};
 use tauri::ipc::Channel;
 use yuv::{YuvPackedImage, YuvRange, YuvStandardMatrix};
 
@@ -65,23 +69,35 @@ pub fn frame_format_to_ffmpeg(frame_format: FrameFormat) -> &'static str {
   }
 }
 
+/// Parallelized conversion from YUYV to RGBA
 fn yuyv_to_rgba(buffer: &[u8], width: u32, height: u32) -> Vec<u8> {
+  let yuyv_stride = width * 2;
+  let rgba_stride = width * 4; // 4 represents R G B PixelPadding
   let mut rgba_buffer = vec![0u8; (width * height * 4) as usize];
 
-  let packed_image = YuvPackedImage {
-    yuy: buffer,
-    yuy_stride: width * 2,
-    width,
-    height,
-  };
+  // Each chunk is one row of RGBA pixels
+  rgba_buffer
+    .par_chunks_mut((rgba_stride) as usize)
+    .enumerate()
+    .for_each(|(row_index, row_rgba)| {
+      let input_offset = row_index * (yuyv_stride) as usize;
+      let input_slice = &buffer[input_offset..input_offset + (width * 2) as usize];
 
-  let _ = yuv::yuyv422_to_rgba(
-    &packed_image,
-    &mut rgba_buffer,
-    width * 4,
-    YuvRange::Limited,
-    YuvStandardMatrix::Bt709,
-  );
+      let packed_image = YuvPackedImage {
+        yuy: input_slice,
+        yuy_stride: width * 2,
+        width,
+        height: 1, // Single row
+      };
+
+      let _ = yuv::yuyv422_to_rgba(
+        &packed_image,
+        row_rgba,
+        rgba_stride,
+        YuvRange::Full,
+        YuvStandardMatrix::Bt601,
+      );
+    });
 
   rgba_buffer
 }
