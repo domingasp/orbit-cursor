@@ -87,7 +87,7 @@
         "title": "Recording Dock",
         "label": "recording_dock",
         "url": "/recording-dock",
-        "width": 130,
+        "width": 162,
         "height": 40,
         "decorations": false,
         "resizable": false,

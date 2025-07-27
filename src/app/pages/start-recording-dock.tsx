@@ -24,8 +24,8 @@ export const StartRecordingDock = () => {
     useShallow((state) => [state.addWindow, state.setWindowOpenState])
   );
 
-  const setIsRecording = useRecordingStateStore(
-    useShallow((state) => state.setIsRecording)
+  const [setIsRecording, setIsPaused] = useRecordingStateStore(
+    useShallow((state) => [state.setIsRecording, state.setIsPaused])
   );
 
   const noPermissions =
@@ -33,6 +33,8 @@ export const StartRecordingDock = () => {
 
   useEffect(() => {
     setIsRecording(false); // On first mount reset recording state
+    setIsPaused(false);
+
     const addWindowToStore = async () => {
       addWindow(AppWindow.StartRecordingDock, await isStartRecordingDockOpen());
     };
@@ -41,6 +43,7 @@ export const StartRecordingDock = () => {
     const unlisten = listen(Events.StartRecordingDockOpened, () => {
       setWindowOpenState(AppWindow.StartRecordingDock, true);
       setIsRecording(false);
+      setIsPaused(false);
     });
 
     return () => {

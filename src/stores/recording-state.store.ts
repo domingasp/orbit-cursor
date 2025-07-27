@@ -22,6 +22,7 @@ export type Region = {
 type RecordingState = {
   camera: boolean;
   cameraHasWarning: boolean;
+  isPaused: boolean;
   isRecording: boolean;
   microphone: boolean;
   microphoneHasWarning: boolean;
@@ -31,6 +32,7 @@ type RecordingState = {
   selectedWindow: WindowDetails | null;
   setCamera: (camera: boolean) => void;
   setCameraHasWarning: (camera: boolean) => void;
+  setIsPaused: (isPaused: boolean) => void;
   setIsRecording: (isRecording: boolean) => void;
   setMicrophone: (microphone: boolean) => void;
   setMicrophoneHasWarning: (microphone: boolean) => void;
@@ -48,6 +50,7 @@ export const useRecordingStateStore = create<RecordingState>()(
       (set) => ({
         camera: false,
         cameraHasWarning: false,
+        isPaused: false,
         isRecording: false,
         microphone: false,
         microphoneHasWarning: false,
@@ -63,6 +66,9 @@ export const useRecordingStateStore = create<RecordingState>()(
         },
         setCameraHasWarning: (cameraHasWarning) => {
           set({ cameraHasWarning });
+        },
+        setIsPaused: (isPaused) => {
+          set({ isPaused });
         },
         setIsRecording: (isRecording) => {
           set({ isRecording });
