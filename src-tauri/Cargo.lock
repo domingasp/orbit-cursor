@@ -4245,6 +4245,7 @@ dependencies = [
  "nokhwa",
  "objc",
  "once_cell",
+ "rayon",
  "rdev",
  "rmp-serde",
  "scap",
