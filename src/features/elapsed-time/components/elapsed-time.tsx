@@ -6,11 +6,16 @@ import { formatTime } from "../../../lib/time";
 import { NumberRotate } from "./number-rotate";
 
 type ElapsedTimeProps = {
+  isFinalizing: boolean;
   isPaused: boolean;
   isRecording: boolean;
 };
 
-export const ElapsedTime = ({ isPaused, isRecording }: ElapsedTimeProps) => {
+export const ElapsedTime = ({
+  isFinalizing,
+  isPaused,
+  isRecording,
+}: ElapsedTimeProps) => {
   const interval = useRef<NodeJS.Timeout>(null);
   const totalMs = useRef(0);
   const lastTick = useRef<number>(null);
@@ -24,6 +29,10 @@ export const ElapsedTime = ({ isPaused, isRecording }: ElapsedTimeProps) => {
       if (interval.current) clearInterval(interval.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (interval.current) clearInterval(interval.current);
+  }, [isFinalizing]);
 
   useEffect(() => {
     if (!isRecording) {
@@ -58,15 +67,16 @@ export const ElapsedTime = ({ isPaused, isRecording }: ElapsedTimeProps) => {
   }, [isRecording, isPaused]);
 
   return (
-    <div className="flex flex-row items-center text-xs font-semibold w-15 tabular-nums">
-      {isRecording && (
+    <div className="flex flex-row items-center justify-center text-xs font-semibold w-14 tabular-nums">
+      {isRecording && !isFinalizing && (
         <div className={cn("flex transition-colors", isPaused && "text-muted")}>
           <NumberRotate>{time.hrs}</NumberRotate>:
           <NumberRotate>{time.mins}</NumberRotate>:{time.secs}
         </div>
       )}
 
-      {!isRecording && "Starting..."}
+      {!isRecording && !isFinalizing && "Starting"}
+      {isFinalizing && "Finalizing"}
     </div>
   );
 };

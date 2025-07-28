@@ -13,6 +13,7 @@ mod windows;
 
 use std::{
   collections::HashMap,
+  path::PathBuf,
   sync::{atomic::AtomicBool, Arc, Mutex, OnceLock},
 };
 
@@ -40,7 +41,7 @@ use scap::capturer::Capturer;
 use screen_capture::commands::init_magnifier_capturer;
 use serde_json::{json, Value};
 use system_tray::service::init_system_tray;
-use tauri::{App, AppHandle, Manager, Wry};
+use tauri::{App, AppHandle, Manager, PhysicalPosition, PhysicalSize, Wry};
 use tauri_plugin_store::{Store, StoreExt};
 use tokio::sync::broadcast;
 use windows::{
@@ -57,7 +58,10 @@ use windows::{
 
 use crate::{
   export::commands::{cancel_export, export_recording, open_path_in_file_browser, path_exists},
-  recording::models::RecordingManifest,
+  recording::{
+    commands::{pause_recording, resume_recording},
+    models::RecordingManifest,
+  },
   screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
   windows::{
     commands::{init_start_recording_dock, passthrough_region_selector},
@@ -66,6 +70,16 @@ use crate::{
 };
 
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
+
+// For pausing/resuming and spinning up ffmpeg processes for
+// screen recording
+pub struct ScreenRecordingMetadata {
+  pub width: u32,
+  pub height: u32,
+  pub pixel_format: String,
+  pub crop_size: Option<PhysicalSize<f64>>,
+  pub crop_origin: Option<PhysicalPosition<f64>>,
+}
 
 struct AppState {
   open_windows: HashMap<WindowLabel, bool>,
@@ -76,9 +90,14 @@ struct AppState {
   input_event_tx: broadcast::Sender<rdev::Event>,
   // Recording related
   is_recording: bool,
+  pause_recording_tx: Option<broadcast::Sender<()>>,
   stop_recording_tx: Option<broadcast::Sender<()>>,
   stop_barrier: Option<Arc<std::sync::Barrier>>,
   recording_manifest: Option<RecordingManifest>,
+  start_writing: Arc<AtomicBool>,
+  screen_recording_metadata: Option<ScreenRecordingMetadata>,
+  screen_frame_tx: Option<broadcast::Sender<Vec<u8>>>,
+  screen_segments: Vec<PathBuf>,
   // Editing related
   is_editing: bool,
   export_process: Option<Arc<Mutex<FfmpegChild>>>,
@@ -158,7 +177,9 @@ pub fn run() {
       open_path_in_file_browser,
       path_exists,
       export_recording,
-      cancel_export
+      cancel_export,
+      pause_recording,
+      resume_recording
     ])
     .manage(Mutex::new(AppState {
       open_windows: HashMap::from([
@@ -172,9 +193,14 @@ pub fn run() {
       magnifier_running: Arc::new(AtomicBool::new(false)),
       input_event_tx: input_event_tx.clone(),
       is_recording: false,
+      pause_recording_tx: None,
       stop_recording_tx: None,
       stop_barrier: None,
       recording_manifest: None,
+      start_writing: Arc::new(AtomicBool::new(false)),
+      screen_recording_metadata: None,
+      screen_frame_tx: None,
+      screen_segments: Vec::new(),
       is_editing: false,
       export_process: None,
     }))
