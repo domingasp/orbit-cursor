@@ -10,6 +10,7 @@ import { ExportOptions } from "../../features/export-options/components/export-o
 import { PreviewPlayer } from "../../features/preview-player/components/preview-player";
 import { Toolbar } from "../../features/toolbar/components/toolbar";
 import { usePlaybackStore } from "../../stores/editor/playback.store";
+import { useRecordingStateStore } from "../../stores/recording-state.store";
 import { Events } from "../../types/events";
 
 type RecordingManifest = {
@@ -42,12 +43,20 @@ export const Editor = () => {
     useShallow((state) => [state.pause, state.seek])
   );
 
+  const [setIsPaused, setIsFinalizing] = useRecordingStateStore(
+    useShallow((state) => [state.setIsPaused, state.setIsFinalizing])
+  );
+
   const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
   const name = recordingManifest?.directory.split("/").at(-1) ?? "";
 
   useEffect(() => {
     const unlisten = listen(Events.RecordingComplete, (data) => {
       setRecordingManifest(data.payload as RecordingManifest);
+
+      // Recording dock clean up
+      setIsPaused(false);
+      setIsFinalizing(false);
     });
 
     return () => {

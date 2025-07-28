@@ -20,3 +20,11 @@ export const startRecording = (options: StartRecordingProps) => {
 export const stopRecording = () => {
   void invoke(Commands.StopRecording);
 };
+
+export const resumeRecording = () => {
+  void invoke(Commands.ResumeRecording);
+};
+
+export const pauseRecording = () => {
+  void invoke(Commands.PauseRecording);
+};

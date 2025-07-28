@@ -18,15 +18,20 @@ use scap::frame::{Frame, YUVFrame};
 use serde::Serialize;
 use tauri::{AppHandle, LogicalPosition, Manager, PhysicalPosition, PhysicalSize};
 use tokio::sync::broadcast;
+use tokio::time::timeout;
+use uuid::Uuid;
 
 use crate::audio::service::{
   build_audio_into_file_stream, get_input_audio_device, get_system_audio_device,
 };
 use crate::camera::service::{create_camera, frame_format_to_ffmpeg};
-use crate::recording::models::{RecordingMetadata, RecordingType, Region, StreamSynchronization};
+use crate::recording::models::{
+  RecordingFile, RecordingMetadata, RecordingType, Region, StreamSynchronization,
+};
 use crate::recording_sources::commands::list_monitors;
 use crate::recording_sources::service::get_visible_windows;
 use crate::screen_capture::service::{create_screen_recording_capturer, get_display, get_window};
+use crate::ScreenRecordingMetadata;
 
 type ArcOneShotSender = Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>;
 type CapturerInfo = (
@@ -137,15 +142,22 @@ pub fn start_screen_recording(
   monitor_name: String,
   window_id: Option<u32>,
   region: Region,
-) -> (LogicalPosition<f64>, f64) {
+) -> (
+  LogicalPosition<f64>,
+  f64,
+  broadcast::Sender<()>,
+  ScreenRecordingMetadata,
+  broadcast::Sender<Vec<u8>>,
+) {
   let (capturer, width, height, crop_size, crop_origin, recording_origin, scale_factor) =
     create_screen_capturer(app_handle, recording_type, monitor_name, window_id, region);
 
-  let (frame_tx, frame_rx) = std::sync::mpsc::channel::<Vec<u8>>();
+  let (pause_tx, _) = broadcast::channel::<()>(1);
+  let (frame_tx, _) = broadcast::channel::<Vec<u8>>(1);
 
   spawn_capturer_with_send(
     capturer,
-    frame_tx,
+    frame_tx.clone(),
     synchronization.start_writing.clone(),
     synchronization.stop_tx.subscribe(),
   );
@@ -162,13 +174,110 @@ pub fn start_screen_recording(
 
   spawn_ffmpeg_frame_writer(
     ffmpeg_child,
-    frame_rx,
+    frame_tx.subscribe(),
     synchronization.start_writing.clone(),
+    Some(pause_tx.subscribe()),
     synchronization.stop_tx.subscribe(),
-    synchronization.stop_barrier.clone(),
+    None, // Stop barrier to be called as part of combining segments
   );
 
-  (recording_origin, scale_factor)
+  (
+    recording_origin,
+    scale_factor,
+    pause_tx,
+    ScreenRecordingMetadata {
+      width,
+      height,
+      pixel_format: "nv12".to_string(),
+      crop_origin,
+      crop_size,
+    },
+    frame_tx,
+  )
+}
+
+/// Create new Ffmpeg process
+pub fn resume_screen_recording(
+  file_path: PathBuf,
+  screen_recording_metadata: &ScreenRecordingMetadata,
+  frame_rx: broadcast::Receiver<Vec<u8>>,
+  pause_rx: broadcast::Receiver<()>,
+  stop_recording_rx: broadcast::Receiver<()>,
+  start_writing: Arc<AtomicBool>,
+) {
+  let ScreenRecordingMetadata {
+    width,
+    height,
+    pixel_format,
+    crop_size,
+    crop_origin,
+  } = screen_recording_metadata;
+
+  let ffmpeg_child = create_ffmpeg_writer(
+    file_path,
+    *width,
+    *height,
+    pixel_format.clone(),
+    None,
+    *crop_size,
+    *crop_origin,
+  );
+
+  spawn_ffmpeg_frame_writer(
+    ffmpeg_child,
+    frame_rx,
+    start_writing,
+    Some(pause_rx),
+    stop_recording_rx,
+    None, // Stop barrier to be called as part of combining segments
+  );
+}
+
+/// Concat provided screen segments into a single file
+///
+/// Delete segments after operation is complete.
+pub fn concat_screen_segments(screen_segments: Vec<PathBuf>, recording_dir: PathBuf) {
+  log::info!("Generating screen segment list file");
+  let segments_path = recording_dir.join(format!("screen-segments_{}.txt", Uuid::new_v4()));
+  let mut file = File::create(&segments_path).unwrap();
+  for path in &screen_segments {
+    let _ = writeln!(file, "file '{}'", path.display());
+  }
+
+  log::info!("Concating screen recording segments");
+  let mut child = FfmpegCommand::new();
+
+  child.format("concat");
+  child.args(["-safe", "0"]);
+  child.input(segments_path.to_string_lossy());
+  child.args(["-c", "copy"]);
+  child.output(
+    recording_dir
+      .join(RecordingFile::Screen.as_ref())
+      .to_string_lossy(),
+  );
+
+  let mut ffmpeg_child = child.spawn().unwrap();
+  let _ = ffmpeg_child.wait();
+
+  log::info!("Concat complete, cleaning up");
+  for segment in &screen_segments {
+    if let Err(e) = std::fs::remove_file(segment) {
+      log::warn!(
+        "Failed to delete recording segment {}: {}",
+        segment.display(),
+        e
+      );
+    }
+  }
+
+  if let Err(e) = std::fs::remove_file(&segments_path) {
+    log::warn!(
+      "Failed to delete list file {}: {}",
+      segments_path.display(),
+      e
+    );
+  }
 }
 
 /// Create screen capturer based on recording type
@@ -262,7 +371,7 @@ pub fn start_camera_recording(
   let (camera_ready_tx, camera_ready_rx) = tokio::sync::oneshot::channel();
   let camera_ready_tx = Arc::new(Mutex::new(Some(camera_ready_tx)));
 
-  let (frame_tx, frame_rx) = std::sync::mpsc::channel::<Vec<u8>>();
+  let (frame_tx, frame_rx) = broadcast::channel::<Vec<u8>>(1);
 
   let (resolution, frame_rate, pixel_format) = spawn_camera_with_send(
     camera_index,
@@ -286,8 +395,11 @@ pub fn start_camera_recording(
     ffmpeg_child,
     frame_rx,
     synchronization.start_writing.clone(),
+    // No need to have separate segments as constant frame rate
+    // does not result in incorrect file length
+    None,
     synchronization.stop_tx.subscribe(),
-    synchronization.stop_barrier.clone(),
+    Some(synchronization.stop_barrier.clone()),
   );
 
   let _ = camera_ready_rx.blocking_recv();
@@ -297,7 +409,7 @@ pub fn start_camera_recording(
 fn spawn_camera_with_send(
   camera_index: CameraIndex,
   camera_ready_tx: ArcOneShotSender,
-  frame_tx: std::sync::mpsc::Sender<Vec<u8>>,
+  frame_tx: broadcast::Sender<Vec<u8>>,
   start_writing: Arc<AtomicBool>,
   mut stop_rx: broadcast::Receiver<()>,
 ) -> (nokhwa::utils::Resolution, u32, String) {
@@ -338,37 +450,56 @@ fn spawn_camera_with_send(
 /// Spawn new thread for ffmpeg write to stdin
 fn spawn_ffmpeg_frame_writer(
   mut ffmpeg_child: FfmpegChild,
-  frame_rx: std::sync::mpsc::Receiver<Vec<u8>>,
+  mut frame_rx: broadcast::Receiver<Vec<u8>>,
   start_writing: Arc<AtomicBool>,
+  mut pause_rx: Option<broadcast::Receiver<()>>,
   mut stop_rx: broadcast::Receiver<()>,
-  stop_barrier: Arc<Barrier>,
+  stop_barrier: Option<Arc<Barrier>>,
 ) {
-  std::thread::spawn(move || {
+  tauri::async_runtime::spawn(async move {
     log::info!("Starting ffmpeg writer thread");
-    let mut stdin = std::io::BufWriter::new(ffmpeg_child.take_stdin().unwrap());
+    let stdin = ffmpeg_child.take_stdin().unwrap();
+    let stdin = Arc::new(Mutex::new(std::io::BufWriter::new(stdin)));
+
     loop {
+      if let Some(ref mut pause_rx) = pause_rx {
+        if pause_rx.try_recv().is_ok() {
+          log::info!("Ffmpeg received pause signal");
+          break;
+        }
+      }
+
       if stop_rx.try_recv().is_ok() {
         log::info!("Ffmpeg received stop signal");
         break;
       }
 
-      match frame_rx.recv_timeout(Duration::from_millis(100)) {
-        Ok(frame) => {
+      match timeout(Duration::from_millis(100), frame_rx.recv()).await {
+        Ok(Ok(frame)) => {
           if start_writing.load(Ordering::SeqCst) {
-            let _ = stdin.write_all(&frame);
+            let stdin = stdin.clone();
+            // Keeps async_runtime clear
+            tauri::async_runtime::spawn_blocking(move || {
+              let mut writer = stdin.lock().unwrap();
+              let _ = writer.write_all(&frame);
+            });
           }
         }
-        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+        Ok(Err(broadcast::error::RecvError::Lagged(_))) => {
           continue;
         }
-        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+        Ok(Err(broadcast::error::RecvError::Closed)) => {
           break;
+        }
+        Err(_) => {
+          // Timed out
+          continue;
         }
       }
     }
 
     log::info!("Flushing ffmpeg");
-    if let Err(e) = stdin.flush() {
+    if let Err(e) = stdin.lock().unwrap().flush() {
       eprintln!("Failed to flush ffmpeg stdin: {e}");
     }
 
@@ -379,7 +510,9 @@ fn spawn_ffmpeg_frame_writer(
     let _ = ffmpeg_child.wait();
 
     log::info!("Ffmpeg writer finished");
-    stop_barrier.wait();
+    if let Some(stop_barrier) = stop_barrier {
+      stop_barrier.wait();
+    }
   });
 }
 
@@ -388,7 +521,7 @@ fn spawn_ffmpeg_frame_writer(
 /// Starts capturer
 fn spawn_capturer_with_send(
   mut capturer: Capturer,
-  frame_tx: std::sync::mpsc::Sender<Vec<u8>>,
+  frame_tx: broadcast::Sender<Vec<u8>>,
   start_writing: Arc<AtomicBool>,
   mut stop_rx: broadcast::Receiver<()>,
 ) {
@@ -406,16 +539,16 @@ fn spawn_capturer_with_send(
         break;
       }
 
-      if start_writing.load(std::sync::atomic::Ordering::SeqCst) {
-        let frame: Option<&YUVFrame> =
-          match capturer.get_next_frame_or_timeout(Duration::from_millis(10)) {
-            Ok(Frame::YUVFrame(frame)) => {
-              cached_frame = Some(frame);
-              cached_frame.as_ref()
-            }
-            _ => cached_frame.as_ref(),
-          };
+      let frame: Option<&YUVFrame> =
+        match capturer.get_next_frame_or_timeout(Duration::from_millis(10)) {
+          Ok(Frame::YUVFrame(frame)) => {
+            cached_frame = Some(frame);
+            cached_frame.as_ref()
+          }
+          _ => cached_frame.as_ref(),
+        };
 
+      if start_writing.load(std::sync::atomic::Ordering::SeqCst) {
         if let Some(frame) = frame {
           let width = frame.width as usize;
           let height = frame.height as usize;
