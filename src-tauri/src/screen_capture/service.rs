@@ -1,5 +1,4 @@
-use std::sync::Mutex;
-
+use parking_lot::Mutex;
 use scap::{
   capturer::{Capturer, Options},
   frame::BGRAFrame,
@@ -8,9 +7,12 @@ use scap::{
 use tauri::State;
 use yuv::bgra_to_rgba;
 
-use crate::{windows::commands::APP_WEBVIEW_TITLES, AppState};
+use crate::{models::MagnifierState, windows::commands::APP_WEBVIEW_TITLES};
 
-pub fn init_magnifier_capturer(state: State<'_, Mutex<AppState>>, display_name: String) {
+pub fn init_magnifier_capturer(
+  magnifier_state: State<'_, Mutex<MagnifierState>>,
+  display_name: String,
+) {
   let targets_to_exclude = get_app_targets();
   let display = get_display(display_name);
 
@@ -26,9 +28,7 @@ pub fn init_magnifier_capturer(state: State<'_, Mutex<AppState>>, display_name: 
   };
 
   if let Ok(capturer) = Capturer::build(options) {
-    if let Ok(mut state) = state.lock() {
-      state.magnifier_capturer = Some(capturer);
-    }
+    magnifier_state.lock().store_magnifier(capturer);
   }
 }
 

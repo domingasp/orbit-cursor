@@ -1,5 +1,5 @@
 use std::process::Command;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::{
   io::{BufRead, BufReader},
   path::{Path, PathBuf},
@@ -7,10 +7,11 @@ use std::{
 };
 
 use ffmpeg_sidecar::command::FfmpegCommand;
+use parking_lot::Mutex;
 use tauri::{AppHandle, Emitter, Manager, State};
 use uuid::Uuid;
 
-use crate::AppState;
+use crate::models::EditingState;
 use crate::{constants::Events, recording::models::RecordingFile};
 
 pub fn encode_recording(
@@ -79,31 +80,27 @@ pub fn encode_recording(
 
   // Store in state for cancellation
   {
-    let state: State<'_, Mutex<AppState>> = app_handle.state();
-    if let Ok(mut state_guard) = state.lock() {
-      state_guard.export_process = Some(ffmpeg_arc.clone());
-    };
+    let editing_state: State<'_, Mutex<EditingState>> = app_handle.state();
+    editing_state.lock().set_export_process(ffmpeg_arc.clone());
   }
 
-  let stdout = ffmpeg_arc.clone().lock().unwrap().take_stdout().unwrap();
+  let stdout = ffmpeg_arc.clone().lock().take_stdout().unwrap();
   let app_handle_for_reader = app_handle.clone();
   std::thread::spawn(move || {
     ffmpeg_progress_reader(app_handle_for_reader, stdout);
 
-    if let Ok(mut ffmpeg_guard) = ffmpeg_arc.lock() {
-      let status = ffmpeg_guard.wait(); // Clean up resources
+    let status = ffmpeg_arc.lock().wait(); // Clean up resources
 
-      let success = status.as_ref().map(|s| s.success()).unwrap_or(false);
+    let success = status.as_ref().map(|s| s.success()).unwrap_or(false);
 
-      if success {
-        let _ = app_handle.emit(Events::ExportComplete.as_ref(), output_path.clone());
+    if success {
+      let _ = app_handle.emit(Events::ExportComplete.as_ref(), output_path.clone());
 
-        if open_folder_after_export {
-          open_path_in_file_browser(output_path);
-        }
-      } else {
-        handle_cancellation(output_path, camera_path);
+      if open_folder_after_export {
+        open_path_in_file_browser(output_path);
       }
+    } else {
+      handle_cancellation(output_path, camera_path);
     }
   });
 }

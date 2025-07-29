@@ -33,8 +33,13 @@ pub fn init_system_tray(app_handle: AppHandle) -> tauri::Result<()> {
 
         // These decide if to show accordingly, needed to do this as state
         // is not available when setting up the tray causing a panic
-        show_start_recording_dock(app_handle, app_handle.state());
-        show_and_focus_editor(app_handle, app_handle.state());
+        show_start_recording_dock(
+          app_handle.clone(),
+          app_handle.state(),
+          app_handle.state(),
+          app_handle.state(),
+        );
+        show_and_focus_editor(app_handle.clone(), app_handle.state(), app_handle.state());
       }
     }
   });

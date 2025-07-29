@@ -1,8 +1,4 @@
-use std::{
-  ffi::CString,
-  sync::{Arc, Mutex},
-  time::Duration,
-};
+use std::{ffi::CString, sync::Arc, time::Duration};
 
 use border::WebviewWindowExt as BorderWebviewWindowExt;
 use cocoa::{
@@ -11,11 +7,12 @@ use cocoa::{
 };
 use objc::{class, msg_send, sel, sel_impl};
 use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 use rdev::{Button, EventType};
 use tauri::{
   utils::config::WindowEffectsConfig,
   window::{Effect, EffectState},
-  AppHandle, Emitter, Listener, LogicalPosition, LogicalSize, Manager, WebviewWindow,
+  AppHandle, Emitter, Listener, LogicalPosition, LogicalSize, Manager, State, WebviewWindow,
   WebviewWindowBuilder, WindowEvent,
 };
 use tauri_nspanel::{
@@ -28,6 +25,7 @@ use tokio::sync::broadcast::Receiver;
 
 use crate::{
   constants::{Events, PanelLevel, WindowLabel},
+  models::EditingState,
   windows::commands::collapse_recording_source_selector,
 };
 
@@ -45,14 +43,12 @@ pub fn editor_close_listener(app_handle: &AppHandle) {
 
   editor.on_window_event(move |event| {
     if let WindowEvent::CloseRequested { api, .. } = event {
-      use crate::AppState;
-      use tauri::State;
-
       api.prevent_close();
 
-      let state: State<'_, Mutex<AppState>> = app_handle_for_listener.state();
-      let mut app_state = state.lock().unwrap();
-      app_state.is_editing = false;
+      {
+        let editing_state: State<'_, Mutex<EditingState>> = app_handle_for_listener.state();
+        editing_state.lock().editing_stopped();
+      }
 
       let _ = editor_clone.hide();
       let _ = app_handle_for_listener.emit(Events::ClosedEditor.as_ref(), ());
@@ -154,7 +150,7 @@ pub async fn open_permissions(app_handle: &AppHandle) {
 }
 
 /// Position window above recording dock, `x` parameter determines the x position.
-pub fn position_window_above_dock(app_handle: &AppHandle, window_label: WindowLabel, x: f64) {
+pub fn position_window_above_dock(app_handle: AppHandle, window_label: WindowLabel, x: f64) {
   let margin_bottom = 5.0;
 
   let dock = app_handle
@@ -194,7 +190,7 @@ pub fn handle_dock_positioning(window: &WebviewWindow) {
   }
 }
 
-pub fn position_recording_source_selector(app_handle: &AppHandle, window: &WebviewWindow) {
+pub fn position_recording_source_selector(app_handle: AppHandle, window: &WebviewWindow) {
   let scale_factor = window.scale_factor().unwrap();
   let dock = app_handle
     .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
@@ -369,11 +365,11 @@ pub fn spawn_window_close_manager(
       if let Ok(event) = input_event_rx.blocking_recv() {
         match event.event_type {
           EventType::MouseMove { x, y } => {
-            let mut pos = LAST_MOUSE_POS.lock().unwrap();
+            let mut pos = LAST_MOUSE_POS.lock();
             *pos = (x, y);
           }
           EventType::ButtonRelease(Button::Left) => {
-            let pos = LAST_MOUSE_POS.lock().unwrap();
+            let pos = LAST_MOUSE_POS.lock();
 
             // Any click should close standalone listbox
             let _ = app_handle.emit(Events::StandaloneListboxDidResignKey.as_ref(), ());

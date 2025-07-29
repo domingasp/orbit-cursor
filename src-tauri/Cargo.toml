@@ -48,6 +48,7 @@ tauri-plugin-dialog = "2"
 tauri-plugin-log = "2"
 log = "0.4"
 rayon = "1.10.0"
+parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 
 [dependencies.nokhwa]
 git = "https://github.com/l1npengtul/nokhwa.git"

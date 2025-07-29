@@ -1,5 +1,3 @@
-use std::sync::Mutex;
-
 use super::models::AudioStream;
 use crate::{
   audio::{
@@ -9,21 +7,20 @@ use crate::{
     },
   },
   constants::Events,
-  AppState,
+  models::PreviewState,
 };
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use parking_lot::Mutex;
 use tauri::{ipc::Channel, State};
 
 #[tauri::command]
 pub fn start_audio_listener(
-  state: State<'_, Mutex<AppState>>,
+  preview_state: State<'_, Mutex<PreviewState>>,
   stream_to_start: AudioStream,
   on_event: Channel<AudioStreamChannel>,
   device_name: Option<String>,
 ) {
-  let mut state = state.lock().unwrap();
-
-  let maybe_stream = match &stream_to_start {
+  let audio_stream = match &stream_to_start {
     AudioStream::System => {
       let (device, config) = get_system_audio_device();
       Some(build_audio_live_monitoring_stream(
@@ -50,16 +47,18 @@ pub fn start_audio_listener(
     },
   };
 
-  if let Some(stream) = maybe_stream {
+  if let Some(stream) = audio_stream {
     stream.play().expect("Failed to play audio stream");
-    state.audio_streams.insert(stream_to_start, stream);
+
+    preview_state
+      .lock()
+      .set_audio_stream(stream_to_start, stream);
   }
 }
 
 #[tauri::command]
-pub fn stop_audio_listener(state: State<'_, Mutex<AppState>>, stream_name: AudioStream) {
-  let mut state = state.lock().unwrap();
-  state.audio_streams.remove(&stream_name);
+pub fn stop_audio_listener(state: State<'_, Mutex<PreviewState>>, stream_name: AudioStream) {
+  state.lock().remove_audio_stream(stream_name);
 }
 
 #[tauri::command]

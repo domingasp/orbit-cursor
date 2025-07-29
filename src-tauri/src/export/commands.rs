@@ -1,11 +1,12 @@
-use std::{path::PathBuf, sync::Mutex};
+use std::path::PathBuf;
 
+use parking_lot::Mutex;
 use serde::Deserialize;
 use tauri::{AppHandle, Manager, State};
 
 use crate::{
   export::service::{self, encode_recording},
-  AppState,
+  models::EditingState,
 };
 
 #[tauri::command]
@@ -41,13 +42,13 @@ pub async fn export_recording(app_handle: AppHandle, options: ExportOptions) {
 
 #[tauri::command]
 pub async fn cancel_export(app_handle: AppHandle) {
-  let state: State<'_, Mutex<AppState>> = app_handle.state();
-  if let Ok(mut state_guard) = state.lock() {
-    if let Some(export_process) = state_guard.export_process.take() {
-      if let Ok(mut export_process_guard) = export_process.lock() {
-        let _ = export_process_guard.kill();
-        let _ = export_process_guard.wait(); // Clean up resources
-      }
-    }
+  let editing_state: State<'_, Mutex<EditingState>> = app_handle.state();
+
+  if let Some(export_process) = editing_state.lock().take_export_process() {
+    tauri::async_runtime::spawn_blocking(move || {
+      let mut export_process_guard = export_process.lock();
+      let _ = export_process_guard.kill();
+      let _ = export_process_guard.wait(); // Clean up resources
+    });
   };
 }

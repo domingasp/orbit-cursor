@@ -1,16 +1,15 @@
-use std::sync::Mutex;
-
+use parking_lot::Mutex;
 use serde::Deserialize;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
   constants::{Events, WindowLabel},
+  models::{EditingState, RecordingState},
   recording::{
     file::create_recording_directory,
     models::{RecordingFile, RecordingFileSet, RecordingManifest, RecordingType, Region},
   },
   windows::commands::{hide_region_selector, passthrough_region_selector},
-  AppState,
 };
 
 #[derive(Debug, Clone, Deserialize)]
@@ -37,9 +36,7 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
   std::thread::spawn(move || {
     log::info!("Starting recording");
 
-    let state: State<'_, Mutex<AppState>> = app_handle.state();
-    let mut state = state.lock().unwrap();
-    let recording_dir = create_recording_directory(&app_handle);
+    let recording_dir = create_recording_directory(app_handle.path().app_data_dir().unwrap());
     let mut recording_file_set = RecordingFileSet::default();
 
     // Optional
@@ -80,8 +77,8 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
 
     let _ = app_handle.emit(Events::RecordingStarted.as_ref(), ());
 
-    state.is_recording = true;
-    state.recording_manifest = Some(RecordingManifest {
+    let recording_state: State<'_, Mutex<RecordingState>> = app_handle.state();
+    recording_state.lock().recording_started(RecordingManifest {
       directory: recording_dir,
       files: recording_file_set,
     });
@@ -93,37 +90,32 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
 
 #[tauri::command]
 pub async fn stop_recording(app_handle: AppHandle) {
-  let state: State<'_, Mutex<AppState>> = app_handle.state();
-
-  let mut recording_manifest = {
-    let mut state = state.lock().unwrap();
-
-    let recording_manifest = state.recording_manifest.take();
-
-    state.is_recording = false;
-    state.is_editing = true;
-
-    recording_manifest
-  };
-
   // Re-enable and hide region selector (not always applicable)
   hide_region_selector(app_handle.clone());
   passthrough_region_selector(app_handle.clone(), false);
+
+  {
+    let recording_state: State<'_, Mutex<RecordingState>> = app_handle.state();
+    if let Some(recording_manifest) = recording_state.lock().recording_stopped() {
+      let _ = app_handle.emit(Events::RecordingComplete.as_ref(), recording_manifest);
+    };
+  }
 
   let recording_dock = app_handle
     .get_webview_window(WindowLabel::RecordingDock.as_ref())
     .unwrap();
   let _ = recording_dock.hide();
 
+  {
+    let editing_state: State<'_, Mutex<EditingState>> = app_handle.state();
+    editing_state.lock().editing_started();
+  }
+
   let editor = app_handle
     .get_webview_window(WindowLabel::Editor.as_ref())
     .unwrap();
   let _ = editor.show();
   let _ = editor.set_focus();
-
-  if let Some(recording_manifest) = recording_manifest.take() {
-    let _ = app_handle.emit(Events::RecordingComplete.as_ref(), recording_manifest);
-  }
 
   #[cfg(target_os = "macos")] // Shows dock icon, allows editor to go fullscreen
   let _ = app_handle.set_activation_policy(tauri::ActivationPolicy::Regular);

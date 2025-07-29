@@ -1,11 +1,10 @@
-use std::sync::Mutex;
-
 use nokhwa::{query, utils::ApiBackend};
-use tauri::{ipc::Channel, State};
+use parking_lot::Mutex;
+use tauri::{ipc::Channel, AppHandle, Manager, State};
 
 use crate::{
   camera::service::{create_camera, live_frame_callback},
-  AppState,
+  models::PreviewState,
 };
 
 #[tauri::command]
@@ -21,8 +20,12 @@ pub fn list_cameras() -> Vec<String> {
 }
 
 #[tauri::command]
-pub fn start_camera_stream(state: State<'_, Mutex<AppState>>, name: String, channel: Channel) {
-  let mut state = state.lock().unwrap();
+pub async fn start_camera_stream(
+  preview_state: State<'_, Mutex<PreviewState>>,
+  name: String,
+  channel: Channel,
+) -> Result<(), ()> {
+  let mut stop_camera_rx = preview_state.lock().subscribe_to_camera_stop();
 
   if let Some(camera_to_start) = query(ApiBackend::Auto)
     .unwrap()
@@ -32,20 +35,21 @@ pub fn start_camera_stream(state: State<'_, Mutex<AppState>>, name: String, chan
     if let Some(mut camera) = create_camera(camera_to_start.index().clone(), move |frame| {
       live_frame_callback(frame, &channel);
     }) {
-      let _ = camera.open_stream();
-      state.camera_stream = Some(camera)
+      std::thread::spawn(move || {
+        if let Err(e) = camera.open_stream() {
+          eprintln!("Failed to start camera: {e}");
+        }
+
+        let _ = stop_camera_rx.blocking_recv(); // Keeps camera alive
+      });
     }
   }
+
+  Ok(())
 }
 
 #[tauri::command]
-pub fn stop_camera_stream(state: State<'_, Mutex<AppState>>) {
-  let mut state = state.lock().unwrap();
-
-  if let Some(mut camera_stream) = state.camera_stream.take() {
-    std::thread::spawn(move || {
-      // Need a thread to stop stream otherwise freezes main thread
-      let _ = camera_stream.stop_stream();
-    });
-  }
+pub async fn stop_camera_stream(app_handle: AppHandle) {
+  let preview_state: State<'_, Mutex<PreviewState>> = app_handle.state();
+  preview_state.lock().stop_camera();
 }
