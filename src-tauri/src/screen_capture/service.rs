@@ -32,27 +32,8 @@ pub fn init_magnifier_capturer(
   }
 }
 
-/// Create and return a capturer with specified target (display, or window)
-pub fn create_screen_recording_capturer(target: Option<Target>) -> Capturer {
-  log::info!("Fetching screen capturer data");
-  let targets_to_exclude = get_app_targets();
-
-  let options = Options {
-    fps: 60,
-    target,
-    show_cursor: false,
-    show_highlight: false,
-    excluded_targets: Some(targets_to_exclude),
-    output_type: scap::frame::FrameType::YUVFrame,
-    ..Default::default()
-  };
-
-  log::info!("Building screen capturer");
-  Capturer::build(options).unwrap()
-}
-
 /// Return targets which are part of the app
-fn get_app_targets() -> Vec<Target> {
+pub fn get_app_targets() -> Vec<Target> {
   log::info!("Fetching all available targets");
   let targets = get_all_targets();
 
@@ -76,19 +57,6 @@ pub fn get_display(display_name: String) -> Option<Target> {
   targets.into_iter().find(|t| {
     if let Target::Display(target) = t {
       target.title == display_name
-    } else {
-      false
-    }
-  })
-}
-
-/// Return window from id (scap::Target id)
-pub fn get_window(window_id: u32) -> Option<Target> {
-  let targets = get_all_targets();
-
-  targets.into_iter().find(|t| {
-    if let Target::Window(target) = t {
-      target.id == window_id
     } else {
       false
     }

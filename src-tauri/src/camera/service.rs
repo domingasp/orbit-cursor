@@ -58,17 +58,6 @@ pub fn create_camera(
   }
 }
 
-pub fn frame_format_to_ffmpeg(frame_format: FrameFormat) -> &'static str {
-  match frame_format {
-    FrameFormat::MJPEG => "mjpeg",
-    FrameFormat::YUYV => "yuyv422",
-    FrameFormat::NV12 => "nv12",
-    FrameFormat::GRAY => "gray",
-    FrameFormat::RAWRGB => "rgb24",
-    FrameFormat::RAWBGR => "bgr24",
-  }
-}
-
 /// Parallelized conversion from YUYV to RGBA
 fn yuyv_to_rgba(buffer: &[u8], width: u32, height: u32) -> Vec<u8> {
   let yuyv_stride = width * 2;
