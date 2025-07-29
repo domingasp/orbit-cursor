@@ -1,24 +1,13 @@
-use std::sync::{
-  atomic::{AtomicBool, Ordering},
-  Arc, Mutex,
-};
+use std::sync::Mutex;
 
 use serde::Deserialize;
 use tauri::{AppHandle, Emitter, Manager, State};
-use tokio::sync::broadcast::{self};
 
 use crate::{
   constants::{Events, WindowLabel},
   recording::{
-    models::{
-      RecordingFile, RecordingFileSet, RecordingManifest, RecordingMetadata, RecordingType, Region,
-      StreamSynchronization,
-    },
-    service::{
-      concat_screen_segments, create_recording_directory, resume_screen_recording,
-      spawn_mouse_event_recorder, start_camera_recording, start_input_audio_recording,
-      start_screen_recording, start_system_audio_recording, write_metadata,
-    },
+    file::create_recording_directory,
+    models::{RecordingFile, RecordingFileSet, RecordingManifest, RecordingType, Region},
   },
   windows::commands::{hide_region_selector, passthrough_region_selector},
   AppState,
@@ -53,60 +42,25 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
     let recording_dir = create_recording_directory(&app_handle);
     let mut recording_file_set = RecordingFileSet::default();
 
-    let start_writing = Arc::new(AtomicBool::new(false));
-    let (stop_tx, _) = broadcast::channel::<()>(1);
-
-    // Barrier used for a synchronized finish
-    let mut barrier_count = 1; // Stop command
-    if options.system_audio {
-      barrier_count += 1;
-    }
-    if options.input_audio_name.is_some() {
-      barrier_count += 1;
-    }
-
-    if options.camera_name.is_some() {
-      barrier_count += 1;
-    }
-
-    let stop_barrier = Arc::new(std::sync::Barrier::new(barrier_count));
-
-    let synchronization = StreamSynchronization {
-      start_writing: start_writing.clone(),
-      stop_tx: stop_tx.clone(),
-      stop_barrier: stop_barrier.clone(),
-    };
-
     // Optional
     if options.system_audio {
       log::info!("Starting system audio recorder");
       recording_file_set.system_audio = Some(RecordingFile::SystemAudio);
-      start_system_audio_recording(
-        synchronization.clone(),
-        recording_dir.join(RecordingFile::SystemAudio.as_ref()),
-      );
+      // TODO setup recorder
       log::info!("System audio recorder ready");
     }
 
     if let Some(device_name) = options.input_audio_name {
       log::info!("Starting input audio recorder");
       recording_file_set.microphone = Some(RecordingFile::InputAudio);
-      start_input_audio_recording(
-        synchronization.clone(),
-        recording_dir.join(RecordingFile::InputAudio.as_ref()),
-        device_name,
-      );
+      // TODO setup recorder
       log::info!("Input audio recorder ready");
     }
 
     if let Some(camera_name) = options.camera_name {
       log::info!("Starting camera recorder");
       recording_file_set.camera = Some(RecordingFile::Camera);
-      start_camera_recording(
-        synchronization.clone(),
-        recording_dir.join(RecordingFile::Camera.as_ref()),
-        camera_name,
-      );
+      // TODO setup recorder
       log::info!("Camera recorder ready");
     }
 
@@ -115,50 +69,22 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
     // Window capture causes empty frames if this comes first - not sure why, only happens
     // when multiple streams
     log::info!("Starting screen recorder");
-    let screen_path = RecordingFile::Screen.segment_path(&recording_dir);
-    let (recording_origin, scale_factor, pause_tx, screen_recording_metadata, screen_frame_tx) =
-      start_screen_recording(
-        synchronization.clone(),
-        screen_path.clone(),
-        options.recording_type,
-        app_handle.clone(),
-        options.monitor_name,
-        options.window_id,
-        options.region,
-      );
+    let screen_path = recording_dir.join(RecordingFile::Screen.as_ref());
+    // TODO setup recorder
     log::info!("Screen recorder ready");
 
     log::info!("Starting extra writers: mouse_events, metadata");
-    spawn_mouse_event_recorder(
-      synchronization.clone(),
-      recording_dir.join(RecordingFile::MouseEvents.as_ref()),
-      state.input_event_tx.subscribe(),
-    );
-
-    let _ = write_metadata(
-      recording_dir.join(RecordingFile::Metadata.as_ref()),
-      RecordingMetadata {
-        recording_origin,
-        scale_factor,
-      },
-    );
+    // TODO mouse event recorder
+    // TODO store RecordingMetadata
     log::info!("Extra writers ready");
 
-    start_writing.store(true, Ordering::SeqCst);
     let _ = app_handle.emit(Events::RecordingStarted.as_ref(), ());
 
     state.is_recording = true;
-    state.pause_recording_tx = Some(pause_tx);
-    state.stop_recording_tx = Some(stop_tx);
-    state.stop_barrier = Some(stop_barrier);
     state.recording_manifest = Some(RecordingManifest {
       directory: recording_dir,
       files: recording_file_set,
     });
-    state.start_writing = start_writing.clone();
-    state.screen_recording_metadata = Some(screen_recording_metadata);
-    state.screen_frame_tx = Some(screen_frame_tx);
-    state.screen_segments = vec![screen_path];
     log::info!("Recording started");
   });
 
@@ -169,41 +95,16 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
 pub async fn stop_recording(app_handle: AppHandle) {
   let state: State<'_, Mutex<AppState>> = app_handle.state();
 
-  let (mut stop_barrier, screen_segments, recording_dir, mut recording_manifest) = {
+  let mut recording_manifest = {
     let mut state = state.lock().unwrap();
-    state.is_recording = false;
-
-    if let Some(stop_tx) = state.stop_recording_tx.take() {
-      let _ = stop_tx.send(());
-    }
-
-    let stop_barrier = state.stop_barrier.take();
-    let screen_segments = state.screen_segments.clone();
-    let recording_dir = state
-      .recording_manifest
-      .as_ref()
-      .map(|m| m.directory.clone())
-      .unwrap_or_default();
 
     let recording_manifest = state.recording_manifest.take();
 
+    state.is_recording = false;
     state.is_editing = true;
 
-    (
-      stop_barrier,
-      screen_segments,
-      recording_dir,
-      recording_manifest,
-    )
+    recording_manifest
   };
-
-  if let Some(stop_barrier) = stop_barrier.take() {
-    concat_screen_segments(screen_segments, recording_dir);
-
-    tauri::async_runtime::spawn_blocking(move || {
-      stop_barrier.wait();
-    });
-  }
 
   // Re-enable and hide region selector (not always applicable)
   hide_region_selector(app_handle.clone());
@@ -229,44 +130,11 @@ pub async fn stop_recording(app_handle: AppHandle) {
 }
 
 #[tauri::command]
-pub fn resume_recording(state: State<'_, Mutex<AppState>>) {
+pub fn resume_recording() {
   log::info!("Resuming recording");
-  if let Ok(mut state_guard) = state.lock() {
-    log::info!("Spawning new Ffmpeg for screen recording");
-    let recording_dir = state_guard
-      .recording_manifest
-      .as_ref()
-      .unwrap()
-      .directory
-      .clone();
-    let screen_path = RecordingFile::Screen.segment_path(&recording_dir);
-
-    resume_screen_recording(
-      screen_path.clone(),
-      state_guard.screen_recording_metadata.as_ref().unwrap(),
-      state_guard.screen_frame_tx.as_ref().unwrap().subscribe(),
-      state_guard.pause_recording_tx.as_ref().unwrap().subscribe(),
-      state_guard.stop_recording_tx.as_ref().unwrap().subscribe(),
-      state_guard.start_writing.clone(),
-    );
-
-    state_guard.screen_segments.push(screen_path);
-    state_guard
-      .start_writing
-      .store(true, std::sync::atomic::Ordering::SeqCst);
-  }
 }
 
 #[tauri::command]
-pub fn pause_recording(state: State<'_, Mutex<AppState>>) {
+pub fn pause_recording() {
   log::info!("Pausing recording");
-  if let Ok(state_guard) = state.lock() {
-    if let Some(ref pause_recording_tx) = state_guard.pause_recording_tx {
-      let _ = pause_recording_tx.send(());
-    }
-
-    state_guard
-      .start_writing
-      .store(false, std::sync::atomic::Ordering::SeqCst);
-  }
 }
