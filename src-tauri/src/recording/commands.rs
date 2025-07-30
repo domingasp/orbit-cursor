@@ -1,5 +1,5 @@
 use std::{
-  sync::{atomic::AtomicBool, Arc},
+  sync::{atomic::AtomicBool, Arc, Barrier},
   thread::JoinHandle,
 };
 
@@ -48,11 +48,22 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
     let recording_dir = create_recording_directory(app_handle.path().app_data_dir().unwrap());
     let mut recording_file_set = RecordingFileSet::default();
 
+    // Calculate number of required barriers
+    let mut barrier_count = 1; // For this coordinator
+    if options.system_audio {
+      barrier_count += 1;
+    }
+    if options.microphone_name.is_some() {
+      barrier_count += 1;
+    }
+
+    let ready_barrier = Arc::new(Barrier::new(barrier_count));
     let should_write = Arc::new(AtomicBool::new(false));
     let (stop_tx, _) = broadcast::channel::<()>(1);
     let synchronization = StreamSync {
       should_write: should_write.clone(),
       stop_tx: stop_tx.clone(),
+      ready_barrier: ready_barrier.clone(),
     };
 
     let mut streams: Vec<JoinHandle<()>> = Vec::new();
@@ -102,6 +113,8 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
     // TODO store RecordingMetadata
     log::info!("Extra writers ready");
 
+    log::info!("Waiting for streams to be ready");
+    ready_barrier.wait(); // Synchronized start
     should_write.store(true, std::sync::atomic::Ordering::SeqCst);
     let _ = app_handle.emit(Events::RecordingStarted.as_ref(), ());
 

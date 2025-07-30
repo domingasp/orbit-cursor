@@ -1,6 +1,9 @@
 use std::{
   path::PathBuf,
-  sync::{atomic::AtomicBool, Arc},
+  sync::{
+    atomic::{AtomicBool, AtomicUsize},
+    Arc, Barrier,
+  },
 };
 
 use serde::{Deserialize, Serialize};
@@ -12,6 +15,7 @@ use tokio::sync::broadcast;
 pub struct StreamSync {
   pub should_write: Arc<AtomicBool>,
   pub stop_tx: broadcast::Sender<()>,
+  pub ready_barrier: Arc<Barrier>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
