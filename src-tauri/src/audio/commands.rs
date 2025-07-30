@@ -2,9 +2,7 @@ use super::models::AudioStream;
 use crate::{
   audio::{
     models::AudioStreamChannel,
-    service::{
-      build_audio_live_monitoring_stream, get_input_audio_device, get_system_audio_device,
-    },
+    service::{build_audio_live_monitoring_stream, get_microphone, get_system_audio_device},
   },
   constants::Events,
   models::PreviewState,
@@ -30,14 +28,14 @@ pub fn start_audio_listener(
         Some(Events::SystemAudioStreamError.to_string()),
       ))
     }
-    AudioStream::Input => match device_name {
+    AudioStream::Microphone => match device_name {
       Some(name) => {
-        if let Some((device, config)) = get_input_audio_device(name) {
+        if let Some((device, config)) = get_microphone(name) {
           Some(build_audio_live_monitoring_stream(
             &device,
             &config,
             on_event,
-            Some(Events::InputAudioStreamError.to_string()),
+            Some(Events::MicrophoneStreamError.to_string()),
           ))
         } else {
           None

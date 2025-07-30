@@ -1,8 +1,18 @@
-use std::path::PathBuf;
+use std::{
+  path::PathBuf,
+  sync::{atomic::AtomicBool, Arc},
+};
 
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumString};
 use tauri::{LogicalPosition, LogicalSize};
+use tokio::sync::broadcast;
+
+#[derive(Debug, Clone)]
+pub struct StreamSync {
+  pub should_write: Arc<AtomicBool>,
+  pub stop_tx: broadcast::Sender<()>,
+}
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -37,7 +47,7 @@ pub enum RecordingFile {
 
   #[strum(serialize = "microphone.wav")]
   #[serde(rename = "microphone.wav")]
-  InputAudio,
+  Microphone,
 
   #[strum(serialize = "camera.mp4")]
   #[serde(rename = "camera.mp4")]

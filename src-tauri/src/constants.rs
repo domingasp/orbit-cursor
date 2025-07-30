@@ -11,8 +11,8 @@ pub enum Events {
   #[strum(serialize = "system_audio_stream_error")]
   SystemAudioStreamError,
 
-  #[strum(serialize = "input_audio_stream_error")]
-  InputAudioStreamError,
+  #[strum(serialize = "microphone_stream_error")]
+  MicrophoneStreamError,
 
   #[strum(serialize = "standalone_listbox_did_resign_key")]
   StandaloneListboxDidResignKey,

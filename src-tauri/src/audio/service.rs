@@ -49,7 +49,7 @@ pub fn build_audio_live_monitoring_stream(
     .expect("Error creating stream")
 }
 
-pub fn get_input_audio_device(device_name: String) -> Option<(Device, StreamConfig)> {
+pub fn get_microphone(device_name: String) -> Option<(Device, StreamConfig)> {
   let host = cpal::default_host();
   let device = host
     .input_devices()

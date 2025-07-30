@@ -114,7 +114,7 @@ struct RecordingFilePresence {
 fn check_recording_files(folder: &Path) -> RecordingFilePresence {
   RecordingFilePresence {
     has_system_audio: folder.join(RecordingFile::SystemAudio.to_string()).exists(),
-    has_microphone: folder.join(RecordingFile::InputAudio.to_string()).exists(),
+    has_microphone: folder.join(RecordingFile::Microphone.to_string()).exists(),
     has_camera: folder.join(RecordingFile::Camera.to_string()).exists(),
   }
 }
@@ -143,7 +143,7 @@ fn configure_input_streams(
   if available_streams.has_microphone {
     child.input(
       source_folder_path
-        .join(RecordingFile::InputAudio.as_ref())
+        .join(RecordingFile::Microphone.as_ref())
         .to_string_lossy(),
     );
   }

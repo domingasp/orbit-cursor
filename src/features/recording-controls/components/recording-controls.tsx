@@ -120,7 +120,7 @@ export const RecordingControls = () => {
           ? selectedItem(cameraListBox?.selectedItems ?? [])?.id?.toString() ??
             undefined
           : undefined,
-      inputAudioName:
+      microphoneName:
         microphone && !microphoneHasWarning
           ? selectedItem(
               microphoneListBox?.selectedItems ?? []

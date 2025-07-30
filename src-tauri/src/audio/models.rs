@@ -6,7 +6,7 @@ use strum_macros::Display;
 #[strum(serialize_all = "camelCase")]
 pub enum AudioStream {
   System,
-  Input,
+  Microphone,
 }
 
 #[derive(Clone, Serialize)]

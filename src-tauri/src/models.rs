@@ -1,6 +1,7 @@
 use std::{
   collections::HashMap,
   sync::{atomic::AtomicBool, Arc},
+  thread::JoinHandle,
 };
 
 use ffmpeg_sidecar::child::FfmpegChild;
@@ -10,7 +11,9 @@ use scap::capturer::Capturer;
 use tokio::sync::broadcast::{self, Receiver, Sender};
 
 use crate::{
-  audio::models::AudioStream, constants::WindowLabel, recording::models::RecordingManifest,
+  audio::models::AudioStream,
+  constants::WindowLabel,
+  recording::models::{RecordingManifest, StreamSync},
 };
 
 pub struct GlobalState {
@@ -113,6 +116,8 @@ impl MagnifierState {
 pub struct RecordingState {
   pub is_recording: bool,
   pub recording_manifest: Option<RecordingManifest>,
+  pub stream_sync: Option<StreamSync>,
+  pub stream_handles: Option<Vec<JoinHandle<()>>>,
 }
 
 impl RecordingState {
@@ -120,17 +125,50 @@ impl RecordingState {
     RecordingState {
       is_recording: false,
       recording_manifest: None,
+      stream_sync: None,
+      stream_handles: None,
     }
   }
 
-  pub fn recording_started(&mut self, recording_manifest: RecordingManifest) {
+  pub fn recording_started(
+    &mut self,
+    recording_manifest: RecordingManifest,
+    stream_sync: StreamSync,
+    stream_handles: Vec<JoinHandle<()>>,
+  ) {
     self.is_recording = true;
     self.recording_manifest = Some(recording_manifest);
+    self.stream_sync = Some(stream_sync);
+    self.stream_handles = Some(stream_handles);
   }
 
-  pub fn recording_stopped(&mut self) -> Option<RecordingManifest> {
+  pub fn recording_stopped(&mut self) -> (Option<RecordingManifest>, Option<Vec<JoinHandle<()>>>) {
     self.is_recording = false;
-    self.recording_manifest.take()
+
+    if let Some(stream_sync) = self.stream_sync.take() {
+      stream_sync
+        .should_write
+        .store(false, std::sync::atomic::Ordering::SeqCst);
+      let _ = stream_sync.stop_tx.send(());
+    }
+
+    (self.recording_manifest.take(), self.stream_handles.take())
+  }
+
+  pub fn pause_recording(&mut self) {
+    if let Some(stream_sync) = &self.stream_sync {
+      stream_sync
+        .should_write
+        .store(false, std::sync::atomic::Ordering::SeqCst);
+    }
+  }
+
+  pub fn resume_recording(&mut self) {
+    if let Some(stream_sync) = &self.stream_sync {
+      stream_sync
+        .should_write
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    }
   }
 
   pub fn is_recording(&self) -> bool {

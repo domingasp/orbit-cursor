@@ -1,13 +1,22 @@
+use std::{
+  sync::{atomic::AtomicBool, Arc},
+  thread::JoinHandle,
+};
+
 use parking_lot::Mutex;
 use serde::Deserialize;
 use tauri::{AppHandle, Emitter, Manager, State};
+use tokio::sync::broadcast;
 
 use crate::{
   constants::{Events, WindowLabel},
   models::{EditingState, RecordingState},
   recording::{
+    audio::{start_microphone_recorder, start_system_audio_recorder},
     file::create_recording_directory,
-    models::{RecordingFile, RecordingFileSet, RecordingManifest, RecordingType, Region},
+    models::{
+      RecordingFile, RecordingFileSet, RecordingManifest, RecordingType, Region, StreamSync,
+    },
   },
   windows::commands::{hide_region_selector, passthrough_region_selector},
 };
@@ -20,7 +29,7 @@ pub struct StartRecordingOptions {
   pub monitor_name: String,
   pub window_id: Option<u32>,
   pub region: Region,
-  pub input_audio_name: Option<String>,
+  pub microphone_name: Option<String>,
   pub camera_name: Option<String>,
 }
 
@@ -39,18 +48,36 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
     let recording_dir = create_recording_directory(app_handle.path().app_data_dir().unwrap());
     let mut recording_file_set = RecordingFileSet::default();
 
+    let should_write = Arc::new(AtomicBool::new(false));
+    let (stop_tx, _) = broadcast::channel::<()>(1);
+    let synchronization = StreamSync {
+      should_write: should_write.clone(),
+      stop_tx: stop_tx.clone(),
+    };
+
+    let mut streams: Vec<JoinHandle<()>> = Vec::new();
+
     // Optional
     if options.system_audio {
       log::info!("Starting system audio recorder");
       recording_file_set.system_audio = Some(RecordingFile::SystemAudio);
-      // TODO setup recorder
+      streams.push(start_system_audio_recorder(
+        recording_dir.join(RecordingFile::SystemAudio.as_ref()),
+        synchronization.clone(),
+      ));
       log::info!("System audio recorder ready");
     }
 
-    if let Some(device_name) = options.input_audio_name {
+    if let Some(microphone_name) = options.microphone_name {
       log::info!("Starting input audio recorder");
-      recording_file_set.microphone = Some(RecordingFile::InputAudio);
-      // TODO setup recorder
+      recording_file_set.microphone = Some(RecordingFile::Microphone);
+      if let Some(handle) = start_microphone_recorder(
+        recording_dir.join(RecordingFile::Microphone.as_ref()),
+        synchronization.clone(),
+        microphone_name,
+      ) {
+        streams.push(handle);
+      }
       log::info!("Input audio recorder ready");
     }
 
@@ -75,13 +102,18 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
     // TODO store RecordingMetadata
     log::info!("Extra writers ready");
 
+    should_write.store(true, std::sync::atomic::Ordering::SeqCst);
     let _ = app_handle.emit(Events::RecordingStarted.as_ref(), ());
 
     let recording_state: State<'_, Mutex<RecordingState>> = app_handle.state();
-    recording_state.lock().recording_started(RecordingManifest {
-      directory: recording_dir,
-      files: recording_file_set,
-    });
+    recording_state.lock().recording_started(
+      RecordingManifest {
+        directory: recording_dir,
+        files: recording_file_set,
+      },
+      synchronization,
+      streams,
+    );
     log::info!("Recording started");
   });
 
@@ -96,7 +128,15 @@ pub async fn stop_recording(app_handle: AppHandle) {
 
   {
     let recording_state: State<'_, Mutex<RecordingState>> = app_handle.state();
-    if let Some(recording_manifest) = recording_state.lock().recording_stopped() {
+    if let (Some(recording_manifest), Some(stream_handles)) =
+      recording_state.lock().recording_stopped()
+    {
+      for stream_handle in stream_handles {
+        if let Err(e) = stream_handle.join() {
+          log::warn!("Failed to join stream thread: {e:?}");
+        }
+      }
+
       let _ = app_handle.emit(Events::RecordingComplete.as_ref(), recording_manifest);
     };
   }
@@ -122,11 +162,13 @@ pub async fn stop_recording(app_handle: AppHandle) {
 }
 
 #[tauri::command]
-pub fn resume_recording() {
+pub fn resume_recording(recording_state: State<'_, Mutex<RecordingState>>) {
   log::info!("Resuming recording");
+  recording_state.lock().resume_recording();
 }
 
 #[tauri::command]
-pub fn pause_recording() {
+pub fn pause_recording(recording_state: State<'_, Mutex<RecordingState>>) {
   log::info!("Pausing recording");
+  recording_state.lock().pause_recording();
 }
