@@ -1,9 +1,6 @@
 use std::{
   path::PathBuf,
-  sync::{
-    atomic::{AtomicBool, AtomicUsize},
-    Arc, Barrier,
-  },
+  sync::{atomic::AtomicBool, Arc, Barrier},
 };
 
 use serde::{Deserialize, Serialize};

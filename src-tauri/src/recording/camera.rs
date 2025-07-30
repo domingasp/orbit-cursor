@@ -1,0 +1,192 @@
+use std::{
+  io::Write,
+  path::{Path, PathBuf},
+  process::ChildStdin,
+  sync::{atomic::AtomicBool, Arc, Barrier},
+  thread::JoinHandle,
+};
+
+use ffmpeg_sidecar::{child::FfmpegChild, command::FfmpegCommand};
+use nokhwa::{
+  utils::{CameraInfo, FrameFormat},
+  CallbackCamera,
+};
+use once_cell::sync::OnceCell;
+use parking_lot::Mutex;
+
+use tokio::sync::broadcast;
+
+#[cfg(debug_assertions)]
+use crate::recording::ffmpeg::log_ffmpeg_output;
+use crate::{
+  camera::service::{create_camera, get_camera_details},
+  recording::models::StreamSync,
+};
+
+/// Mapping from nokhwa to Ffmpeg compatible frame formats
+pub fn camera_frame_format_to_ffmpeg(frame_format: FrameFormat) -> &'static str {
+  match frame_format {
+    FrameFormat::MJPEG => "mjpeg",
+    FrameFormat::YUYV => "yuyv422",
+    FrameFormat::NV12 => "nv12",
+    FrameFormat::GRAY => "gray",
+    FrameFormat::RAWRGB => "rgb24",
+    FrameFormat::RAWBGR => "bgr24",
+  }
+}
+
+/// Start camera recorder in a dedicated thread
+pub fn start_camera_recorder(
+  file_path: PathBuf,
+  synchronization: StreamSync,
+  camera_name: String,
+) -> Option<JoinHandle<()>> {
+  let available_cameras = nokhwa::query(nokhwa::utils::ApiBackend::Auto).unwrap();
+  if let Some(camera_info) = available_cameras
+    .iter()
+    .find(|c| c.human_name() == camera_name)
+  {
+    Some(spawn_camera_recorder(
+      file_path,
+      camera_info.clone(),
+      synchronization,
+    ))
+  } else {
+    log::warn!("Failed to find camera: {camera_name}");
+    // Need to mark this as ready even though no device was found
+    tauri::async_runtime::spawn_blocking(move || {
+      synchronization.ready_barrier.wait();
+    });
+    None
+  }
+}
+
+/// Coordinate spawning camera recording thread, conversion, and writing to file
+fn spawn_camera_recorder(
+  file_path: PathBuf,
+  camera_info: CameraInfo,
+  synchronization: StreamSync,
+) -> JoinHandle<()> {
+  let camera_name = camera_info.human_name();
+  let log_prefix = format!("[camera:{camera_name}]");
+
+  let (resolution, frame_rate, frame_format) = get_camera_details(camera_info.index().clone());
+  let (ffmpeg, stdin) = spawn_camera_ffmpeg(
+    &file_path,
+    resolution.width(),
+    resolution.height(),
+    frame_rate,
+    camera_frame_format_to_ffmpeg(frame_format).to_string(),
+    log_prefix.clone(),
+  );
+  let writer = Arc::new(Mutex::new(Some(stdin)));
+
+  let camera = build_camera_stream(
+    camera_info,
+    writer.clone(),
+    synchronization.should_write.clone(),
+    synchronization.ready_barrier,
+  );
+
+  spawn_camera_thread(
+    camera,
+    writer,
+    synchronization.stop_tx.subscribe(),
+    ffmpeg,
+    log_prefix,
+  )
+}
+
+/// Create and spawn the camera writer ffmpeg
+fn spawn_camera_ffmpeg(
+  file_path: &Path,
+  width: u32,
+  height: u32,
+  frame_rate: u32,
+  pixel_format: String,
+  log_prefix: String,
+) -> (FfmpegChild, ChildStdin) {
+  log::info!("{log_prefix} Spawning camera ffmpeg");
+
+  let mut command = FfmpegCommand::new();
+
+  command
+    .args(["-framerate", &frame_rate.to_string()])
+    .format("rawvideo")
+    .pix_fmt(pixel_format)
+    .size(width, height)
+    .input("-");
+
+  #[cfg(target_os = "macos")]
+  {
+    command.codec_video("h264_videotoolbox"); // Hardware encoder
+    command.args(["-b:v", "12000k", "-profile:v", "high"]);
+  }
+
+  #[cfg(not(target_os = "macos"))]
+  command.codec_video("libx264").crf(20);
+
+  #[cfg(target_os = "macos")]
+  command.pix_fmt("yuv420p"); // QuickTime compatibility
+
+  command.output(file_path.to_string_lossy());
+
+  let mut ffmpeg = command.spawn().unwrap();
+
+  #[cfg(debug_assertions)]
+  log_ffmpeg_output(ffmpeg.take_stderr().unwrap(), log_prefix);
+
+  let stdin = ffmpeg
+    .take_stdin()
+    .expect("Failed to take stdin for camera Ffmpeg");
+
+  (ffmpeg, stdin)
+}
+
+fn build_camera_stream(
+  camera_info: CameraInfo,
+  writer: Arc<Mutex<Option<ChildStdin>>>,
+  should_write: Arc<AtomicBool>,
+  ready_barrier: Arc<Barrier>,
+) -> CallbackCamera {
+  let once = Arc::new(OnceCell::new());
+
+  create_camera(camera_info.index().clone(), move |frame| {
+    once.get_or_init(|| {
+      ready_barrier.wait();
+    });
+
+    if !should_write.load(std::sync::atomic::Ordering::SeqCst) {
+      return;
+    }
+
+    if let Some(writer) = writer.lock().as_mut() {
+      let _ = writer.write_all(frame.buffer());
+    }
+  })
+  .unwrap()
+}
+
+/// Spawn camera thread for tearing down and finalizing recording
+fn spawn_camera_thread(
+  mut camera: CallbackCamera,
+  writer: Arc<Mutex<Option<ChildStdin>>>,
+  mut stop_rx: broadcast::Receiver<()>,
+  mut ffmpeg: FfmpegChild,
+  log_prefix: String,
+) -> JoinHandle<()> {
+  std::thread::spawn(move || {
+    log::info!("{log_prefix} Starting camera stream");
+    let _ = camera.open_stream();
+
+    let _ = stop_rx.blocking_recv();
+
+    log::info!("{log_prefix} Audio stream received stop message, finishing writing");
+    let _ = writer.lock().take(); // Closes the stdin pipe allowing shutdown
+
+    log::info!("{log_prefix} Cleaning up audio ffmpeg");
+    let _ = ffmpeg.wait();
+
+    log::info!("{log_prefix} Audio ffmpeg finished");
+  })
+}

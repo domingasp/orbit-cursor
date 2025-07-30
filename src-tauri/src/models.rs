@@ -44,6 +44,10 @@ impl GlobalState {
   pub fn is_window_open(&mut self, window: &WindowLabel) -> bool {
     self.open_windows.get(window).copied().unwrap_or(false)
   }
+
+  pub fn subscribe_to_input_events(&self) -> Receiver<rdev::Event> {
+    self.input_event_tx.subscribe()
+  }
 }
 
 pub struct PreviewState {

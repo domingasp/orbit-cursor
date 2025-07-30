@@ -68,7 +68,7 @@ pub fn start_microphone_recorder(
   }
 }
 
-/// Coordinate spawning audio recording threads, conversion, and writing to file
+/// Coordinate spawning audio recording thread, conversion, and writing to file
 fn spawn_audio_recorder(
   device: Device,
   config: StreamConfig,

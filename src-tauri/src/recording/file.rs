@@ -18,8 +18,6 @@ pub fn create_recording_directory(app_data_dir: PathBuf) -> PathBuf {
   session_dir
 }
 
-// TODO use
-
 pub fn write_metadata_to_file(
   file_path: PathBuf,
   metadata: RecordingMetadata,
