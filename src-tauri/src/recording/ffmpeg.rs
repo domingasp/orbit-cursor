@@ -28,9 +28,15 @@ pub fn spawn_rawvideo_ffmpeg(
 
   #[cfg(target_os = "macos")]
   {
-    // Video toolbox does not support multiple streams
-    command.codec_video("h264_videotoolbox"); // Hardware encoder
-    command.args(["-b:v", "12000k", "-profile:v", "high"]);
+    // `h264_videotoolbox` does not support multiple streams on hardware
+    // `hevc_videotoolbox` does - this allows hardware backed video
+    // encoding
+    command.codec_video("hevc_videotoolbox");
+    command.args(["-b:v", "12000k"]);
+
+    // Allows playing of files in various places, avoids needing
+    // a re-encode to `h264`
+    command.args(["-tag:v", "hvc1"]);
   }
 
   #[cfg(not(target_os = "macos"))]
