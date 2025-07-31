@@ -2,7 +2,10 @@ use std::{
   io::Write,
   path::PathBuf,
   process::ChildStdin,
-  sync::{atomic::AtomicBool, Arc, Barrier},
+  sync::{
+    atomic::{AtomicBool, AtomicUsize},
+    Arc, Barrier,
+  },
   thread::JoinHandle,
 };
 
@@ -75,6 +78,7 @@ fn spawn_camera_recorder(
     resolution.height(),
     frame_rate,
     camera_frame_format_to_ffmpeg(frame_format).to_string(),
+    None,
     log_prefix.clone(),
   );
   let writer = Arc::new(Mutex::new(Some(stdin)));
@@ -102,8 +106,15 @@ fn build_camera_stream(
   ready_barrier: Arc<Barrier>,
 ) -> CallbackCamera {
   let once = Arc::new(OnceCell::new());
+  let skipped_count = Arc::new(AtomicUsize::new(0));
 
   create_camera(camera_info.index().clone(), move |frame| {
+    // Skip a few frames to flush startup frames (black screen)
+    if skipped_count.load(std::sync::atomic::Ordering::SeqCst) < 2 {
+      skipped_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+      return;
+    }
+
     once.get_or_init(|| {
       ready_barrier.wait();
     });

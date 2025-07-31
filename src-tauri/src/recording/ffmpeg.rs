@@ -5,6 +5,7 @@ use std::{
 };
 
 use ffmpeg_sidecar::{child::FfmpegChild, command::FfmpegCommand};
+use tauri::{PhysicalPosition, PhysicalSize};
 
 /// Create and spawn the camera writer ffmpeg
 pub fn spawn_rawvideo_ffmpeg(
@@ -13,6 +14,7 @@ pub fn spawn_rawvideo_ffmpeg(
   height: u32,
   frame_rate: u32,
   pixel_format: String,
+  crop: Option<(PhysicalSize<f64>, PhysicalPosition<f64>)>,
   log_prefix: String,
 ) -> (FfmpegChild, ChildStdin) {
   log::info!("{log_prefix} Spawning rawvideo ffmpeg");
@@ -25,6 +27,10 @@ pub fn spawn_rawvideo_ffmpeg(
     .pix_fmt(pixel_format)
     .size(width, height)
     .input("-");
+
+  if let Some((PhysicalSize { width, height }, PhysicalPosition { x, y })) = crop {
+    command.args(["-vf", &format!("crop={width}:{height}:{x}:{y}")]);
+  }
 
   #[cfg(target_os = "macos")]
   {

@@ -14,10 +14,11 @@ use crate::{
   recording::{
     audio::{start_microphone_recorder, start_system_audio_recorder},
     camera::start_camera_recorder,
-    file::create_recording_directory,
+    file::{create_recording_directory, write_metadata_to_file},
     input_events::start_mouse_event_recorder,
     models::{
-      RecordingFile, RecordingFileSet, RecordingManifest, RecordingType, Region, StreamSync,
+      RecordingFile, RecordingFileSet, RecordingManifest, RecordingMetadata, RecordingType, Region,
+      StreamSync,
     },
     screen::start_screen_recorder,
   },
@@ -116,14 +117,15 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
     // Window capture causes empty frames if this comes first - not sure why, only happens
     // when multiple streams
     log::info!("Starting screen recorder");
-    recorder_handles.push(start_screen_recorder(
+    let (screen_handle, recording_origin, scale_factor) = start_screen_recorder(
       recording_dir.join(RecordingFile::Screen.as_ref()),
       options.recording_type,
       options.monitor_name,
       options.window_id,
       options.region,
       synchronization.clone(),
-    ));
+    );
+    recorder_handles.push(screen_handle);
     log::info!("Screen recorder ready");
 
     log::info!("Starting extra writers: mouse_events, metadata");
@@ -137,7 +139,14 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
       );
       recorder_handles.push(mouse_event_handle);
     }
-    // TODO store RecordingMetadata
+
+    write_metadata_to_file(
+      recording_dir.join(RecordingFile::Metadata.as_ref()),
+      RecordingMetadata {
+        recording_origin,
+        scale_factor,
+      },
+    );
     log::info!("Extra writers ready");
 
     log::info!("Waiting for streams to be ready");
