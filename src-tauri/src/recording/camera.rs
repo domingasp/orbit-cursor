@@ -1,12 +1,12 @@
 use std::{
   io::Write,
-  path::{Path, PathBuf},
+  path::PathBuf,
   process::ChildStdin,
   sync::{atomic::AtomicBool, Arc, Barrier},
   thread::JoinHandle,
 };
 
-use ffmpeg_sidecar::{child::FfmpegChild, command::FfmpegCommand};
+use ffmpeg_sidecar::child::FfmpegChild;
 use nokhwa::{
   utils::{CameraInfo, FrameFormat},
   CallbackCamera,
@@ -16,11 +16,9 @@ use parking_lot::Mutex;
 
 use tokio::sync::broadcast;
 
-#[cfg(debug_assertions)]
-use crate::recording::ffmpeg::log_ffmpeg_output;
 use crate::{
   camera::service::{create_camera, get_camera_details},
-  recording::models::StreamSync,
+  recording::{ffmpeg::spawn_rawvideo_ffmpeg, models::StreamSync},
 };
 
 /// Mapping from nokhwa to Ffmpeg compatible frame formats
@@ -71,7 +69,7 @@ fn spawn_camera_recorder(
   let log_prefix = format!("[camera:{camera_name}]");
 
   let (resolution, frame_rate, frame_format) = get_camera_details(camera_info.index().clone());
-  let (ffmpeg, stdin) = spawn_camera_ffmpeg(
+  let (ffmpeg, stdin) = spawn_rawvideo_ffmpeg(
     &file_path,
     resolution.width(),
     resolution.height(),
@@ -95,52 +93,6 @@ fn spawn_camera_recorder(
     ffmpeg,
     log_prefix,
   )
-}
-
-/// Create and spawn the camera writer ffmpeg
-fn spawn_camera_ffmpeg(
-  file_path: &Path,
-  width: u32,
-  height: u32,
-  frame_rate: u32,
-  pixel_format: String,
-  log_prefix: String,
-) -> (FfmpegChild, ChildStdin) {
-  log::info!("{log_prefix} Spawning camera ffmpeg");
-
-  let mut command = FfmpegCommand::new();
-
-  command
-    .args(["-framerate", &frame_rate.to_string()])
-    .format("rawvideo")
-    .pix_fmt(pixel_format)
-    .size(width, height)
-    .input("-");
-
-  #[cfg(target_os = "macos")]
-  {
-    command.codec_video("h264_videotoolbox"); // Hardware encoder
-    command.args(["-b:v", "12000k", "-profile:v", "high"]);
-  }
-
-  #[cfg(not(target_os = "macos"))]
-  command.codec_video("libx264").crf(20);
-
-  #[cfg(target_os = "macos")]
-  command.pix_fmt("yuv420p"); // QuickTime compatibility
-
-  command.output(file_path.to_string_lossy());
-
-  let mut ffmpeg = command.spawn().unwrap();
-
-  #[cfg(debug_assertions)]
-  log_ffmpeg_output(ffmpeg.take_stderr().unwrap(), log_prefix);
-
-  let stdin = ffmpeg
-    .take_stdin()
-    .expect("Failed to take stdin for camera Ffmpeg");
-
-  (ffmpeg, stdin)
 }
 
 fn build_camera_stream(

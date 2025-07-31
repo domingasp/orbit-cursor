@@ -19,6 +19,7 @@ use crate::{
     models::{
       RecordingFile, RecordingFileSet, RecordingManifest, RecordingType, Region, StreamSync,
     },
+    screen::start_screen_recorder,
   },
   windows::commands::{hide_region_selector, passthrough_region_selector},
 };
@@ -51,7 +52,7 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
     let mut recording_file_set = RecordingFileSet::default();
 
     // Calculate number of required barriers
-    let mut barrier_count = 1; // For this coordinator
+    let mut barrier_count = 2; // For this coordinator + screen
     if options.system_audio {
       barrier_count += 1;
     }
@@ -115,8 +116,14 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
     // Window capture causes empty frames if this comes first - not sure why, only happens
     // when multiple streams
     log::info!("Starting screen recorder");
-    let screen_path = recording_dir.join(RecordingFile::Screen.as_ref());
-    // TODO setup recorder
+    recorder_handles.push(start_screen_recorder(
+      recording_dir.join(RecordingFile::Screen.as_ref()),
+      options.recording_type,
+      options.monitor_name,
+      options.window_id,
+      options.region,
+      synchronization.clone(),
+    ));
     log::info!("Screen recorder ready");
 
     log::info!("Starting extra writers: mouse_events, metadata");
