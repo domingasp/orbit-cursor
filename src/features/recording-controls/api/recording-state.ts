@@ -6,7 +6,7 @@ import { Commands } from "../../../types/api";
 
 type StartRecordingProps = {
   cameraName: string | undefined;
-  inputAudioName: string | undefined;
+  microphoneName: string | undefined;
   monitorName: string;
   recordingType: RecordingType;
   region: { position: LogicalPosition; size: LogicalSize };

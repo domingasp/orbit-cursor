@@ -1,5 +1,4 @@
-use std::sync::Mutex;
-
+use parking_lot::Mutex;
 use scap::{
   capturer::{Capturer, Options},
   frame::BGRAFrame,
@@ -8,9 +7,12 @@ use scap::{
 use tauri::State;
 use yuv::bgra_to_rgba;
 
-use crate::{windows::commands::APP_WEBVIEW_TITLES, AppState};
+use crate::{models::MagnifierState, windows::commands::APP_WEBVIEW_TITLES};
 
-pub fn init_magnifier_capturer(state: State<'_, Mutex<AppState>>, display_name: String) {
+pub fn init_magnifier_capturer(
+  magnifier_state: State<'_, Mutex<MagnifierState>>,
+  display_name: String,
+) {
   let targets_to_exclude = get_app_targets();
   let display = get_display(display_name);
 
@@ -26,33 +28,12 @@ pub fn init_magnifier_capturer(state: State<'_, Mutex<AppState>>, display_name: 
   };
 
   if let Ok(capturer) = Capturer::build(options) {
-    if let Ok(mut state) = state.lock() {
-      state.magnifier_capturer = Some(capturer);
-    }
+    magnifier_state.lock().store_magnifier(capturer);
   }
 }
 
-/// Create and return a capturer with specified target (display, or window)
-pub fn create_screen_recording_capturer(target: Option<Target>) -> Capturer {
-  log::info!("Fetching screen capturer data");
-  let targets_to_exclude = get_app_targets();
-
-  let options = Options {
-    fps: 60,
-    target,
-    show_cursor: false,
-    show_highlight: false,
-    excluded_targets: Some(targets_to_exclude),
-    output_type: scap::frame::FrameType::YUVFrame,
-    ..Default::default()
-  };
-
-  log::info!("Building screen capturer");
-  Capturer::build(options).unwrap()
-}
-
 /// Return targets which are part of the app
-fn get_app_targets() -> Vec<Target> {
+pub fn get_app_targets() -> Vec<Target> {
   log::info!("Fetching all available targets");
   let targets = get_all_targets();
 
@@ -76,19 +57,6 @@ pub fn get_display(display_name: String) -> Option<Target> {
   targets.into_iter().find(|t| {
     if let Target::Display(target) = t {
       target.title == display_name
-    } else {
-      false
-    }
-  })
-}
-
-/// Return window from id (scap::Target id)
-pub fn get_window(window_id: u32) -> Option<Target> {
-  let targets = get_all_targets();
-
-  targets.into_iter().find(|t| {
-    if let Target::Window(target) = t {
-      target.id == window_id
     } else {
       false
     }

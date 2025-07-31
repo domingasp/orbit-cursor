@@ -3,6 +3,7 @@ mod camera;
 mod constants;
 mod export;
 mod global_inputs;
+mod models;
 #[cfg(target_os = "macos")]
 mod permissions;
 mod recording;
@@ -11,25 +12,13 @@ mod screen_capture;
 mod system_tray;
 mod windows;
 
-use std::{
-  collections::HashMap,
-  path::PathBuf,
-  sync::{atomic::AtomicBool, Arc, Mutex, OnceLock},
-};
+use std::sync::{Arc, OnceLock};
 
-use audio::{
-  commands::{list_audio_inputs, start_audio_listener, stop_audio_listener},
-  models::AudioStream,
-};
+use audio::commands::{list_audio_inputs, start_audio_listener, stop_audio_listener};
 use camera::commands::{list_cameras, start_camera_stream, stop_camera_stream};
-use constants::{
-  store::{FIRST_RUN, NATIVE_REQUESTABLE_PERMISSIONS, STORE_NAME},
-  WindowLabel,
-};
-use cpal::Stream;
+use constants::store::{FIRST_RUN, NATIVE_REQUESTABLE_PERMISSIONS, STORE_NAME};
 
-use ffmpeg_sidecar::child::FfmpegChild;
-use nokhwa::CallbackCamera;
+use parking_lot::Mutex;
 use permissions::{
   commands::{check_permissions, open_system_settings, request_permission},
   service::{ensure_permissions, monitor_permissions},
@@ -37,11 +26,10 @@ use permissions::{
 use rdev::{listen, set_is_main_thread};
 use recording::commands::{start_recording, stop_recording};
 use recording_sources::commands::{list_monitors, list_windows};
-use scap::capturer::Capturer;
 use screen_capture::commands::init_magnifier_capturer;
 use serde_json::{json, Value};
 use system_tray::service::init_system_tray;
-use tauri::{App, AppHandle, Manager, PhysicalPosition, PhysicalSize, Wry};
+use tauri::{App, AppHandle, Manager, Wry};
 use tauri_plugin_store::{Store, StoreExt};
 use tokio::sync::broadcast;
 use windows::{
@@ -58,10 +46,8 @@ use windows::{
 
 use crate::{
   export::commands::{cancel_export, export_recording, open_path_in_file_browser, path_exists},
-  recording::{
-    commands::{pause_recording, resume_recording},
-    models::RecordingManifest,
-  },
+  models::{EditingState, GlobalState, MagnifierState, PreviewState, RecordingState},
+  recording::commands::{pause_recording, resume_recording},
   screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
   windows::{
     commands::{init_start_recording_dock, passthrough_region_selector},
@@ -70,38 +56,6 @@ use crate::{
 };
 
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
-
-// For pausing/resuming and spinning up ffmpeg processes for
-// screen recording
-pub struct ScreenRecordingMetadata {
-  pub width: u32,
-  pub height: u32,
-  pub pixel_format: String,
-  pub crop_size: Option<PhysicalSize<f64>>,
-  pub crop_origin: Option<PhysicalPosition<f64>>,
-}
-
-struct AppState {
-  open_windows: HashMap<WindowLabel, bool>,
-  audio_streams: HashMap<AudioStream, Stream>,
-  camera_stream: Option<CallbackCamera>,
-  magnifier_capturer: Option<Capturer>,
-  magnifier_running: Arc<AtomicBool>,
-  input_event_tx: broadcast::Sender<rdev::Event>,
-  // Recording related
-  is_recording: bool,
-  pause_recording_tx: Option<broadcast::Sender<()>>,
-  stop_recording_tx: Option<broadcast::Sender<()>>,
-  stop_barrier: Option<Arc<std::sync::Barrier>>,
-  recording_manifest: Option<RecordingManifest>,
-  start_writing: Arc<AtomicBool>,
-  screen_recording_metadata: Option<ScreenRecordingMetadata>,
-  screen_frame_tx: Option<broadcast::Sender<Vec<u8>>>,
-  screen_segments: Vec<PathBuf>,
-  // Editing related
-  is_editing: bool,
-  export_process: Option<Arc<Mutex<FfmpegChild>>>,
-}
 
 async fn setup_store(app: &App) -> Arc<Store<Wry>> {
   let store = app.store(STORE_NAME).unwrap();
@@ -181,29 +135,11 @@ pub fn run() {
       pause_recording,
       resume_recording
     ])
-    .manage(Mutex::new(AppState {
-      open_windows: HashMap::from([
-        (WindowLabel::StartRecordingDock, false),
-        (WindowLabel::RecordingInputOptions, false),
-        (WindowLabel::RecordingSourceSelector, false),
-      ]),
-      audio_streams: HashMap::new(),
-      camera_stream: None,
-      magnifier_capturer: None,
-      magnifier_running: Arc::new(AtomicBool::new(false)),
-      input_event_tx: input_event_tx.clone(),
-      is_recording: false,
-      pause_recording_tx: None,
-      stop_recording_tx: None,
-      stop_barrier: None,
-      recording_manifest: None,
-      start_writing: Arc::new(AtomicBool::new(false)),
-      screen_recording_metadata: None,
-      screen_frame_tx: None,
-      screen_segments: Vec::new(),
-      is_editing: false,
-      export_process: None,
-    }))
+    .manage(Mutex::new(GlobalState::new(input_event_tx.clone())))
+    .manage(Mutex::new(PreviewState::new()))
+    .manage(Mutex::new(MagnifierState::new()))
+    .manage(Mutex::new(RecordingState::new()))
+    .manage(Mutex::new(EditingState::new()))
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_os::init())
     .plugin(tauri_plugin_macos_permissions::init())
@@ -213,7 +149,11 @@ pub fn run() {
     .plugin(tauri_plugin_store::Builder::new().build())
     .plugin(
       tauri_plugin_log::Builder::new()
-        .level(log::LevelFilter::Info)
+        .level(if cfg!(debug_assertions) {
+          log::LevelFilter::Debug
+        } else {
+          log::LevelFilter::Info
+        })
         .build(),
     )
     .setup(|app: &mut App| {
@@ -223,7 +163,7 @@ pub fn run() {
       let app_handle_clone = Arc::new(app_handle.clone());
 
       init_system_tray(app_handle.clone())?;
-      init_start_recording_dock(app_handle);
+      init_start_recording_dock(app_handle.clone());
       spawn_window_close_manager(app_handle.clone(), input_event_tx.subscribe());
       editor_close_listener(&app_handle.clone());
 
@@ -236,10 +176,10 @@ pub fn run() {
           let has_required = ensure_permissions().await;
           if !has_required {
             open_permissions(app.handle()).await;
-            show_start_recording_dock(app.handle(), app.state());
+            show_start_recording_dock(app.handle().clone(), app.state(), app.state(), app.state());
           } else if matches!(store.get(FIRST_RUN), Some(Value::Bool(true))) {
             store.set(FIRST_RUN, json!(false));
-            show_start_recording_dock(app.handle(), app.state());
+            show_start_recording_dock(app.handle().clone(), app.state(), app.state(), app.state());
           }
         }
 

@@ -4,7 +4,7 @@ import { Commands } from "../../../types/api";
 
 export enum AudioStream {
   System = "system",
-  Input = "input",
+  Microphone = "microphone",
 }
 
 export type AudioStreamChannel = {

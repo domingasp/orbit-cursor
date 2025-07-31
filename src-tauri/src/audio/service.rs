@@ -1,22 +1,14 @@
-use std::{
-  collections::VecDeque,
-  path::Path,
-  sync::{atomic::AtomicBool, Arc, Mutex},
-};
+use std::collections::VecDeque;
 
 use cpal::{
   traits::{DeviceTrait, HostTrait},
   Device, Stream, StreamConfig,
 };
-use hound::{WavSpec, WavWriter};
 use tauri::{ipc::Channel, Emitter};
 
 use crate::APP_HANDLE;
 
 use super::models::AudioStreamChannel;
-
-type WavFileWriter = WavWriter<std::io::BufWriter<std::fs::File>>;
-pub type SharedWavWriter = Arc<Mutex<Option<WavFileWriter>>>;
 
 pub fn build_audio_live_monitoring_stream(
   device: &Device,
@@ -57,49 +49,7 @@ pub fn build_audio_live_monitoring_stream(
     .expect("Error creating stream")
 }
 
-pub fn build_audio_into_file_stream(
-  device: &Device,
-  config: &StreamConfig,
-  file_path: &Path,
-  start_writing: Arc<AtomicBool>,
-) -> (Stream, SharedWavWriter) {
-  let wav_spec = WavSpec {
-    channels: config.channels,
-    sample_rate: config.sample_rate.0,
-    bits_per_sample: 16,
-    sample_format: hound::SampleFormat::Int,
-  };
-
-  let wav_writer = WavWriter::create(file_path, wav_spec).unwrap();
-  let wav_writer = Arc::new(Mutex::new(Some(wav_writer)));
-
-  let writer_clone = Arc::clone(&wav_writer);
-
-  let stream = device
-    .build_input_stream(
-      config,
-      move |data: &[f32], _: &cpal::InputCallbackInfo| {
-        let mut writer_lock = writer_clone.lock().unwrap();
-        if let Some(ref mut writer) = *writer_lock {
-          if start_writing.load(std::sync::atomic::Ordering::SeqCst) {
-            for &sample in data {
-              let clamped = (sample * i16::MAX as f32).clamp(i16::MIN as f32, i16::MAX as f32);
-              writer.write_sample(clamped as i16).unwrap();
-            }
-          }
-        }
-      },
-      move |err| {
-        eprintln!("Stream error: {err}");
-      },
-      None,
-    )
-    .expect("Error creating stream");
-
-  (stream, wav_writer)
-}
-
-pub fn get_input_audio_device(device_name: String) -> Option<(Device, StreamConfig)> {
+pub fn get_microphone(device_name: String) -> Option<(Device, StreamConfig)> {
   let host = cpal::default_host();
   let device = host
     .input_devices()

@@ -29,7 +29,7 @@ import { usePeak } from "../hooks/use-peak";
 
 import { AudioMeter } from "./audio-meter";
 
-export const InputAudioSelect = () => {
+export const MicrophoneSelect = () => {
   const permission = usePermissionsStore(
     (state) => state.permissions.microphone
   );
@@ -50,7 +50,7 @@ export const InputAudioSelect = () => {
   };
 
   const onChange = async (selectedItems: Item[], isDockOpen: boolean) => {
-    await stopAudioListener(AudioStream.Input);
+    await stopAudioListener(AudioStream.Microphone);
     setDecibels(undefined);
     if (!isDockOpen) return;
 
@@ -63,7 +63,7 @@ export const InputAudioSelect = () => {
       };
 
       startAudioListener(
-        AudioStream.Input,
+        AudioStream.Microphone,
         channel.current,
         selectedDevice.toString()
       );
@@ -75,7 +75,7 @@ export const InputAudioSelect = () => {
 
   useEffect(() => {
     const unlistenInputAudioStreamError = listen(
-      Events.InputAudioStreamError,
+      Events.MicrophoneStreamError,
       () => {
         setSelectedItems(StandaloneListBoxes.MicrophoneAudio, []);
       }

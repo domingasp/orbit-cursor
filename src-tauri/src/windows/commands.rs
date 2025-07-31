@@ -1,14 +1,15 @@
-use std::sync::{Mutex, Once};
+use std::sync::Once;
 
 use once_cell::sync::OnceCell;
+use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, State};
 use tauri_nspanel::{panel_delegate, ManagerExt};
 
 use crate::{
   constants::{Events, PanelLevel, WindowLabel},
+  models::{EditingState, GlobalState, RecordingState},
   windows::service::handle_dock_positioning,
-  AppState,
 };
 
 use super::service::{
@@ -35,7 +36,7 @@ pub struct Bounds {
   pub display_id: Option<String>,
 }
 
-pub fn init_start_recording_dock(app_handle: &AppHandle) {
+pub fn init_start_recording_dock(app_handle: AppHandle) {
   let window = app_handle
     .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
     .unwrap();
@@ -105,11 +106,10 @@ pub fn init_recording_input_options(app_handle: AppHandle) {
       move |app_handle| {
         let _ = app_handle.emit(Events::ClosedRecordingInputOptions.as_ref(), ());
 
-        let app_state: State<'_, Mutex<AppState>> = app_handle.state();
-        let mut state = app_state.lock().unwrap();
-        state
-          .open_windows
-          .insert(WindowLabel::RecordingInputOptions, false);
+        let global_state: State<'_, Mutex<GlobalState>> = app_handle.state();
+        global_state
+          .lock()
+          .window_closed(WindowLabel::RecordingInputOptions);
       },
     );
   });
@@ -143,7 +143,7 @@ pub fn init_recording_source_selector(app_handle: AppHandle) {
       let _ = convert_to_stationary_panel(&window, PanelLevel::RecordingSourceSelector);
     }
 
-    position_recording_source_selector(&app_handle, &window);
+    position_recording_source_selector(app_handle, &window);
   });
 }
 
@@ -212,15 +212,16 @@ pub fn show_standalone_listbox(
 #[tauri::command]
 pub fn show_recording_input_options(
   app_handle: AppHandle,
-  state: State<'_, Mutex<AppState>>,
+  global_state: State<'_, Mutex<GlobalState>>,
   x: f64,
 ) {
-  let mut state = state.lock().unwrap();
-  state
-    .open_windows
-    .insert(WindowLabel::RecordingInputOptions, true);
+  {
+    global_state
+      .lock()
+      .window_opened(WindowLabel::RecordingInputOptions);
+  }
 
-  position_window_above_dock(&app_handle, WindowLabel::RecordingInputOptions, x);
+  position_window_above_dock(app_handle.clone(), WindowLabel::RecordingInputOptions, x);
 
   let window = app_handle
     .get_webview_window(WindowLabel::RecordingInputOptions.as_ref())
@@ -241,17 +242,23 @@ pub fn show_recording_input_options(
 }
 
 #[tauri::command]
-pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<AppState>>) {
-  let mut state = state.lock().unwrap();
-
-  // Only allow showing when not recording or editing
-  if state.is_recording || state.is_editing {
-    return;
+pub fn show_start_recording_dock(
+  app_handle: AppHandle,
+  global_state: State<'_, Mutex<GlobalState>>,
+  recording_state: State<'_, Mutex<RecordingState>>,
+  editing_state: State<'_, Mutex<EditingState>>,
+) {
+  {
+    if recording_state.lock().is_recording || editing_state.lock().is_editing {
+      return;
+    }
   }
 
-  state
-    .open_windows
-    .insert(WindowLabel::StartRecordingDock, true);
+  {
+    global_state
+      .lock()
+      .window_opened(WindowLabel::StartRecordingDock);
+  }
 
   let window = app_handle
     .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
@@ -274,9 +281,11 @@ pub fn show_start_recording_dock(app_handle: &AppHandle, state: State<'_, Mutex<
   if let Some(recording_source_selector) =
     app_handle.get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
   {
-    state
-      .open_windows
-      .insert(WindowLabel::RecordingSourceSelector, true);
+    {
+      global_state
+        .lock()
+        .window_opened(WindowLabel::RecordingSourceSelector);
+    }
 
     let recording_source_selector_window = app_handle
       .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
@@ -308,12 +317,15 @@ pub fn show_region_selector(
 }
 
 #[tauri::command]
-pub fn show_and_focus_editor(app_handle: &AppHandle, state: State<'_, Mutex<AppState>>) {
-  let state = state.lock().unwrap();
-
-  // Only allow showing when not recording or editing
-  if state.is_recording || !state.is_editing {
-    return;
+pub fn show_and_focus_editor(
+  app_handle: AppHandle,
+  recording_state: State<'_, Mutex<RecordingState>>,
+  editing_state: State<'_, Mutex<EditingState>>,
+) {
+  {
+    if !recording_state.lock().is_recording() || !editing_state.lock().is_editing() {
+      return;
+    }
   }
 
   let editor = app_handle
@@ -325,12 +337,15 @@ pub fn show_and_focus_editor(app_handle: &AppHandle, state: State<'_, Mutex<AppS
 }
 
 #[tauri::command]
-pub fn hide_start_recording_dock(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) {
-  let mut state = state.lock().unwrap();
-  state
-    .open_windows
-    .insert(WindowLabel::StartRecordingDock, false);
-  state.audio_streams.clear();
+pub fn hide_start_recording_dock(
+  app_handle: AppHandle,
+  global_state: State<'_, Mutex<GlobalState>>,
+) {
+  {
+    global_state
+      .lock()
+      .window_closed(WindowLabel::StartRecordingDock);
+  }
 
   let panel = app_handle
     .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
@@ -361,23 +376,17 @@ pub fn passthrough_region_selector(app_handle: AppHandle, passthrough: bool) {
 }
 
 #[tauri::command]
-pub fn is_start_recording_dock_open(state: State<'_, Mutex<AppState>>) -> bool {
-  let state = state.lock().unwrap();
-  state
-    .open_windows
-    .get(&WindowLabel::StartRecordingDock)
-    .copied()
-    .unwrap_or(false)
+pub fn is_start_recording_dock_open(global_state: State<'_, Mutex<GlobalState>>) -> bool {
+  global_state
+    .lock()
+    .is_window_open(&WindowLabel::StartRecordingDock)
 }
 
 #[tauri::command]
-pub fn is_recording_input_options_open(state: State<'_, Mutex<AppState>>) -> bool {
-  let state = state.lock().unwrap();
-  state
-    .open_windows
-    .get(&WindowLabel::RecordingInputOptions)
-    .copied()
-    .unwrap_or(false)
+pub fn is_recording_input_options_open(global_state: State<'_, Mutex<GlobalState>>) -> bool {
+  global_state
+    .lock()
+    .is_window_open(&WindowLabel::RecordingInputOptions)
 }
 
 #[tauri::command]

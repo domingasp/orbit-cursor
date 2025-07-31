@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import { isRecordingInputOptionsOpen } from "../../api/windows";
-import { InputAudioSelect } from "../../features/audio-inputs/components/input-audio-select";
+import { MicrophoneSelect } from "../../features/audio-inputs/components/microphone-select";
 import { CameraSelect } from "../../features/camera-select/components/camera-select";
 import { clearInteractionAttributes } from "../../lib/styling";
 import {
@@ -47,7 +47,7 @@ export const RecordingInputOptions = () => {
   return (
     <div className="flex flex-col gap-2 p-4">
       <CameraSelect />
-      <InputAudioSelect />
+      <MicrophoneSelect />
     </div>
   );
 };

@@ -1,7 +1,7 @@
 use nokhwa::{
   pixel_format::RgbAFormat,
-  utils::{CameraIndex, FrameFormat, RequestedFormat, RequestedFormatType},
-  Buffer, CallbackCamera,
+  utils::{CameraIndex, FrameFormat, RequestedFormat, RequestedFormatType, Resolution},
+  Buffer, CallbackCamera, Camera,
 };
 use rayon::{
   iter::{IndexedParallelIterator, ParallelIterator},
@@ -43,6 +43,17 @@ pub fn live_frame_callback(frame: Buffer, channel: &Channel) {
   let _ = channel.send(tauri::ipc::InvokeResponseBody::Raw(combined));
 }
 
+pub fn get_camera_details(camera_index: CameraIndex) -> (Resolution, u32, FrameFormat) {
+  let requested = RequestedFormat::new::<RgbAFormat>(RequestedFormatType::AbsoluteHighestFrameRate);
+  let camera = Camera::new(camera_index, requested).unwrap();
+
+  let resolution = camera.resolution();
+  let frame_rate = camera.frame_rate();
+  let frame_format = camera.frame_format();
+
+  (resolution, frame_rate, frame_format)
+}
+
 pub fn create_camera(
   camera_index: CameraIndex,
   callback: impl FnMut(Buffer) + Send + 'static,
@@ -55,17 +66,6 @@ pub fn create_camera(
       eprintln!("Failed to initialize camera: {e}");
       None
     }
-  }
-}
-
-pub fn frame_format_to_ffmpeg(frame_format: FrameFormat) -> &'static str {
-  match frame_format {
-    FrameFormat::MJPEG => "mjpeg",
-    FrameFormat::YUYV => "yuyv422",
-    FrameFormat::NV12 => "nv12",
-    FrameFormat::GRAY => "gray",
-    FrameFormat::RAWRGB => "rgb24",
-    FrameFormat::RAWBGR => "bgr24",
   }
 }
 

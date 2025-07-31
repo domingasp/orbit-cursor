@@ -6,7 +6,7 @@ export enum Events {
   RecordingStarted = "recording_started",
   ClosedRecordingInputOptions = "closed_recording_input_options",
   SystemAudioStreamError = "system_audio_stream_error",
-  InputAudioStreamError = "input_audio_stream_error",
+  MicrophoneStreamError = "microphone_stream_error",
   CollapsedRecordingSourceSelector = "collapsed_recording_source_selector",
   WindowThumbnailsGenerated = "window_thumbnails_generated",
   RecordingComplete = "recording_complete",
