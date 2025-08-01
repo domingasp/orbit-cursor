@@ -4,7 +4,7 @@ use std::{
   process::ChildStdin,
   sync::{atomic::AtomicBool, Arc, Barrier},
   thread::JoinHandle,
-  time::{Duration, Instant},
+  time::Duration,
 };
 
 use ffmpeg_sidecar::child::FfmpegChild;
@@ -20,8 +20,8 @@ use tokio::sync::broadcast;
 
 use crate::{
   recording::{
-    ffmpeg::spawn_rawvideo_ffmpeg,
-    models::{RecordingType, Region, StreamSync},
+    ffmpeg::{spawn_rawvideo_ffmpeg, FfmpegInputDetails},
+    models::{RecordingType, Region, ScreenCaptureDetails, StreamSync},
   },
   recording_sources::{commands::list_monitors, service::get_visible_windows},
   screen_capture::service::{get_app_targets, get_display},
@@ -45,7 +45,12 @@ pub fn start_screen_recorder(
   window_id: Option<u32>,
   region: Region,
   synchronization: StreamSync,
-) -> (JoinHandle<()>, LogicalPosition<f64>, f64) {
+) -> (
+  JoinHandle<()>,
+  ScreenCaptureDetails,
+  LogicalPosition<f64>,
+  f64,
+) {
   let log_prefix = "[screen]";
 
   let CapturerInfo {
@@ -57,13 +62,17 @@ pub fn start_screen_recorder(
     scale_factor,
   } = create_screen_recorder(recording_type, monitor_name, window_id, region);
 
-  let (ffmpeg, stdin) = spawn_rawvideo_ffmpeg(
-    &file_path,
+  let ffmpeg_input_details = FfmpegInputDetails {
     width,
     height,
-    60,
-    "nv12".to_string(), // Hardware safe
+    frame_rate: 60,
+    pixel_format: "nv12".to_string(),
+    wallclock_timestamps: true,
     crop,
+  };
+  let (ffmpeg, stdin) = spawn_rawvideo_ffmpeg(
+    &file_path,
+    ffmpeg_input_details.clone(),
     log_prefix.to_string(),
   );
   let writer = Arc::new(Mutex::new(stdin));
@@ -72,20 +81,59 @@ pub fn start_screen_recorder(
   capturer.start_capture();
   build_capturer_stream(
     capturer,
-    writer,
+    writer.clone(),
     synchronization.should_write.clone(),
+    // We keep capturer alive until final stop signal is sent
     synchronization.stop_tx.subscribe(),
     synchronization.ready_barrier,
   );
 
   (
     spawn_screen_thread(
-      synchronization.stop_tx.subscribe(),
+      synchronization.stop_screen_tx.subscribe(),
+      writer.clone(),
       ffmpeg,
       log_prefix.to_string(),
     ),
+    ScreenCaptureDetails {
+      writer: writer.clone(),
+      ffmpeg_input_details,
+      log_prefix: log_prefix.to_string(),
+    },
     recording_origin,
     scale_factor,
+  )
+}
+
+pub fn resume_screen_recording(
+  file_path: PathBuf,
+  screen_capture_details: ScreenCaptureDetails,
+  stop_screen_rx: broadcast::Receiver<()>,
+) -> JoinHandle<()> {
+  let ScreenCaptureDetails {
+    writer,
+    ffmpeg_input_details,
+    log_prefix,
+  } = screen_capture_details;
+
+  let (ffmpeg, stdin) = spawn_rawvideo_ffmpeg(
+    &file_path,
+    ffmpeg_input_details.clone(),
+    log_prefix.to_string(),
+  );
+
+  {
+    let mut writer_guard = writer.lock();
+
+    // Swap in new stdin into writer
+    let _ = std::mem::replace(&mut *writer_guard, stdin);
+  }
+
+  spawn_screen_thread(
+    stop_screen_rx,
+    writer.clone(),
+    ffmpeg,
+    log_prefix.to_string(),
   )
 }
 
@@ -200,20 +248,11 @@ fn build_capturer_stream(
     // actually changes, at least on application recording
     let mut cached_frame: Option<YUVFrame> = None;
 
-    let frame_duration = Duration::from_nanos(1_000_000_000 / 60);
-    let mut last_frame_time = Instant::now();
-
     loop {
       if stop_rx.try_recv().is_ok() {
         log::info!("Screen recorder received stop signal");
         break;
       }
-
-      let now = Instant::now();
-      if now.duration_since(last_frame_time) < frame_duration {
-        continue;
-      }
-      last_frame_time = now;
 
       let frame: Option<&YUVFrame> =
         match capturer.get_next_frame_or_timeout(Duration::from_millis(1)) {
@@ -257,6 +296,7 @@ fn build_capturer_stream(
 /// Spawn screen thread for starting/tearing down and finalizing recording
 fn spawn_screen_thread(
   mut stop_rx: broadcast::Receiver<()>,
+  writer: Arc<Mutex<ChildStdin>>,
   mut ffmpeg: FfmpegChild,
   log_prefix: String,
 ) -> JoinHandle<()> {
@@ -264,10 +304,26 @@ fn spawn_screen_thread(
     let _ = stop_rx.blocking_recv();
 
     log::info!("{log_prefix} Cleaning up screen ffmpeg");
+    {
+      let mut writer_guard = writer.lock();
+
+      // Take ownership and swap with dummy - needed to signal EOF to ffmpeg
+      let _ = std::mem::replace(&mut *writer_guard, closed_child_stdin());
+    }
     let _ = ffmpeg.wait();
 
     log::info!("{log_prefix} Screen ffmpeg finished");
   })
+}
+
+/// Returns a dummy stdin allow swapping out where required
+fn closed_child_stdin() -> ChildStdin {
+  std::process::Command::new("true")
+    .stdin(std::process::Stdio::piped())
+    .spawn()
+    .expect("Failed to spawn dummy process")
+    .stdin
+    .expect("Failed to get dummy stdin")
 }
 
 /// Return window from id (scap::Target id)

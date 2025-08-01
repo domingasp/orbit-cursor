@@ -1,16 +1,23 @@
 use std::{
   path::PathBuf,
+  process::ChildStdin,
   sync::{atomic::AtomicBool, Arc, Barrier},
 };
 
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumString};
 use tauri::{LogicalPosition, LogicalSize};
 use tokio::sync::broadcast;
+use uuid::Uuid;
+
+use crate::recording::ffmpeg::FfmpegInputDetails;
 
 #[derive(Debug, Clone)]
 pub struct StreamSync {
   pub should_write: Arc<AtomicBool>,
+  // Separate as we stop screen recording anytime we pause/resume
+  pub stop_screen_tx: broadcast::Sender<()>,
   pub stop_tx: broadcast::Sender<()>,
   pub ready_barrier: Arc<Barrier>,
 }
@@ -63,6 +70,23 @@ pub enum RecordingFile {
   Metadata,
 }
 
+impl RecordingFile {
+  /// Generate unique file name in format of `[original]-[uuid].[ext]`
+  pub fn unique(&self) -> String {
+    let filename = self.as_ref();
+
+    let parts: Vec<&str> = filename.rsplitn(2, '.').collect();
+    let (ext, prefix) = match &parts[..] {
+      [ext, prefix] => (*ext, *prefix),
+      _ => ("", filename),
+    };
+
+    let uuid = Uuid::new_v4();
+
+    format!("{prefix}-{uuid}.{ext}")
+  }
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecordingManifest {
@@ -92,4 +116,11 @@ impl Default for RecordingFileSet {
       microphone: None,
     }
   }
+}
+
+#[derive(Debug, Clone)]
+pub struct ScreenCaptureDetails {
+  pub writer: Arc<Mutex<ChildStdin>>,
+  pub ffmpeg_input_details: FfmpegInputDetails,
+  pub log_prefix: String,
 }

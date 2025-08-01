@@ -1,5 +1,6 @@
 use std::{
   collections::HashMap,
+  path::PathBuf,
   sync::{atomic::AtomicBool, Arc},
   thread::JoinHandle,
 };
@@ -13,7 +14,7 @@ use tokio::sync::broadcast::{self, Receiver, Sender};
 use crate::{
   audio::models::AudioStream,
   constants::WindowLabel,
-  recording::models::{RecordingManifest, StreamSync},
+  recording::models::{RecordingManifest, ScreenCaptureDetails, StreamSync},
 };
 
 pub struct GlobalState {
@@ -117,11 +118,21 @@ impl MagnifierState {
   }
 }
 
+pub struct StoppedRecording {
+  pub manifest: Option<RecordingManifest>,
+  pub stream_handles: Option<Vec<JoinHandle<()>>>,
+  pub screen_handle: Option<JoinHandle<()>>,
+  pub screen_files: Option<Vec<PathBuf>>,
+}
+
 pub struct RecordingState {
   pub is_recording: bool,
   pub recording_manifest: Option<RecordingManifest>,
   pub stream_sync: Option<StreamSync>,
   pub stream_handles: Option<Vec<JoinHandle<()>>>,
+  pub screen_capture_details: Option<ScreenCaptureDetails>,
+  pub screen_files: Option<Vec<PathBuf>>,
+  pub screen_stream_handle: Option<JoinHandle<()>>,
 }
 
 impl RecordingState {
@@ -131,6 +142,9 @@ impl RecordingState {
       recording_manifest: None,
       stream_sync: None,
       stream_handles: None,
+      screen_capture_details: None,
+      screen_files: None,
+      screen_stream_handle: None,
     }
   }
 
@@ -139,24 +153,39 @@ impl RecordingState {
     recording_manifest: RecordingManifest,
     stream_sync: StreamSync,
     stream_handles: Vec<JoinHandle<()>>,
+    screen_file: PathBuf,
+    screen_stream_handle: JoinHandle<()>,
+    screen_capture_details: ScreenCaptureDetails,
   ) {
     self.is_recording = true;
     self.recording_manifest = Some(recording_manifest);
     self.stream_sync = Some(stream_sync);
     self.stream_handles = Some(stream_handles);
+
+    // Separate due to pause/resume creating separate screen files
+    self.screen_capture_details = Some(screen_capture_details);
+    self.screen_files = Some(vec![screen_file]);
+    self.screen_stream_handle = Some(screen_stream_handle);
   }
 
-  pub fn recording_stopped(&mut self) -> (Option<RecordingManifest>, Option<Vec<JoinHandle<()>>>) {
+  pub fn recording_stopped(&mut self) -> StoppedRecording {
     self.is_recording = false;
 
     if let Some(stream_sync) = self.stream_sync.take() {
       stream_sync
         .should_write
         .store(false, std::sync::atomic::Ordering::SeqCst);
+
       let _ = stream_sync.stop_tx.send(());
+      let _ = stream_sync.stop_screen_tx.send(());
     }
 
-    (self.recording_manifest.take(), self.stream_handles.take())
+    StoppedRecording {
+      manifest: self.recording_manifest.take(),
+      stream_handles: self.stream_handles.take(),
+      screen_handle: self.screen_stream_handle.take(),
+      screen_files: self.screen_files.take(),
+    }
   }
 
   pub fn pause_recording(&mut self) {
@@ -164,10 +193,19 @@ impl RecordingState {
       stream_sync
         .should_write
         .store(false, std::sync::atomic::Ordering::SeqCst);
+
+      // Send a stop to screen, this is because screen uses wallclock
+      // timestamps meaning empty frames when not writing
+      let _ = stream_sync.stop_screen_tx.send(());
     }
   }
 
-  pub fn resume_recording(&mut self) {
+  pub fn resume_recording(&mut self, screen_stream_handle: JoinHandle<()>, screen_file: PathBuf) {
+    self.screen_stream_handle = Some(screen_stream_handle);
+    if let Some(screen_files) = self.screen_files.as_mut() {
+      screen_files.push(screen_file);
+    }
+
     if let Some(stream_sync) = &self.stream_sync {
       stream_sync
         .should_write
