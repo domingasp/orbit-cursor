@@ -83,8 +83,8 @@ fn spawn_camera_recorder(
       frame_rate,
       pixel_format: camera_frame_format_to_ffmpeg(frame_format).to_string(),
       wallclock_timestamps: false,
+      crop: None,
     },
-    None,
     log_prefix.clone(),
   );
   let writer = Arc::new(Mutex::new(Some(stdin)));

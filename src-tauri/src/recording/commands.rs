@@ -10,17 +10,18 @@ use tokio::sync::broadcast;
 
 use crate::{
   constants::{Events, WindowLabel},
-  models::{EditingState, GlobalState, RecordingState},
+  models::{EditingState, GlobalState, RecordingState, StoppedRecording},
   recording::{
     audio::{start_microphone_recorder, start_system_audio_recorder},
     camera::start_camera_recorder,
+    ffmpeg::concat_screen_segments,
     file::{create_recording_directory, write_metadata_to_file},
     input_events::start_mouse_event_recorder,
     models::{
       RecordingFile, RecordingFileSet, RecordingManifest, RecordingMetadata, RecordingType, Region,
       StreamSync,
     },
-    screen::start_screen_recorder,
+    screen::{resume_screen_recording, start_screen_recorder},
   },
   windows::commands::{hide_region_selector, passthrough_region_selector},
 };
@@ -66,9 +67,11 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
 
     let ready_barrier = Arc::new(Barrier::new(barrier_count));
     let should_write = Arc::new(AtomicBool::new(false));
+    let (stop_screen_tx, _) = broadcast::channel::<()>(1);
     let (stop_tx, _) = broadcast::channel::<()>(1);
     let synchronization = StreamSync {
       should_write: should_write.clone(),
+      stop_screen_tx: stop_screen_tx.clone(),
       stop_tx: stop_tx.clone(),
       ready_barrier: ready_barrier.clone(),
     };
@@ -117,15 +120,16 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
     // Window capture causes empty frames if this comes first - not sure why, only happens
     // when multiple streams
     log::info!("Starting screen recorder");
-    let (screen_handle, recording_origin, scale_factor) = start_screen_recorder(
-      recording_dir.join(RecordingFile::Screen.as_ref()),
-      options.recording_type,
-      options.monitor_name,
-      options.window_id,
-      options.region,
-      synchronization.clone(),
-    );
-    recorder_handles.push(screen_handle);
+    let screen_file = recording_dir.join(RecordingFile::Screen.unique());
+    let (screen_handle, screen_capture_details, recording_origin, scale_factor) =
+      start_screen_recorder(
+        screen_file.clone(),
+        options.recording_type,
+        options.monitor_name,
+        options.window_id,
+        options.region,
+        synchronization.clone(),
+      );
     log::info!("Screen recorder ready");
 
     log::info!("Starting extra writers: mouse_events, metadata");
@@ -162,6 +166,9 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
       },
       synchronization,
       recorder_handles,
+      screen_file,
+      screen_handle,
+      screen_capture_details,
     );
     log::info!("Recording started");
   });
@@ -177,14 +184,21 @@ pub async fn stop_recording(app_handle: AppHandle) {
 
   {
     let recording_state: State<'_, Mutex<RecordingState>> = app_handle.state();
-    if let (Some(recording_manifest), Some(stream_handles)) =
-      recording_state.lock().recording_stopped()
+    if let StoppedRecording {
+      manifest: Some(recording_manifest),
+      stream_handles: Some(stream_handles),
+      screen_handle: Some(screen_stream_handle),
+      screen_files: Some(screen_files),
+    } = recording_state.lock().recording_stopped()
     {
       for stream_handle in stream_handles {
         if let Err(e) = stream_handle.join() {
           log::warn!("Failed to join stream thread: {e:?}");
         }
       }
+
+      let _ = screen_stream_handle.join();
+      concat_screen_segments(screen_files, recording_manifest.directory.clone());
 
       let _ = app_handle.emit(Events::RecordingComplete.as_ref(), recording_manifest);
     };
@@ -211,9 +225,30 @@ pub async fn stop_recording(app_handle: AppHandle) {
 }
 
 #[tauri::command]
-pub fn resume_recording(recording_state: State<'_, Mutex<RecordingState>>) {
+pub async fn resume_recording(app_handle: AppHandle) {
   log::info!("Resuming recording");
-  recording_state.lock().resume_recording();
+
+  let recording_state: State<'_, Mutex<RecordingState>> = app_handle.state();
+  let mut recording_state_guard = recording_state.lock();
+  if let Some(recording_manifest) = &recording_state_guard.recording_manifest {
+    if let Some(screen_capture_details) = &recording_state_guard.screen_capture_details {
+      if let Some(stream_sync) = &recording_state_guard.stream_sync {
+        let screen_file = recording_manifest
+          .directory
+          .join(RecordingFile::Screen.unique());
+
+        let screen_handle = resume_screen_recording(
+          screen_file.clone(),
+          screen_capture_details.clone(),
+          stream_sync.stop_screen_tx.subscribe(),
+        );
+
+        recording_state_guard.resume_recording(screen_handle, screen_file);
+      }
+    }
+  }
+
+  log::info!("Recording resumed");
 }
 
 #[tauri::command]
