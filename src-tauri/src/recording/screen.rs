@@ -4,7 +4,7 @@ use std::{
   process::ChildStdin,
   sync::{atomic::AtomicBool, Arc, Barrier},
   thread::JoinHandle,
-  time::{Duration, Instant},
+  time::Duration,
 };
 
 use ffmpeg_sidecar::child::FfmpegChild;
@@ -20,7 +20,7 @@ use tokio::sync::broadcast;
 
 use crate::{
   recording::{
-    ffmpeg::spawn_rawvideo_ffmpeg,
+    ffmpeg::{spawn_rawvideo_ffmpeg, FfmpegInputDetails},
     models::{RecordingType, Region, StreamSync},
   },
   recording_sources::{commands::list_monitors, service::get_visible_windows},
@@ -59,10 +59,13 @@ pub fn start_screen_recorder(
 
   let (ffmpeg, stdin) = spawn_rawvideo_ffmpeg(
     &file_path,
-    width,
-    height,
-    60,
-    "nv12".to_string(), // Hardware safe
+    FfmpegInputDetails {
+      width,
+      height,
+      frame_rate: 60,
+      pixel_format: "nv12".to_string(), // Hardware safe
+      wallclock_timestamps: true,
+    },
     crop,
     log_prefix.to_string(),
   );
@@ -200,20 +203,11 @@ fn build_capturer_stream(
     // actually changes, at least on application recording
     let mut cached_frame: Option<YUVFrame> = None;
 
-    let frame_duration = Duration::from_nanos(1_000_000_000 / 60);
-    let mut last_frame_time = Instant::now();
-
     loop {
       if stop_rx.try_recv().is_ok() {
         log::info!("Screen recorder received stop signal");
         break;
       }
-
-      let now = Instant::now();
-      if now.duration_since(last_frame_time) < frame_duration {
-        continue;
-      }
-      last_frame_time = now;
 
       let frame: Option<&YUVFrame> =
         match capturer.get_next_frame_or_timeout(Duration::from_millis(1)) {

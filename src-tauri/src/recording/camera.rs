@@ -21,7 +21,10 @@ use tokio::sync::broadcast;
 
 use crate::{
   camera::service::{create_camera, get_camera_details},
-  recording::{ffmpeg::spawn_rawvideo_ffmpeg, models::StreamSync},
+  recording::{
+    ffmpeg::{spawn_rawvideo_ffmpeg, FfmpegInputDetails},
+    models::StreamSync,
+  },
 };
 
 /// Mapping from nokhwa to Ffmpeg compatible frame formats
@@ -74,10 +77,13 @@ fn spawn_camera_recorder(
   let (resolution, frame_rate, frame_format) = get_camera_details(camera_info.index().clone());
   let (ffmpeg, stdin) = spawn_rawvideo_ffmpeg(
     &file_path,
-    resolution.width(),
-    resolution.height(),
-    frame_rate,
-    camera_frame_format_to_ffmpeg(frame_format).to_string(),
+    FfmpegInputDetails {
+      width: resolution.width(),
+      height: resolution.height(),
+      frame_rate,
+      pixel_format: camera_frame_format_to_ffmpeg(frame_format).to_string(),
+      wallclock_timestamps: false,
+    },
     None,
     log_prefix.clone(),
   );

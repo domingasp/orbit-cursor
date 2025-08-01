@@ -7,22 +7,40 @@ use std::{
 use ffmpeg_sidecar::{child::FfmpegChild, command::FfmpegCommand};
 use tauri::{PhysicalPosition, PhysicalSize};
 
+pub struct FfmpegInputDetails {
+  pub width: u32,
+  pub height: u32,
+  pub frame_rate: u32,
+  pub pixel_format: String,
+  pub wallclock_timestamps: bool,
+}
+
 /// Create and spawn the camera writer ffmpeg
 pub fn spawn_rawvideo_ffmpeg(
   file_path: &Path,
-  width: u32,
-  height: u32,
-  frame_rate: u32,
-  pixel_format: String,
+  input_details: FfmpegInputDetails,
   crop: Option<(PhysicalSize<f64>, PhysicalPosition<f64>)>,
   log_prefix: String,
 ) -> (FfmpegChild, ChildStdin) {
   log::info!("{log_prefix} Spawning rawvideo ffmpeg");
 
+  let FfmpegInputDetails {
+    width,
+    height,
+    frame_rate,
+    pixel_format,
+    wallclock_timestamps,
+  } = input_details;
+
   let mut command = FfmpegCommand::new();
 
+  if wallclock_timestamps {
+    command.args(["-use_wallclock_as_timestamps", "1"]);
+  } else {
+    command.args(["-framerate", &frame_rate.to_string()]);
+  }
+
   command
-    .args(["-framerate", &frame_rate.to_string()])
     .format("rawvideo")
     .pix_fmt(pixel_format)
     .size(width, height)
@@ -51,9 +69,7 @@ pub fn spawn_rawvideo_ffmpeg(
   #[cfg(target_os = "macos")]
   command.pix_fmt("yuv420p"); // QuickTime compatibility
 
-  command
-    .rate(frame_rate as f32)
-    .output(file_path.to_string_lossy());
+  command.output(file_path.to_string_lossy());
 
   let mut ffmpeg = command.spawn().unwrap();
 
