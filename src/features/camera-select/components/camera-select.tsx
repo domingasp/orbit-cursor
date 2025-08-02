@@ -12,6 +12,7 @@ import {
   PermissionType,
   usePermissionsStore,
 } from "../../../stores/permissions.store";
+import { useRecordingStateStore } from "../../../stores/recording-state.store";
 import {
   Item,
   selectedItem,
@@ -34,13 +35,17 @@ export const CameraSelect = () => {
   const recordingInputOptionsOpened = useWindowReopenStore(
     useShallow((state) => state.windows[AppWindow.RecordingInputOptions])
   );
+  const cameraHasWarning = useRecordingStateStore(
+    useShallow((state) => state.cameraHasWarning)
+  );
 
   const { closeListBox } = useStandaloneListBoxStore((state) => state);
 
   const channel = useRef<Channel>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imageDataRef = useRef<ImageData>(null);
   const [dimensions, setDimensions] = useState({ height: 0, width: 0 });
+
+  const latestFrameRef = useRef<ArrayBuffer | null>(null);
 
   const [isDeviceSelected, setIsDeviceSelected] = useState(false);
 
@@ -70,13 +75,12 @@ export const CameraSelect = () => {
       setDimensions({ height, width });
       canvas.width = width;
       canvas.height = height;
-      imageDataRef.current = new ImageData(width, height);
     }
 
-    if (!imageDataRef.current) return;
-
-    imageDataRef.current.data.set(new Uint8ClampedArray(buffer, 8));
-    ctx.putImageData(imageDataRef.current, 0, 0);
+    const pixels = new Uint8ClampedArray(buffer, 8);
+    void createImageBitmap(new ImageData(pixels, width, height)).then((bmp) => {
+      ctx.drawImage(bmp, 0, 0);
+    });
   };
 
   const onChange = async (selectedItems: Item[], isPanelOpen: boolean) => {
@@ -91,7 +95,7 @@ export const CameraSelect = () => {
       setIsDeviceSelected(true);
       channel.current = new Channel();
       channel.current.onmessage = (message) => {
-        processFrame(message as ArrayBuffer);
+        onFrameMessage(message as ArrayBuffer);
       };
 
       startCameraStream(selectedDevice.toString(), channel.current);
@@ -100,6 +104,10 @@ export const CameraSelect = () => {
       // Give time for channel message to end
       setTimeout(clearCanvas, 30);
     }
+  };
+
+  const onFrameMessage = (message: ArrayBuffer) => {
+    latestFrameRef.current = message;
   };
 
   useEffect(() => {
@@ -114,6 +122,24 @@ export const CameraSelect = () => {
       void unlistenStandaloneListBox.then((f) => {
         f();
       });
+    };
+  }, []);
+
+  useEffect(() => {
+    let frameLoopId: number;
+
+    const renderLatestFrame = () => {
+      if (latestFrameRef.current) {
+        processFrame(latestFrameRef.current);
+        latestFrameRef.current = null;
+      }
+      frameLoopId = requestAnimationFrame(renderLatestFrame);
+    };
+
+    frameLoopId = requestAnimationFrame(renderLatestFrame);
+
+    return () => {
+      cancelAnimationFrame(frameLoopId);
     };
   }, []);
 
@@ -139,12 +165,12 @@ export const CameraSelect = () => {
           ref={canvasRef}
           className={cn(
             "w-full h-full object-contain transform -scale-x-100 rounded-md",
-            !isDeviceSelected && "opacity-0"
+            (!isDeviceSelected || cameraHasWarning) && "opacity-0"
           )}
         />
 
         <AnimatePresence>
-          {!isDeviceSelected && (
+          {(!isDeviceSelected || cameraHasWarning) && (
             <motion.div
               animate={{ opacity: 1, scale: 1 }}
               className="absolute"
