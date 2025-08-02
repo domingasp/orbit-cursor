@@ -110,7 +110,7 @@ export const InputToggleGroup = ({
         if (selectedCamera === null || selectedCamera.id === null) {
           setCameraWarning(WarningType.Empty);
         } else if (!cameras.includes(selectedCamera.id.toString())) {
-          setCameraWarning(WarningType.Empty);
+          setCameraWarning(WarningType.Disconnected);
         } else {
           setCameraWarning(undefined);
         }
