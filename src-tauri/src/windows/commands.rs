@@ -4,7 +4,6 @@ use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, State};
-use tauri_nspanel::{panel_delegate, ManagerExt};
 
 use crate::{
   constants::{Events, PanelLevel, WindowLabel},
@@ -13,9 +12,14 @@ use crate::{
 };
 
 use super::service::{
-  add_animation, add_border, add_close_panel_listener, animate_resize, convert_to_stationary_panel,
-  position_recording_dock, position_recording_source_selector, position_window_above_dock, Anchor,
+  add_close_panel_listener, animate_resize, position_recording_dock,
+  position_recording_source_selector, position_window_above_dock, Anchor,
 };
+
+#[cfg(target_os = "macos")]
+use super::service::{add_animation, add_border, convert_to_stationary_panel};
+#[cfg(target_os = "macos")]
+use tauri_nspanel::{panel_delegate, ManagerExt};
 
 // We use static variable as storing in state was causing a lock contention
 // when input options open and straight to start recording

@@ -16,33 +16,40 @@ use std::sync::{Arc, OnceLock};
 
 use audio::commands::{list_audio_inputs, start_audio_listener, stop_audio_listener};
 use camera::commands::{list_cameras, start_camera_stream, stop_camera_stream};
-use constants::store::{FIRST_RUN, NATIVE_REQUESTABLE_PERMISSIONS, STORE_NAME};
+use constants::store::{FIRST_RUN, STORE_NAME};
 
 use parking_lot::Mutex;
-use permissions::{
-  commands::{check_permissions, open_system_settings, request_permission},
-  service::{ensure_permissions, monitor_permissions},
-};
-use rdev::{listen, set_is_main_thread};
+use rdev::listen;
 use recording::commands::{start_recording, stop_recording};
 use recording_sources::commands::{list_monitors, list_windows};
-use screen_capture::commands::init_magnifier_capturer;
 use serde_json::{json, Value};
 use system_tray::service::init_system_tray;
 use tauri::{App, AppHandle, Manager, Wry};
 use tauri_plugin_store::{Store, StoreExt};
 use tokio::sync::broadcast;
-use windows::{
-  commands::{
-    collapse_recording_source_selector, expand_recording_source_selector, get_dock_bounds,
-    hide_region_selector, hide_start_recording_dock, init_recording_dock,
-    init_recording_input_options, init_recording_source_selector, init_region_selector,
-    init_standalone_listbox, is_recording_input_options_open, is_start_recording_dock_open,
-    quit_app, reset_panels, show_recording_input_options, show_region_selector,
-    show_standalone_listbox, show_start_recording_dock, update_dock_opacity,
-  },
-  service::open_permissions,
+use windows::commands::{
+  collapse_recording_source_selector, expand_recording_source_selector, get_dock_bounds,
+  hide_region_selector, hide_start_recording_dock, init_recording_dock,
+  init_recording_input_options, init_recording_source_selector, init_region_selector,
+  init_standalone_listbox, is_recording_input_options_open, is_start_recording_dock_open, quit_app,
+  reset_panels, show_recording_input_options, show_region_selector, show_standalone_listbox,
+  show_start_recording_dock, update_dock_opacity,
 };
+
+#[cfg(target_os = "macos")]
+use constants::store::NATIVE_REQUESTABLE_PERMISSIONS;
+
+#[cfg(target_os = "macos")]
+use windows::service::open_permissions;
+
+#[cfg(target_os = "macos")]
+use permissions::{
+  commands::{check_permissions, open_system_settings, request_permission},
+  service::{ensure_permissions, monitor_permissions},
+};
+
+#[cfg(target_os = "macos")]
+use rdev::set_is_main_thread;
 
 use crate::{
   export::commands::{cancel_export, export_recording, open_path_in_file_browser, path_exists},
@@ -60,12 +67,12 @@ static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 async fn setup_store(app: &App) -> Arc<Store<Wry>> {
   let store = app.store(STORE_NAME).unwrap();
 
+  if store.get(FIRST_RUN).is_none() {
+    store.set(FIRST_RUN, json!(true));
+  }
+
   #[cfg(target_os = "macos")]
   {
-    if store.get(FIRST_RUN).is_none() {
-      store.set(FIRST_RUN, json!(true));
-    }
-
     if store.get(NATIVE_REQUESTABLE_PERMISSIONS).is_none() {
       // Actual access is checked at runtime
       store.set(
@@ -91,59 +98,67 @@ pub fn run() {
 
   let context = tauri::generate_context!();
 
-  let app = tauri::Builder::default()
-    .invoke_handler(tauri::generate_handler![
-      check_permissions,
-      request_permission,
-      open_system_settings,
-      quit_app,
-      init_standalone_listbox,
-      show_standalone_listbox,
-      init_recording_input_options,
-      show_recording_input_options,
-      init_region_selector,
-      show_region_selector,
-      hide_region_selector,
-      passthrough_region_selector,
-      hide_start_recording_dock,
-      init_recording_source_selector,
-      expand_recording_source_selector,
-      collapse_recording_source_selector,
-      start_audio_listener,
-      stop_audio_listener,
-      list_audio_inputs,
-      is_start_recording_dock_open,
-      is_recording_input_options_open,
-      list_cameras,
-      start_camera_stream,
-      stop_camera_stream,
-      list_monitors,
-      reset_panels,
-      get_dock_bounds,
-      update_dock_opacity,
-      init_magnifier_capturer,
-      start_magnifier_capture,
-      stop_magnifier_capture,
-      list_windows,
-      init_recording_dock,
-      start_recording,
-      stop_recording,
-      open_path_in_file_browser,
-      path_exists,
-      export_recording,
-      cancel_export,
-      pause_recording,
-      resume_recording
-    ])
+  let mut app_builder = tauri::Builder::default();
+
+  // Register Handlers
+  app_builder = app_builder.invoke_handler(tauri::generate_handler![
+    #[cfg(target_os = "macos")]
+    check_permissions,
+    #[cfg(target_os = "macos")]
+    request_permission,
+    #[cfg(target_os = "macos")]
+    open_system_settings,
+    quit_app,
+    init_standalone_listbox,
+    show_standalone_listbox,
+    init_recording_input_options,
+    show_recording_input_options,
+    init_region_selector,
+    show_region_selector,
+    hide_region_selector,
+    passthrough_region_selector,
+    hide_start_recording_dock,
+    init_recording_source_selector,
+    expand_recording_source_selector,
+    collapse_recording_source_selector,
+    start_audio_listener,
+    stop_audio_listener,
+    list_audio_inputs,
+    is_start_recording_dock_open,
+    is_recording_input_options_open,
+    list_cameras,
+    start_camera_stream,
+    stop_camera_stream,
+    list_monitors,
+    reset_panels,
+    get_dock_bounds,
+    update_dock_opacity,
+    start_magnifier_capture,
+    stop_magnifier_capture,
+    list_windows,
+    init_recording_dock,
+    start_recording,
+    stop_recording,
+    open_path_in_file_browser,
+    path_exists,
+    export_recording,
+    cancel_export,
+    pause_recording,
+    resume_recording
+  ]);
+
+  // State
+  app_builder = app_builder
     .manage(Mutex::new(GlobalState::new(input_event_tx.clone())))
     .manage(Mutex::new(PreviewState::new()))
     .manage(Mutex::new(MagnifierState::new()))
     .manage(Mutex::new(RecordingState::new()))
-    .manage(Mutex::new(EditingState::new()))
+    .manage(Mutex::new(EditingState::new()));
+
+  // Plugins
+  app_builder = app_builder
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_os::init())
-    .plugin(tauri_plugin_macos_permissions::init())
-    .plugin(tauri_nspanel::init())
     .plugin(tauri_plugin_shell::init())
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_store::Builder::new().build())
@@ -155,12 +170,21 @@ pub fn run() {
           log::LevelFilter::Info
         })
         .build(),
-    )
+    );
+
+  #[cfg(target_os = "macos")]
+  {
+    app_builder = app_builder
+      .plugin(tauri_plugin_macos_permissions::init())
+      .plugin(tauri_nspanel::init());
+  }
+
+  // Build
+  let app = app_builder
     .setup(|app: &mut App| {
       let store = tauri::async_runtime::block_on(setup_store(app));
 
-      let app_handle = app.handle();
-      let app_handle_clone = Arc::new(app_handle.clone());
+      let app_handle: &AppHandle = app.handle();
 
       init_system_tray(app_handle.clone())?;
       init_start_recording_dock(app_handle.clone());
@@ -185,18 +209,25 @@ pub fn run() {
 
         #[cfg(target_os = "windows")]
         {
-          show_start_recording_dock(app.handle(), app.state());
+          if matches!(store.get(FIRST_RUN), Some(Value::Bool(true))) {
+            store.set(FIRST_RUN, json!(false));
+            show_start_recording_dock(app.handle().clone(), app.state(), app.state(), app.state());
+          }
         }
       });
 
       #[cfg(target_os = "macos")]
-      tauri::async_runtime::spawn(async move {
-        if let Err(e) = monitor_permissions(app_handle_clone).await {
-          eprintln!("Permission monitoring error: {e}");
-        }
-      });
+      {
+        let app_handle_for_permissions = app_handle.clone();
+        tauri::async_runtime::spawn(async move {
+          if let Err(e) = monitor_permissions(app_handle_for_permissions).await {
+            eprintln!("Permission monitoring error: {e}");
+          }
+        });
+      }
 
       std::thread::spawn(move || {
+        #[cfg(target_os = "macos")]
         set_is_main_thread(false);
         if let Err(error) = listen(move |e| {
           global_inputs::service::global_input_event_handler(e, input_event_tx.clone());

@@ -7,7 +7,6 @@ import { useShallow } from "zustand/react/shallow";
 
 import { useRecordingStateStore } from "../../../../stores/recording-state.store";
 import {
-  initMagnifierCapturer,
   startMagnifierCapture,
   stopMagnifierCapture,
 } from "../../api/magnifier";
@@ -96,13 +95,13 @@ export const Magnifier = ({
   }, [resizeDirection]);
 
   useEffect(() => {
-    if (resizeDirection) {
+    if (resizeDirection && selectedMonitor) {
       channel.current = new Channel();
       channel.current.onmessage = (message) => {
         processFrame(message as ArrayBuffer);
       };
 
-      startMagnifierCapture(channel.current);
+      startMagnifierCapture(channel.current, selectedMonitor.name);
     } else {
       stopMagnifierCapture();
     }
@@ -129,7 +128,6 @@ export const Magnifier = ({
 
     if (selectedMonitor) {
       void toPhysical(selectedMonitor.size);
-      initMagnifierCapturer(selectedMonitor.name);
     }
   }, [selectedMonitor]);
 

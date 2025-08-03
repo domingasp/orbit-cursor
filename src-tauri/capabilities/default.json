@@ -2,13 +2,14 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for windows",
-  "windows": ["*"],
+  "windows": [
+    "*"
+  ],
   "permissions": [
     "core:default",
     "opener:default",
     "core:window:allow-set-size",
     "core:window:allow-start-dragging",
-    "macos-permissions:default",
     {
       "identifier": "shell:allow-execute",
       "allow": [

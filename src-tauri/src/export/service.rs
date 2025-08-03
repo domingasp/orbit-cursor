@@ -1,4 +1,3 @@
-use std::process::Command;
 use std::sync::Arc;
 use std::{
   io::{BufRead, BufReader},
@@ -10,6 +9,9 @@ use ffmpeg_sidecar::command::FfmpegCommand;
 use parking_lot::Mutex;
 use tauri::{AppHandle, Emitter, Manager, State};
 use uuid::Uuid;
+
+#[cfg(target_os = "macos")]
+use std::process::Command;
 
 use crate::models::EditingState;
 use crate::{constants::Events, recording::models::RecordingFile};
@@ -249,7 +251,7 @@ fn configure_output_options(ffmpeg: &mut FfmpegCommand, destination_file_path: &
   }
 
   #[cfg(not(target_os = "macos"))]
-  child.codec_video("libx264").crf(20); // Software backed
+  ffmpeg.codec_video("libx264").crf(20); // Software backed
 
   ffmpeg.pix_fmt("yuv420p");
   ffmpeg.codec_audio("aac");

@@ -6,19 +6,23 @@ use std::{
   sync::Arc,
 };
 
+#[cfg(target_os = "macos")]
 use cidre::{
   ns::Array,
   sc::{self, Display},
 };
+#[cfg(target_os = "macos")]
 use cocoa::base::nil;
-
-use futures::future::join_all;
-use image::DynamicImage;
+#[cfg(target_os = "macos")]
 use objc::{
   msg_send,
   runtime::{Class, Object},
   sel, sel_impl,
 };
+
+use futures::future::join_all;
+use image::DynamicImage;
+
 use scap::{get_all_targets, Target};
 use tauri::{Emitter, LogicalPosition, LogicalSize, Monitor};
 use uuid::Uuid;
@@ -243,7 +247,7 @@ pub fn get_visible_windows(
 /// Many edge cases not managed, down to the user to properly position their
 /// windows.
 #[cfg(target_os = "windows")]
-fn get_window_display(shareable_displays: &Array<Display>, window_frame: cidre::ns::Rect) -> usize {
+fn get_window_display() -> usize {
   unimplemented!("Windows does not support getting current display for window")
 }
 
@@ -291,7 +295,7 @@ pub fn get_monitor_names() -> Vec<String> {
 
 #[cfg(target_os = "windows")]
 pub fn get_monitor_names() -> Vec<String> {
-  unimplemented!("Windows does not support monitor names!")
+  vec![]
 }
 
 fn clear_folder_contents(folder_path: &PathBuf) -> io::Result<()> {

@@ -1,11 +1,5 @@
 use std::{ffi::CString, sync::Arc, time::Duration};
 
-use border::WebviewWindowExt as BorderWebviewWindowExt;
-use cocoa::{
-  appkit::{NSMainMenuWindowLevel, NSWindowCollectionBehavior},
-  base::{id, nil},
-};
-use objc::{class, msg_send, sel, sel_impl};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use rdev::{Button, EventType};
@@ -15,13 +9,28 @@ use tauri::{
   AppHandle, Emitter, Listener, LogicalPosition, LogicalSize, Manager, State, WebviewWindow,
   WebviewWindowBuilder, WindowEvent,
 };
+
+use tokio::sync::broadcast::Receiver;
+
+#[cfg(target_os = "macos")]
 use tauri_nspanel::{
   block::ConcreteBlock,
   objc_id::{Id, Shared},
   raw_nspanel::RawNSPanel,
   WebviewWindowExt,
 };
-use tokio::sync::broadcast::Receiver;
+
+#[cfg(target_os = "macos")]
+use border::WebviewWindowExt as BorderWebviewWindowExt;
+
+#[cfg(target_os = "macos")]
+use cocoa::{
+  appkit::{NSMainMenuWindowLevel, NSWindowCollectionBehavior},
+  base::{id, nil},
+};
+
+#[cfg(target_os = "macos")]
+use objc::{class, msg_send, sel, sel_impl};
 
 use crate::{
   constants::{Events, PanelLevel, WindowLabel},

@@ -8,7 +8,6 @@ use std::{
 use ffmpeg_sidecar::child::FfmpegChild;
 use parking_lot::Mutex;
 use rdev::Event;
-use scap::capturer::Capturer;
 use tokio::sync::broadcast::{self, Receiver, Sender};
 
 use crate::{
@@ -85,30 +84,21 @@ impl PreviewState {
 
 pub struct MagnifierState {
   pub magnifier_running: Arc<AtomicBool>,
-  pub magnifier_capturer: Option<Capturer>,
 }
 
 impl MagnifierState {
   pub fn new() -> Self {
     MagnifierState {
       magnifier_running: Arc::new(AtomicBool::new(false)),
-      magnifier_capturer: None,
     }
   }
 
-  pub fn store_magnifier(&mut self, capturer: Capturer) {
-    self.magnifier_capturer = Some(capturer)
-  }
-
-  pub fn start_magnifier(&mut self) -> (Arc<AtomicBool>, Option<Capturer>) {
+  pub fn start_magnifier(&mut self) -> Arc<AtomicBool> {
     self
       .magnifier_running
       .store(true, std::sync::atomic::Ordering::SeqCst);
 
-    (
-      self.magnifier_running.clone(),
-      self.magnifier_capturer.take(),
-    )
+    self.magnifier_running.clone()
   }
 
   pub fn stop_magnifier(&mut self) {

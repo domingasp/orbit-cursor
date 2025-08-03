@@ -29,7 +29,6 @@ export enum Commands {
   UpdateDockOpacity = "update_dock_opacity",
   StartMagnifierCapture = "start_magnifier_capture",
   StopMagnifierCapture = "stop_magnifier_capture",
-  InitMagnifierCapturer = "init_magnifier_capturer",
   ListWindows = "list_windows",
   InitRecordingDock = "init_recording_dock",
   StartRecording = "start_recording",
