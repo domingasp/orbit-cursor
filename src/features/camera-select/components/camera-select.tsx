@@ -77,10 +77,45 @@ export const CameraSelect = () => {
       canvas.height = height;
     }
 
-    const pixels = new Uint8ClampedArray(buffer, 8);
-    void createImageBitmap(new ImageData(pixels, width, height)).then((bmp) => {
-      ctx.drawImage(bmp, 0, 0);
-    });
+    const imageData = buffer.slice(8);
+
+    if (isMJPEG(imageData)) {
+      void renderJPEGFrame(imageData);
+    } else if (isRGBA(imageData)) {
+      const pixels = new Uint8ClampedArray(buffer, 8);
+      void createImageBitmap(new ImageData(pixels, width, height)).then(
+        (bmp) => {
+          ctx.drawImage(bmp, 0, 0);
+        }
+      );
+    } else {
+      console.warn("Unrecognized frame format");
+    }
+  };
+
+  const renderJPEGFrame = async (buffer: ArrayBuffer) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+
+    const blob = new Blob([buffer], { type: "image/jpeg" });
+
+    try {
+      const imgBitmap = await createImageBitmap(blob);
+      ctx.drawImage(imgBitmap, 0, 0);
+    } catch {
+      /* ignore failed frames */
+    }
+  };
+
+  const isRGBA = (data: ArrayBuffer) => {
+    const uint8Array = new Uint8Array(data);
+    return uint8Array.length % 4 === 0;
+  };
+
+  const isMJPEG = (data: ArrayBuffer) => {
+    const uint8Array = new Uint8Array(data);
+    return uint8Array[0] === 0xff && uint8Array[1] === 0xd8;
   };
 
   const onChange = async (selectedItems: Item[], isPanelOpen: boolean) => {
@@ -95,7 +130,7 @@ export const CameraSelect = () => {
       setIsDeviceSelected(true);
       channel.current = new Channel();
       channel.current.onmessage = (message) => {
-        onFrameMessage(message as ArrayBuffer);
+        processFrame(message as ArrayBuffer);
       };
 
       startCameraStream(selectedDevice.toString(), channel.current);
@@ -104,10 +139,6 @@ export const CameraSelect = () => {
       // Give time for channel message to end
       setTimeout(clearCanvas, 30);
     }
-  };
-
-  const onFrameMessage = (message: ArrayBuffer) => {
-    latestFrameRef.current = message;
   };
 
   useEffect(() => {

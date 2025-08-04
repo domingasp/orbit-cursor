@@ -33,7 +33,6 @@ pub struct WindowDetails {
 #[tauri::command]
 pub fn list_monitors(app_handle: AppHandle) -> Vec<MonitorDetails> {
   let monitors = app_handle.available_monitors().unwrap();
-  println!("{:?}", monitors);
   let monitor_names = get_monitor_names();
 
   let mut monitor_details = Vec::new();

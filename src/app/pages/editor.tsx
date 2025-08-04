@@ -7,6 +7,7 @@ import { useShallow } from "zustand/react/shallow";
 import { Modal } from "../../components/modal/modal";
 import { useToast } from "../../components/toast/toast-provider";
 import { ExportOptions } from "../../features/export-options/components/export-options";
+import { normalizePath } from "../../features/export-options/utils/file";
 import { PreviewPlayer } from "../../features/preview-player/components/preview-player";
 import { Toolbar } from "../../features/toolbar/components/toolbar";
 import { usePlaybackStore } from "../../stores/editor/playback.store";
@@ -48,7 +49,10 @@ export const Editor = () => {
   );
 
   const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
-  const name = recordingManifest?.directory.split("/").at(-1) ?? "";
+  const name =
+    normalizePath(recordingManifest?.directory ?? "")
+      .split("/")
+      .at(-1) ?? "";
 
   useEffect(() => {
     const unlisten = listen(Events.RecordingComplete, (data) => {

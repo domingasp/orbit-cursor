@@ -11,7 +11,7 @@ use std::{
 
 use ffmpeg_sidecar::child::FfmpegChild;
 use nokhwa::{
-  utils::{CameraInfo, FrameFormat},
+  utils::{mjpeg_to_rgb, CameraInfo, FrameFormat},
   CallbackCamera,
 };
 use once_cell::sync::OnceCell;
@@ -74,6 +74,7 @@ fn spawn_camera_recorder(
   let camera_name = camera_info.human_name();
   let log_prefix = format!("[camera:{camera_name}]");
 
+  // TODO frame_format rework - camera to use wallclock timings
   let (resolution, frame_rate, frame_format) = get_camera_details(camera_info.index().clone());
   let (ffmpeg, stdin) = spawn_rawvideo_ffmpeg(
     &file_path,
@@ -81,8 +82,14 @@ fn spawn_camera_recorder(
       width: resolution.width(),
       height: resolution.height(),
       frame_rate,
-      pixel_format: camera_frame_format_to_ffmpeg(frame_format).to_string(),
-      wallclock_timestamps: false,
+      pixel_format: camera_frame_format_to_ffmpeg(if frame_format == FrameFormat::MJPEG {
+        FrameFormat::RAWRGB // MJPEG gets converted to RGB
+      } else {
+        FrameFormat::YUYV
+      })
+      .to_string(),
+      wallclock_timestamps: true,
+      set_output_rate: false,
       crop: None,
     },
     log_prefix.clone(),
@@ -130,7 +137,12 @@ fn build_camera_stream(
     }
 
     if let Some(writer) = writer.lock().as_mut() {
-      let _ = writer.write_all(frame.buffer());
+      if frame.source_frame_format() == FrameFormat::MJPEG {
+        let rgb = mjpeg_to_rgb(frame.buffer(), false).unwrap();
+        let _ = writer.write_all(&rgb);
+      } else {
+        let _ = writer.write_all(frame.buffer());
+      }
     }
   })
   .unwrap()

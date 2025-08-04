@@ -22,8 +22,11 @@
         "resizable": false,
         "shadow": true,
         "transparent": true,
+        "visible": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
         "windowEffects": {
-          "effects": ["underWindowBackground"],
+          "effects": ["underWindowBackground", "mica"],
           "radius": 10,
           "state": "active"
         }
@@ -35,7 +38,10 @@
         "decorations": false,
         "resizable": false,
         "fullscreen": false,
-        "transparent": true
+        "transparent": true,
+        "visible": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true
       },
       {
         "title": "Recording Input Options",
@@ -48,8 +54,10 @@
         "shadow": true,
         "transparent": true,
         "visible": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
         "windowEffects": {
-          "effects": ["underWindowBackground"],
+          "effects": ["underWindowBackground", "mica"],
           "radius": 10,
           "state": "active"
         }
@@ -64,6 +72,8 @@
         "shadow": false,
         "visible": false,
         "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
         "acceptFirstMouse": true
       },
       {
@@ -77,8 +87,10 @@
         "shadow": true,
         "transparent": true,
         "visible": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
         "windowEffects": {
-          "effects": ["underWindowBackground"],
+          "effects": ["underWindowBackground", "mica"],
           "radius": 10,
           "state": "active"
         }
@@ -94,8 +106,10 @@
         "shadow": true,
         "transparent": true,
         "visible": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
         "windowEffects": {
-          "effects": ["underWindowBackground"],
+          "effects": ["underWindowBackground", "mica"],
           "radius": 10,
           "state": "active"
         }

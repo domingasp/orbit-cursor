@@ -1,13 +1,20 @@
-use std::{ffi::CString, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use rdev::{Button, EventType};
 use tauri::{
+  AppHandle, Emitter, Listener, LogicalPosition, LogicalSize, Manager, State, WebviewWindow,
+  WindowEvent,
+};
+
+#[cfg(target_os = "macos")]
+use std::ffi::CString;
+#[cfg(target_os = "macos")]
+use tauri::{
   utils::config::WindowEffectsConfig,
   window::{Effect, EffectState},
-  AppHandle, Emitter, Listener, LogicalPosition, LogicalSize, Manager, State, WebviewWindow,
-  WebviewWindowBuilder, WindowEvent,
+  WebviewWindowBuilder,
 };
 
 use tokio::sync::broadcast::Receiver;
@@ -30,10 +37,12 @@ use cocoa::{
 };
 
 #[cfg(target_os = "macos")]
+use crate::constants::PanelLevel;
+#[cfg(target_os = "macos")]
 use objc::{class, msg_send, sel, sel_impl};
 
 use crate::{
-  constants::{Events, PanelLevel, WindowLabel},
+  constants::{Events, WindowLabel},
   models::EditingState,
   windows::commands::collapse_recording_source_selector,
 };
@@ -87,6 +96,11 @@ pub fn convert_to_stationary_panel(
 
   let _ = window.hide();
   panel
+}
+
+#[cfg(target_os = "windows")]
+pub fn convert_to_stationary_panel(window: &WebviewWindow) {
+  let _ = window.set_skip_taskbar(true);
 }
 
 /// Attach event listener which closes panel on `event_to_listen_for`.
@@ -307,6 +321,7 @@ pub fn animate_resize(
   target_size: LogicalSize<f64>,
   anchor: Option<Anchor>,
 ) {
+  // TODO refactor - shifts around on windows
   std::thread::spawn(move || {
     let steps = 60;
     let delay = Duration::from_millis(175 / steps);
@@ -405,7 +420,7 @@ pub fn spawn_window_close_manager(
 
             // Region source selector collapse detection
             if !is_coordinate_in_window(pos.0, pos.1, &recording_source_selector) {
-              collapse_recording_source_selector(app_handle.clone());
+              collapse_recording_source_selector(app_handle.clone(), app_handle.state());
               let _ = app_handle.emit(Events::CollapsedRecordingSourceSelector.as_ref(), ());
             }
           }

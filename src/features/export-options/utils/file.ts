@@ -74,3 +74,6 @@ export const getFilenameAndDirFromPath = async (path: string) => {
   const ext = await extname(file);
   return { dir, ext, file: file.replace(new RegExp(`\\.${ext}$`), "") };
 };
+
+/** Normalize a path to use forward-slash. */
+export const normalizePath = (path: string) => path.replace(/\\/g, "/");

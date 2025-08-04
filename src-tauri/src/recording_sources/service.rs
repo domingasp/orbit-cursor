@@ -1,9 +1,17 @@
 use std::{
-  ffi::{c_char, CStr},
-  fs::{self, File},
-  io::{self, Write},
+  ffi::OsString,
+  fs::{self},
+  io::{self},
+  os::windows::ffi::OsStringExt,
   path::PathBuf,
   sync::Arc,
+};
+
+#[cfg(target_os = "macos")]
+use std::{
+  ffi::{c_char, CStr},
+  fs::File,
+  io::Write,
 };
 
 #[cfg(target_os = "macos")]
@@ -56,6 +64,7 @@ pub fn get_visible_windows(
 
   let window_selector_folder = if let Some(app_temp_dir) = app_temp_dir {
     let dir = app_temp_dir.join("window-selector");
+    let _ = std::fs::create_dir_all(&dir);
     let _ = clear_folder_contents(&dir);
     Some(dir)
   } else {
@@ -236,25 +245,266 @@ fn get_app_icon(dir_path: PathBuf, pid: i32) -> Option<PathBuf> {
 
 #[cfg(target_os = "windows")]
 pub fn get_visible_windows(
-  monitors: Vec<Monitor>,
+  _monitors: Vec<Monitor>,
   app_temp_dir: Option<PathBuf>,
 ) -> Vec<WindowDetails> {
-  unimplemented!("Windows does not support getting visible windows")
+  use windows::Win32::Graphics::Dwm::DwmGetWindowAttribute;
+  use windows::Win32::UI::WindowsAndMessaging::{GetWindowRect, IsIconic, IsWindowVisible};
+
+  let targets = Arc::new(get_all_targets());
+  let windows_for_thumbnail_arc = Arc::new(Window::all().unwrap());
+
+  let window_selector_folder = if let Some(app_temp_dir) = app_temp_dir {
+    let dir = app_temp_dir.join("window-selector");
+    let _ = std::fs::create_dir_all(&dir);
+    let _ = clear_folder_contents(&dir);
+    Some(dir)
+  } else {
+    None
+  };
+
+  let mut all_windows = Vec::new();
+  let mut thumbnail_tasks = Vec::new();
+  for target in targets.iter() {
+    match target {
+      Target::Window(window) => {
+        if window.title.trim().is_empty() {
+          continue;
+        }
+
+        let hwnd = window.raw_handle.get_handle();
+        if unsafe { IsWindowVisible(hwnd).as_bool() } && !unsafe { IsIconic(hwnd).as_bool() } {
+          // Exclude cloaked windows
+
+          use windows::Win32::Foundation::RECT;
+          let mut cloaked: u32 = 0;
+          let result = unsafe {
+            use windows::Win32::Graphics::Dwm::DWMWA_CLOAKED;
+
+            DwmGetWindowAttribute(
+              hwnd,
+              DWMWA_CLOAKED,
+              &mut cloaked as *mut _ as *mut _,
+              std::mem::size_of::<u32>() as u32,
+            )
+          };
+
+          if result.is_ok() && cloaked != 0 {
+            continue;
+          }
+
+          let mut rect = RECT::default();
+          if unsafe { GetWindowRect(hwnd, &mut rect) }.is_ok() {
+            let window_id = window.id;
+            let window_selector_folder = window_selector_folder.clone();
+
+            let windows_for_thumbnail = Arc::clone(&windows_for_thumbnail_arc);
+
+            let mut app_icon_path: Option<PathBuf> = None;
+            let mut thumbnail_path: Option<PathBuf> = None;
+
+            if let Some(thumbnail_folder) = window_selector_folder.clone() {
+              let mut pid = 0;
+              unsafe {
+                use windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId;
+                GetWindowThreadProcessId(hwnd, Some(&mut pid));
+              };
+              app_icon_path = get_app_icon(thumbnail_folder.clone(), pid as i32);
+
+              let path = generate_thumbnail_path(thumbnail_folder);
+              thumbnail_path = Some(path.clone());
+
+              let thumbnail_task = tauri::async_runtime::spawn_blocking(move || {
+                create_and_save_thumbnail(path, window_id, windows_for_thumbnail);
+              });
+
+              thumbnail_tasks.push(thumbnail_task);
+            }
+
+            all_windows.push(WindowDetails {
+              id: window.id,
+              title: window.title.clone(),
+              app_icon_path,
+              thumbnail_path,
+              size: LogicalSize {
+                width: (rect.right - rect.left) as f64,
+                height: (rect.bottom - rect.top) as f64,
+              },
+              position: LogicalPosition {
+                x: rect.left as f64,
+                y: rect.top as f64,
+              },
+              scale_factor: 1.0, // TODO
+            });
+          }
+        }
+      }
+      Target::Display(_) => continue,
+    }
+  }
+
+  let app_handle = APP_HANDLE.get().unwrap();
+  if !thumbnail_tasks.is_empty() {
+    tauri::async_runtime::spawn(async move {
+      join_all(thumbnail_tasks).await;
+      let _ = app_handle.emit(Events::WindowThumbnailsGenerated.as_ref(), ());
+    });
+  } else {
+    let _ = app_handle.emit(Events::WindowThumbnailsGenerated.as_ref(), ());
+  }
+
+  all_windows
 }
 
-/// Estimates the display based on intersection size
-///
-/// Many edge cases not managed, down to the user to properly position their
-/// windows.
-#[cfg(target_os = "windows")]
-fn get_window_display() -> usize {
-  unimplemented!("Windows does not support getting current display for window")
-}
+// TODO
+// #[cfg(target_os = "windows")]
+// fn get_window_display() -> usize
 
 /// Fetch app icon, save to file, and return path
 #[cfg(target_os = "windows")]
 fn get_app_icon(dir_path: PathBuf, pid: i32) -> Option<PathBuf> {
-  unimplemented!("Windows does not support getting app icon for process")
+  unsafe {
+    use std::{
+      ffi::OsStr,
+      os::{raw::c_void, windows::ffi::OsStrExt},
+    };
+
+    use image::{ImageBuffer, Rgba};
+    use windows::{
+      core::PCWSTR,
+      Win32::{
+        Foundation::CloseHandle,
+        Graphics::Gdi::{
+          CreateCompatibleDC, DeleteDC, DeleteObject, GetDIBits, GetObjectW, BITMAP, BITMAPINFO,
+          BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS,
+        },
+        System::{
+          ProcessStatus::K32GetModuleFileNameExW,
+          Threading::{OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ},
+        },
+        UI::{
+          Shell::ExtractIconExW,
+          WindowsAndMessaging::{DestroyIcon, GetIconInfo, HICON, ICONINFO},
+        },
+      },
+    };
+
+    // Get exe path
+    let process_handle = match OpenProcess(
+      PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+      false,
+      pid as u32,
+    ) {
+      Ok(process_handle) => process_handle,
+      Err(_) => {
+        return None;
+      }
+    };
+
+    let mut buffer: [u16; 260] = [0; 260];
+    let len = K32GetModuleFileNameExW(process_handle, None, &mut buffer);
+    let _ = CloseHandle(process_handle);
+
+    if len == 0 {
+      return None;
+    }
+
+    let exe_path = PathBuf::from(OsString::from_wide(&buffer[..len as usize]));
+    let exe_name = exe_path.as_path().file_stem().unwrap();
+    let file_name = format!("{}.png", exe_name.to_string_lossy());
+    let file_path = dir_path.join(file_name);
+
+    // Extract icon from exe
+    let exe_wide: Vec<u16> = OsStr::new(&exe_path)
+      .encode_wide()
+      .chain(std::iter::once(0))
+      .collect();
+
+    let mut large_icon = HICON::default();
+    let icons_extracted = ExtractIconExW(
+      PCWSTR::from_raw(exe_wide.as_ptr()),
+      0,                     // icon index
+      Some(&mut large_icon), // destination
+      Some(std::ptr::null_mut()),
+      1, // extract icon
+    );
+
+    if icons_extracted == 0 || large_icon.0 as usize == 0 {
+      return None;
+    }
+
+    // Get icon color + mask bitmaps
+    let mut icon_info = ICONINFO::default();
+    if GetIconInfo(large_icon, &mut icon_info).is_err() {
+      return None;
+    }
+
+    let hdc = CreateCompatibleDC(None);
+    if hdc.0 as usize == 0 {
+      return None;
+    }
+
+    // Bitmap info
+    let mut bmp: BITMAP = std::mem::zeroed();
+    let size = std::mem::size_of::<BITMAP>() as i32;
+    if GetObjectW(icon_info.hbmColor, size, Some(&mut bmp as *mut _ as *mut _)) == 0 {
+      return None;
+    }
+
+    // Bitmap to pixels
+    let mut bmi = BITMAPINFO {
+      bmiHeader: BITMAPINFOHEADER {
+        biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+        biWidth: bmp.bmWidth,
+        biHeight: -bmp.bmHeight,
+        biPlanes: 1,
+        biBitCount: 32, // 32-bit color depth
+        biCompression: BI_RGB.0,
+        biSizeImage: 0,
+        biXPelsPerMeter: 0,
+        biYPelsPerMeter: 0,
+        biClrUsed: 0,
+        biClrImportant: 0,
+      },
+      bmiColors: [Default::default(); 1],
+    };
+
+    let mut pixels = vec![0u8; (bmp.bmWidth * bmp.bmHeight * 4) as usize];
+
+    let scan_lines = GetDIBits(
+      hdc,
+      icon_info.hbmColor,
+      0,
+      bmp.bmHeight as u32,
+      Some(pixels.as_mut_ptr() as *mut c_void),
+      &mut bmi,
+      DIB_RGB_COLORS,
+    );
+
+    if scan_lines == 0 {
+      return None;
+    }
+
+    // Clean up
+    let _ = DeleteObject(icon_info.hbmColor);
+    let _ = DeleteObject(icon_info.hbmMask);
+    let _ = DestroyIcon(large_icon);
+    let _ = DeleteDC(hdc);
+
+    // Convert BGRA -> RGBA
+    for i in 0..(bmp.bmWidth * bmp.bmHeight) as usize {
+      pixels.swap(i * 4, i * 4 + 2);
+    }
+
+    if let Some(img) =
+      ImageBuffer::<Rgba<u8>, _>::from_raw(bmp.bmWidth as u32, bmp.bmHeight as u32, pixels)
+    {
+      let _ = img.save(file_path.clone());
+      Some(file_path)
+    } else {
+      None
+    }
+  }
 }
 
 pub fn generate_thumbnail_path(dir_path: PathBuf) -> PathBuf {
@@ -277,7 +527,6 @@ fn create_and_save_thumbnail(
 
     let dyn_image = DynamicImage::ImageRgba8(thumbnail);
     let resized = dyn_image.resize(width / 5, height / 5, image::imageops::FilterType::Nearest);
-
     let _ = resized.save(&thumbnail_path);
   }
 }
@@ -295,7 +544,77 @@ pub fn get_monitor_names() -> Vec<String> {
 
 #[cfg(target_os = "windows")]
 pub fn get_monitor_names() -> Vec<String> {
-  vec![]
+  use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
+
+  log::info!("Fetching monitors");
+
+  let mut monitor_names = Vec::new();
+  let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+
+  if let Ok(display_key) = hklm.open_subkey("SYSTEM\\CurrentControlSet\\Enum\\DISPLAY") {
+    // Manufacturer
+    for manufacturer in display_key.enum_keys().flatten() {
+      if let Ok(mfg_key) = display_key.open_subkey(&manufacturer) {
+        // Devices
+        for device in mfg_key.enum_keys().flatten() {
+          if let Ok(device_key) = mfg_key.open_subkey(&device) {
+            // Device keys
+            for subkey_name in device_key.enum_keys().flatten() {
+              if subkey_name == "Device Parameters" {
+                if let Ok(params_key) = device_key.open_subkey(&subkey_name) {
+                  // Keys in Device Parameters
+                  for value_name in params_key.enum_values().flatten() {
+                    // At EDID
+                    if value_name.0 == "EDID" {
+                      use std::io::Cursor;
+
+                      let raw_edid_bytes = params_key
+                        .get_raw_value("EDID")
+                        .expect("Failed to read EDID")
+                        .bytes;
+
+                      let mut cursor = Cursor::new(raw_edid_bytes);
+                      match edid_rs::parse(&mut cursor) {
+                        Ok(edid) => {
+                          // Iterate parsed EDID data searching for string data
+                          let combined_name = edid
+                            .descriptors
+                            .0
+                            .iter()
+                            .filter_map(|descriptor| {
+                              use edid_rs::MonitorDescriptor;
+
+                              if let MonitorDescriptor::OtherString(s) = descriptor {
+                                Some(s.trim())
+                              } else {
+                                None
+                              }
+                            })
+                            .collect::<Vec<_>>()
+                            .join(" ");
+
+                          // Avoid duplicate entries, windows seems to have a registry
+                          // entry per connection path, not display
+                          if !monitor_names.contains(&combined_name) {
+                            monitor_names.push(combined_name);
+                          }
+                        }
+                        Err(e) => {
+                          log::warn!("Failed to parse EDID: {e}");
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  monitor_names
 }
 
 fn clear_folder_contents(folder_path: &PathBuf) -> io::Result<()> {

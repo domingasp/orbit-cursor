@@ -10,10 +10,11 @@ use parking_lot::Mutex;
 use tauri::{AppHandle, Emitter, Manager, State};
 use uuid::Uuid;
 
-#[cfg(target_os = "macos")]
 use std::process::Command;
 
 use crate::models::EditingState;
+#[cfg(target_os = "windows")]
+use crate::recording::ffmpeg::get_hardware_encoder;
 use crate::{constants::Events, recording::models::RecordingFile};
 
 pub fn encode_recording(
@@ -24,6 +25,7 @@ pub fn encode_recording(
   separate_camera_file: bool,
   open_folder_after_export: bool,
 ) {
+  log::info!("Starting export to {destination_file_path:?}");
   let mut child = FfmpegCommand::new();
 
   let available_streams = check_recording_files(source_folder_path.as_path());
@@ -93,16 +95,21 @@ pub fn encode_recording(
 
     let status = ffmpeg_arc.lock().wait(); // Clean up resources
 
-    let success = status.as_ref().map(|s| s.success()).unwrap_or(false);
+    match status {
+      Ok(exit_status) => {
+        if exit_status.success() {
+          log::info!("Successful export");
+          let _ = app_handle.emit(Events::ExportComplete.as_ref(), output_path.clone());
 
-    if success {
-      let _ = app_handle.emit(Events::ExportComplete.as_ref(), output_path.clone());
-
-      if open_folder_after_export {
-        open_path_in_file_browser(output_path);
+          if open_folder_after_export {
+            open_path_in_file_browser(output_path);
+          }
+        } else {
+          log::info!("Export cancelled {:?}", exit_status.code());
+          handle_cancellation(output_path, camera_path);
+        }
       }
-    } else {
-      handle_cancellation(output_path, camera_path);
+      Err(e) => log::warn!("Failed to export {e}"),
     }
   });
 }
@@ -250,8 +257,11 @@ fn configure_output_options(ffmpeg: &mut FfmpegCommand, destination_file_path: &
     ffmpeg.args(["-b:v", "12000k", "-profile:v", "high"]);
   }
 
-  #[cfg(not(target_os = "macos"))]
-  ffmpeg.codec_video("libx264").crf(20); // Software backed
+  #[cfg(target_os = "windows")]
+  ffmpeg
+    .codec_video(get_hardware_encoder())
+    .crf(20)
+    .args(["-b:v", "12000k"]);
 
   ffmpeg.pix_fmt("yuv420p");
   ffmpeg.codec_audio("aac");
@@ -393,5 +403,5 @@ pub fn open_path_in_file_browser(path: PathBuf) {
   let _ = Command::new("open").arg(target).status();
 
   #[cfg(target_os = "windows")]
-  unimplemented!("Windows does not support opening folders after export")
+  let _ = Command::new("explorer").arg(target).status();
 }

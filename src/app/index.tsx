@@ -2,7 +2,7 @@ import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
 
 import { checkPermissions } from "../api/permissions";
-import { rehydrateHotkeyStore } from "../stores/hotkeys.store";
+import { getPlatform, rehydrateHotkeyStore } from "../stores/hotkeys.store";
 import { Permissions, usePermissionsStore } from "../stores/permissions.store";
 import { rehydrateRecordingStateStore } from "../stores/recording-state.store";
 import { updateStandaloneListBoxStore } from "../stores/standalone-listbox.store";
@@ -19,6 +19,7 @@ export const App = () => {
   const [unlisten, setUnlisten] = useState<UnlistenFn | null>(null);
 
   const setupPermissions = async () => {
+    if (getPlatform() !== "macos") return;
     const prefetch = await checkPermissions();
     setPermissions(prefetch);
     setCanUnlock(prefetch);

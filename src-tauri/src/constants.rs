@@ -3,6 +3,7 @@ use strum_macros::{AsRefStr, Display, EnumString};
 pub mod store {
   pub const STORE_NAME: &str = "orbit-cursor-store.json";
   pub const FIRST_RUN: &str = "firstRun";
+  #[cfg(target_os = "macos")]
   pub const NATIVE_REQUESTABLE_PERMISSIONS: &str = "nativeRequestablePermissions";
 }
 
@@ -84,6 +85,7 @@ pub enum WindowLabel {
   Editor,
 }
 
+#[cfg(target_os = "macos")]
 #[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PanelLevel {
@@ -97,6 +99,7 @@ pub enum PanelLevel {
   RecordingDock = 8,
 }
 
+#[cfg(target_os = "macos")]
 impl PanelLevel {
   pub fn value(self) -> i32 {
     self as i32
