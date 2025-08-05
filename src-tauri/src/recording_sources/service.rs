@@ -1,11 +1,12 @@
 use std::{
-  ffi::OsString,
   fs::{self},
   io::{self},
-  os::windows::ffi::OsStringExt,
   path::PathBuf,
   sync::Arc,
 };
+
+#[cfg(target_os = "windows")]
+use std::{ffi::OsString, os::windows::ffi::OsStringExt};
 
 #[cfg(target_os = "macos")]
 use std::{

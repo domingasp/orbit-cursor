@@ -184,7 +184,7 @@ pub fn run() {
     .setup(|app: &mut App| {
       let store = tauri::async_runtime::block_on(setup_store(app));
 
-      let app_handle: &AppHandle = app.handle();
+      let app_handle = app.handle().clone();
 
       init_system_tray(app_handle.clone())?;
       init_start_recording_dock(app_handle.clone());

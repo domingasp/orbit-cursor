@@ -38,7 +38,7 @@ tauri-plugin-store = "2"
 cpal = { git = "https://github.com/domingasp/cpal.git" }
 yuv = "0.8.4"
 once_cell = "1.21.3"
-scap = { git = "https://github.com/domingasp/scap", rev = "afbc394930477b18a4110286974e692be9a59bd8" }
+scap = { git = "https://github.com/domingasp/scap", rev = "1448fcce453ac06b077a0e07f190a3874115cdbb" }
 base64 = "0.22.1"
 futures = "0.3.31"
 xcap = "0.6.0"

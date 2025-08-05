@@ -5389,7 +5389,7 @@ dependencies = [
 [[package]]
 name = "scap"
 version = "0.0.8"
-source = "git+https://github.com/domingasp/scap?rev=afbc394930477b18a4110286974e692be9a59bd8#afbc394930477b18a4110286974e692be9a59bd8"
+source = "git+https://github.com/domingasp/scap?rev=1448fcce453ac06b077a0e07f190a3874115cdbb#1448fcce453ac06b077a0e07f190a3874115cdbb"
 dependencies = [
  "cocoa 0.25.0",
  "core-graphics-helmer-fork",
