@@ -84,13 +84,15 @@ pub fn list_monitors(app_handle: AppHandle) -> Vec<MonitorDetails> {
 
 #[tauri::command]
 pub async fn list_windows(app_handle: AppHandle, generate_thumbnails: bool) {
-  let app_temp_dir = app_handle.path().temp_dir().unwrap().join("OrbitCursor");
-  get_visible_windows(
-    app_handle.available_monitors().unwrap(),
-    if generate_thumbnails {
-      Some(app_temp_dir)
-    } else {
-      None
-    },
-  );
+  let app_temp_dir = if generate_thumbnails {
+    Some(app_handle.path().temp_dir().unwrap().join("OrbitCursor"))
+  } else {
+    None
+  };
+
+  #[cfg(target_os = "macos")]
+  get_visible_windows(app_handle.available_monitors().unwrap(), app_temp_dir);
+
+  #[cfg(target_os = "windows")]
+  get_visible_windows(app_temp_dir);
 }

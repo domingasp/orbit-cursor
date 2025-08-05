@@ -207,8 +207,15 @@ fn get_monitor_details(monitor_name: &str) -> (LogicalPosition<f64>, PhysicalSiz
 }
 
 fn get_window_target(window_id: u32) -> Option<(Target, f64, f64, LogicalPosition<f64>)> {
-  let app_handle = APP_HANDLE.get().unwrap();
-  let visible_windows = get_os_visible_windows(&app_handle.clone().available_monitors().unwrap());
+  #[cfg(target_os = "macos")]
+  let visible_windows = {
+    let app_handle = APP_HANDLE.get().unwrap();
+    get_os_visible_windows(&app_handle.clone().available_monitors().unwrap())
+  };
+
+  #[cfg(target_os = "windows")]
+  let visible_windows = get_os_visible_windows();
+
   let window_metadata = visible_windows.into_iter().find(|w| w.id == window_id)?;
 
   let size: PhysicalSize<f64> = window_metadata

@@ -6,6 +6,8 @@ use std::{
 };
 
 use parking_lot::Mutex;
+#[cfg(target_os = "windows")]
+use windows::Win32::Foundation::HWND;
 
 #[cfg(target_os = "windows")]
 use std::{ffi::OsString, os::windows::ffi::OsStringExt};
@@ -35,22 +37,29 @@ use futures::future::join_all;
 use image::DynamicImage;
 
 use scap::{get_all_targets, Target};
-use tauri::{Emitter, LogicalPosition, LogicalSize, Monitor};
+use tauri::{Emitter, LogicalPosition, LogicalSize};
 use uuid::Uuid;
 use xcap::Window;
 
+#[cfg(target_os = "windows")]
+use crate::recording_sources::commands::WindowMetadata;
 #[cfg(target_os = "macos")]
 use crate::recording_sources::commands::WindowMetadata;
 use crate::{constants::Events, APP_HANDLE};
+#[cfg(target_os = "macos")]
+use tauri::Monitor;
 
 use super::commands::WindowDetails;
 
 /// Return data for visible windows.
 ///
 /// Icons and preview thumbnails are saved under `{app_temp_dir}/window-selector`.
-/// If no dir provided no thumbnails will be generated. Emits `WindowThumbnailsGenerated`.
-#[cfg(target_os = "macos")] // TODO generalize for windows
-pub fn get_visible_windows(monitors: Vec<Monitor>, app_temp_dir: Option<PathBuf>) {
+/// If no dir provided no thumbnails will be generated. Emits `WindowThumbnailsGenerated`
+/// with window data.
+pub fn get_visible_windows(
+  #[cfg(target_os = "macos")] monitors: Vec<Monitor>,
+  app_temp_dir: Option<PathBuf>,
+) {
   let targets = Arc::new(get_all_targets());
   let available_windows_for_thumbnail = Arc::new(xcap::Window::all().unwrap());
   let mut window_detail_tasks = Vec::new();
@@ -66,7 +75,11 @@ pub fn get_visible_windows(monitors: Vec<Monitor>, app_temp_dir: Option<PathBuf>
 
   let windows_detail_results = Arc::new(Mutex::new(Vec::new()));
 
+  #[cfg(target_os = "macos")]
   let os_windows = get_os_visible_windows(&monitors);
+  #[cfg(target_os = "windows")]
+  let os_windows = get_os_visible_windows();
+
   for window in os_windows {
     let window_pid = window.pid;
     let window_id = window.id;
@@ -263,125 +276,103 @@ pub fn get_os_visible_windows(monitors: &[Monitor]) -> Vec<WindowMetadata> {
   visible_windows
 }
 
-// TODO
 #[cfg(target_os = "windows")]
-fn get_os_visible_windows() -> Vec<WindowDetails> {}
-#[cfg(target_os = "windows")]
-pub fn get_visible_windows(
-  _monitors: Vec<Monitor>,
-  app_temp_dir: Option<PathBuf>,
-) -> Vec<WindowDetails> {
-  use windows::Win32::Graphics::Dwm::DwmGetWindowAttribute;
-  use windows::Win32::UI::WindowsAndMessaging::{GetWindowRect, IsIconic, IsWindowVisible};
-
-  let targets = Arc::new(get_all_targets());
-  let windows_for_thumbnail_arc = Arc::new(Window::all().unwrap());
-
-  let window_selector_folder = if let Some(app_temp_dir) = app_temp_dir {
-    let dir = app_temp_dir.join("window-selector");
-    let _ = std::fs::create_dir_all(&dir);
-    let _ = clear_folder_contents(&dir);
-    Some(dir)
-  } else {
-    None
+pub fn get_os_visible_windows() -> Vec<WindowMetadata> {
+  use windows::Win32::Foundation::RECT;
+  use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED};
+  use windows::Win32::UI::WindowsAndMessaging::{
+    GetWindowRect, GetWindowThreadProcessId, IsIconic, IsWindowVisible,
   };
 
-  let mut all_windows = Vec::new();
-  let mut thumbnail_tasks = Vec::new();
-  for target in targets.iter() {
+  let mut visible_windows = Vec::new();
+  let targets = get_all_targets();
+
+  for target in targets {
     match target {
       Target::Window(window) => {
-        if window.title.trim().is_empty() {
+        if window.title.is_empty() {
           continue;
         }
 
         let hwnd = window.raw_handle.get_handle();
-        if unsafe { IsWindowVisible(hwnd).as_bool() } && !unsafe { IsIconic(hwnd).as_bool() } {
-          // Exclude cloaked windows
-
-          use windows::Win32::Foundation::RECT;
-          let mut cloaked: u32 = 0;
-          let result = unsafe {
-            use windows::Win32::Graphics::Dwm::DWMWA_CLOAKED;
-
-            DwmGetWindowAttribute(
-              hwnd,
-              DWMWA_CLOAKED,
-              &mut cloaked as *mut _ as *mut _,
-              std::mem::size_of::<u32>() as u32,
-            )
-          };
-
-          if result.is_ok() && cloaked != 0 {
-            continue;
-          }
-
-          let mut rect = RECT::default();
-          if unsafe { GetWindowRect(hwnd, &mut rect) }.is_ok() {
-            let window_id = window.id;
-            let window_selector_folder = window_selector_folder.clone();
-
-            let windows_for_thumbnail = Arc::clone(&windows_for_thumbnail_arc);
-
-            let mut app_icon_path: Option<PathBuf> = None;
-            let mut thumbnail_path: Option<PathBuf> = None;
-
-            if let Some(thumbnail_folder) = window_selector_folder.clone() {
-              let mut pid = 0;
-              unsafe {
-                use windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId;
-                GetWindowThreadProcessId(hwnd, Some(&mut pid));
-              };
-              app_icon_path = get_app_icon(thumbnail_folder.clone(), pid as i32);
-
-              let path = generate_thumbnail_path(thumbnail_folder);
-              thumbnail_path = Some(path.clone());
-
-              let thumbnail_task = tauri::async_runtime::spawn_blocking(move || {
-                create_and_save_thumbnail(path, window_id, windows_for_thumbnail);
-              });
-
-              thumbnail_tasks.push(thumbnail_task);
-            }
-
-            all_windows.push(WindowDetails {
-              id: window.id,
-              title: window.title.clone(),
-              app_icon_path,
-              thumbnail_path,
-              size: LogicalSize {
-                width: (rect.right - rect.left) as f64,
-                height: (rect.bottom - rect.top) as f64,
-              },
-              position: LogicalPosition {
-                x: rect.left as f64,
-                y: rect.top as f64,
-              },
-              scale_factor: 1.0, // TODO
-            });
-          }
+        if unsafe { !IsWindowVisible(hwnd).as_bool() } || unsafe { IsIconic(hwnd).as_bool() } {
+          continue;
         }
+
+        let mut cloaked: u32 = 0;
+        if unsafe {
+          DwmGetWindowAttribute(
+            hwnd,
+            DWMWA_CLOAKED,
+            &mut cloaked as *mut _ as *mut _,
+            std::mem::size_of::<u32>() as u32,
+          )
+        }
+        .is_err()
+        {
+          continue;
+        }
+
+        if cloaked != 0 {
+          continue;
+        }
+
+        let mut rect = RECT::default();
+        if unsafe { GetWindowRect(hwnd, &mut rect) }.is_err() {
+          continue;
+        }
+
+        let mut pid = 0;
+        unsafe {
+          GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        };
+
+        visible_windows.push(WindowMetadata {
+          id: window.id,
+          title: window.title.clone(),
+          size: LogicalSize {
+            width: (rect.right - rect.left) as f64,
+            height: (rect.bottom - rect.top) as f64,
+          },
+          position: LogicalPosition {
+            x: rect.left as f64,
+            y: rect.top as f64,
+          },
+          scale_factor: get_window_display_scale_factor(hwnd),
+          pid: Some(pid as i32),
+        });
       }
       Target::Display(_) => continue,
-    }
+    };
   }
 
-  let app_handle = APP_HANDLE.get().unwrap();
-  if !thumbnail_tasks.is_empty() {
-    tauri::async_runtime::spawn(async move {
-      join_all(thumbnail_tasks).await;
-      let _ = app_handle.emit(Events::WindowThumbnailsGenerated.as_ref(), ());
-    });
-  } else {
-    let _ = app_handle.emit(Events::WindowThumbnailsGenerated.as_ref(), ());
-  }
-
-  all_windows
+  visible_windows
 }
 
-// TODO
-// #[cfg(target_os = "windows")]
-// fn get_window_display() -> usize
+#[cfg(target_os = "windows")]
+fn get_window_display_scale_factor(hwnd: HWND) -> f64 {
+  use windows::Win32::Graphics::Gdi::MonitorFromWindow;
+
+  unsafe {
+    use windows::Win32::{
+      Graphics::Gdi::MONITOR_DEFAULTTONEAREST,
+      UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI},
+    };
+
+    let monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    if monitor.0 as i32 == 0 {
+      return 1.0;
+    }
+
+    let mut dpi_x = 0;
+    let mut dpi_y = 0;
+    if GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &mut dpi_x, &mut dpi_y).is_err() {
+      return 1.0;
+    }
+
+    dpi_x as f64 / 96.0 // DPI scale 96 = 100%
+  }
+}
 
 /// Fetch app icon, save to file, and return path
 #[cfg(target_os = "windows")]
@@ -443,22 +434,22 @@ fn get_app_icon(dir_path: PathBuf, pid: i32) -> Option<PathBuf> {
       .chain(std::iter::once(0))
       .collect();
 
-    let mut large_icon = HICON::default();
+    let mut icon = HICON::default();
     let icons_extracted = ExtractIconExW(
       PCWSTR::from_raw(exe_wide.as_ptr()),
-      0,                     // icon index
-      Some(&mut large_icon), // destination
+      0,               // icon index
+      Some(&mut icon), // destination
       Some(std::ptr::null_mut()),
       1, // extract icon
     );
 
-    if icons_extracted == 0 || large_icon.0 as usize == 0 {
+    if icons_extracted == 0 || icon.0 as usize == 0 {
       return None;
     }
 
     // Get icon color + mask bitmaps
     let mut icon_info = ICONINFO::default();
-    if GetIconInfo(large_icon, &mut icon_info).is_err() {
+    if GetIconInfo(icon, &mut icon_info).is_err() {
       return None;
     }
 
@@ -511,7 +502,7 @@ fn get_app_icon(dir_path: PathBuf, pid: i32) -> Option<PathBuf> {
     // Clean up
     let _ = DeleteObject(icon_info.hbmColor);
     let _ = DeleteObject(icon_info.hbmMask);
-    let _ = DestroyIcon(large_icon);
+    let _ = DestroyIcon(icon);
     let _ = DeleteDC(hdc);
 
     // Convert BGRA -> RGBA

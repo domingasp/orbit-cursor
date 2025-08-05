@@ -88,7 +88,7 @@ export const RecordingSourceSelector = () => {
       });
 
       if (selectedWindow !== null) {
-        listWindows(false); // Refetch windows anytime dock is reopened
+        void listWindows(false); // Refetch windows anytime dock is reopened
       }
     }
   }, [startRecordingDockOpened]);

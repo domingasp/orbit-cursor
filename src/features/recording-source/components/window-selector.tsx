@@ -37,7 +37,7 @@ export const WindowSelector = ({
   useEffect(() => {
     setThumbnailsGenerated(false);
     if (isExpanded) {
-      listWindows(true);
+      void listWindows(true);
     }
   }, [isExpanded]);
 
@@ -60,9 +60,9 @@ export const WindowSelector = ({
 
   return (
     <div className="grid grid-cols-4 gap-2 p-4">
-      {windows.map((window) => (
+      {windows.map((window, i) => (
         <Button
-          key={window.id}
+          key={`${window.id.toString()}-${i.toString()}`}
           className="relative flex flex-col items-start border-content-fg/5 border-1"
           color="info"
           variant={selectedWindow?.id === window.id ? "soft" : "ghost"}
@@ -70,12 +70,12 @@ export const WindowSelector = ({
             onSelect(window);
           }}
         >
-          <div className="flex flex-row gap-1 items-center max-w-full sticky top-2">
+          <div className="flex flex-row gap-2 items-center max-w-full sticky top-2">
             {window.appIconPath && (
               <img
-                height={32}
+                height={18}
                 src={convertFileSrc(window.appIconPath)}
-                width={32}
+                width={18}
               />
             )}
             <span className="truncate text-content-fg text-xs">
