@@ -186,13 +186,11 @@ pub fn run() {
 
       let app_handle = app.handle().clone();
 
+      #[cfg(target_os = "windows")]
       init_system_tray(app_handle.clone())?;
       init_start_recording_dock(app_handle.clone());
       spawn_window_close_manager(app_handle.clone(), input_event_tx.subscribe());
       editor_close_listener(&app_handle.clone());
-
-      #[cfg(target_os = "macos")]
-      app.set_activation_policy(tauri::ActivationPolicy::Accessory); // Removes dock icon
 
       tauri::async_runtime::block_on(async {
         #[cfg(target_os = "macos")]
@@ -200,10 +198,14 @@ pub fn run() {
           let has_required = ensure_permissions().await;
           if !has_required {
             open_permissions(app.handle()).await;
-            show_start_recording_dock(app.handle().clone(), app.state(), app.state(), app.state());
           } else if matches!(store.get(FIRST_RUN), Some(Value::Bool(true))) {
             store.set(FIRST_RUN, json!(false));
             show_start_recording_dock(app.handle().clone(), app.state(), app.state(), app.state());
+          }
+
+          if has_required {
+            init_system_tray(app_handle.clone()).ok();
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory); // Removes dock icon
           }
         }
 

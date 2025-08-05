@@ -20,6 +20,7 @@ import { Separator } from "../../../components/separator/separator";
 import { Sparkles } from "../../../components/sparkles/sparkles";
 import { clearInteractionAttributes } from "../../../lib/styling";
 import { getPlatform } from "../../../stores/hotkeys.store";
+import { usePermissionsStore } from "../../../stores/permissions.store";
 import {
   RecordingType,
   useRecordingStateStore,
@@ -50,6 +51,9 @@ export const RecordingControls = () => {
       state.windows[AppWindow.StartRecordingDock],
       state.setWindowOpenState,
     ])
+  );
+  const hasRequiredPermissions = usePermissionsStore(
+    (state) => state.hasRequired
   );
 
   const [
@@ -144,7 +148,7 @@ export const RecordingControls = () => {
       selectedMonitor &&
       recordingType === RecordingType.Region
     ) {
-      if (getPlatform() === "macos") {
+      if (getPlatform() === "macos" && hasRequiredPermissions()) {
         showRegionSelector(selectedMonitor.position, selectedMonitor.size);
       } else {
         /* windows requires proper positioning to avoid blocking the recording dock */

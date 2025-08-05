@@ -27,6 +27,7 @@ export type Permissions = z.infer<typeof PermissionsSchema>;
 
 type PermissionsState = {
   canUnlock: boolean;
+  hasRequired: () => boolean;
   permissions: Permissions;
   setCanUnlock: (permissions: Permissions) => void;
   setPermissions: (permissions: Permissions) => void;
@@ -37,6 +38,11 @@ export const usePermissionsStore = create<PermissionsState>()(
     (set, get) => ({
       // Only `MacOS` has permissions
       canUnlock: getPlatform() !== "macos",
+      hasRequired: () =>
+        getPlatform() === "windows"
+          ? true
+          : get().permissions.screen.hasAccess &&
+            get().permissions.accessibility.hasAccess,
       permissions: {
         [PermissionType.Accessibility]: {
           canRequest: true,
