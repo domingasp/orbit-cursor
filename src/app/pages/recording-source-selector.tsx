@@ -49,6 +49,7 @@ export const RecordingSourceSelector = () => {
   );
 
   const [isExpanded, setIsExpanded] = useState(false);
+  const [windows, setWindows] = useState<WindowDetails[]>([]);
 
   const onSelect = (source: MonitorDetails | WindowDetails | null) => {
     if (source === null || "thumbnailPath" in source) {
@@ -87,14 +88,30 @@ export const RecordingSourceSelector = () => {
       });
 
       if (selectedWindow !== null) {
-        void listWindows(isExpanded).then((windows) => {
-          const doesSelectedExist =
-            windows.findIndex((x) => x.id === selectedWindow.id) > -1;
-          if (!doesSelectedExist) setSelectedWindow(null);
-        });
+        listWindows(false); // Refetch windows anytime dock is reopened
       }
     }
-  }, [startRecordingDockOpened, isExpanded]);
+  }, [startRecordingDockOpened]);
+
+  useEffect(() => {
+    const unlisten = listen(Events.WindowThumbnailsGenerated, (result) => {
+      // Fetching here due to conditional rendering, we need to verify
+      // window still exists on reloading
+      setWindows(result.payload as WindowDetails[]);
+
+      if (selectedWindow) {
+        const doesSelectedExist =
+          windows.findIndex((x) => x.id === selectedWindow.id) > -1;
+        if (!doesSelectedExist) setSelectedWindow(null);
+      }
+    });
+
+    return () => {
+      void unlisten.then((f) => {
+        f();
+      });
+    };
+  }, []);
 
   useEffect(() => {
     const unlisten = listen(Events.CollapsedRecordingSourceSelector, () => {
@@ -126,6 +143,7 @@ export const RecordingSourceSelector = () => {
               isExpanded={isExpanded}
               onSelect={onSelect}
               selectedWindow={selectedWindow}
+              windows={windows}
             />
           </SelectorWrapper>
         ) : (

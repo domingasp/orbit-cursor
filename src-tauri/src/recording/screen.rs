@@ -23,7 +23,7 @@ use crate::{
     ffmpeg::{spawn_rawvideo_ffmpeg, FfmpegInputDetails},
     models::{RecordingType, Region, ScreenCaptureDetails, StreamSync},
   },
-  recording_sources::{commands::list_monitors, service::get_visible_windows},
+  recording_sources::{commands::list_monitors, service::get_os_visible_windows},
   screen_capture::service::{get_app_targets, get_display},
   APP_HANDLE,
 };
@@ -208,17 +208,19 @@ fn get_monitor_details(monitor_name: &str) -> (LogicalPosition<f64>, PhysicalSiz
 
 fn get_window_target(window_id: u32) -> Option<(Target, f64, f64, LogicalPosition<f64>)> {
   let app_handle = APP_HANDLE.get().unwrap();
-  let windows = get_visible_windows(app_handle.clone().available_monitors().unwrap(), None);
-  let window_details = windows.into_iter().find(|w| w.id == window_id)?;
+  let visible_windows = get_os_visible_windows(&app_handle.clone().available_monitors().unwrap());
+  let window_metadata = visible_windows.into_iter().find(|w| w.id == window_id)?;
 
-  let size: PhysicalSize<f64> = window_details.size.to_physical(window_details.scale_factor);
+  let size: PhysicalSize<f64> = window_metadata
+    .size
+    .to_physical(window_metadata.scale_factor);
   let target = get_window(window_id)?;
 
   Some((
     target,
     size.width as f64,
     size.height as f64,
-    window_details.position,
+    window_metadata.position,
   ))
 }
 

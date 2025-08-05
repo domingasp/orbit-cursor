@@ -1,9 +1,11 @@
 use std::{
   fs::{self},
   io::{self},
-  path::PathBuf,
+  path::{Path, PathBuf},
   sync::Arc,
 };
+
+use parking_lot::Mutex;
 
 #[cfg(target_os = "windows")]
 use std::{ffi::OsString, os::windows::ffi::OsStringExt};
@@ -37,6 +39,8 @@ use tauri::{Emitter, LogicalPosition, LogicalSize, Monitor};
 use uuid::Uuid;
 use xcap::Window;
 
+#[cfg(target_os = "macos")]
+use crate::recording_sources::commands::WindowMetadata;
 use crate::{constants::Events, APP_HANDLE};
 
 use super::commands::WindowDetails;
@@ -45,23 +49,11 @@ use super::commands::WindowDetails;
 ///
 /// Icons and preview thumbnails are saved under `{app_temp_dir}/window-selector`.
 /// If no dir provided no thumbnails will be generated. Emits `WindowThumbnailsGenerated`.
-#[cfg(target_os = "macos")]
-pub fn get_visible_windows(
-  monitors: Vec<Monitor>,
-  app_temp_dir: Option<PathBuf>,
-) -> Vec<WindowDetails> {
+#[cfg(target_os = "macos")] // TODO generalize for windows
+pub fn get_visible_windows(monitors: Vec<Monitor>, app_temp_dir: Option<PathBuf>) {
   let targets = Arc::new(get_all_targets());
-
-  // no sync method for current, this is the correct approach - https://github.com/yury/cidre/discussions/26
-  let (tx, rx) = std::sync::mpsc::channel();
-  sc::ShareableContent::current_with_ch(move |res, _err| {
-    tx.send(res.unwrap().retained()).unwrap();
-  });
-
-  let shareable_content = rx.recv().unwrap();
-  let shareable_displays = shareable_content.displays();
-  let shareable_windows = shareable_content.windows();
-  let windows_for_thumbnail_arc = Arc::new(Window::all().unwrap());
+  let available_windows_for_thumbnail = Arc::new(xcap::Window::all().unwrap());
+  let mut window_detail_tasks = Vec::new();
 
   let window_selector_folder = if let Some(app_temp_dir) = app_temp_dir {
     let dir = app_temp_dir.join("window-selector");
@@ -72,72 +64,66 @@ pub fn get_visible_windows(
     None
   };
 
-  let mut all_windows = Vec::new();
-  let mut thumbnail_tasks = Vec::new();
-  for window in shareable_windows.iter() {
-    if let Some(title) = window.title() {
-      if !title.is_empty() && window.window_layer() == 0 && window.is_on_screen() {
-        let title = title.to_string();
-        let app_pid = window.owning_app().unwrap().process_id();
-        let window_id = window.id();
-        let frame = window.frame();
-        let targets = Arc::clone(&targets);
-        let window_selector_folder = window_selector_folder.clone();
+  let windows_detail_results = Arc::new(Mutex::new(Vec::new()));
 
-        let window_display_index = get_window_display(&shareable_displays, frame);
-        let scale_factor = monitors[window_display_index].scale_factor();
+  let os_windows = get_os_visible_windows(&monitors);
+  for window in os_windows {
+    let window_pid = window.pid;
+    let window_id = window.id;
 
-        let windows_for_thumbnail = Arc::clone(&windows_for_thumbnail_arc);
+    let target_id = match targets.iter().find_map(|t| match t {
+      Target::Window(window_target) if window_target.title == window.title => {
+        Some(window_target.id)
+      }
+      _ => None,
+    }) {
+      Some(target_id) => target_id,
+      None => continue,
+    };
 
-        let mut app_icon_path: Option<PathBuf> = None;
-        let mut thumbnail_path: Option<PathBuf> = None;
+    let available_windows_for_thumbnail = available_windows_for_thumbnail.clone();
+    let window_selector_folder = window_selector_folder.clone();
+    let windows_detail_results_for_task = windows_detail_results.clone();
+    window_detail_tasks.push(tauri::async_runtime::spawn_blocking(move || {
+      let mut app_icon_path: Option<PathBuf> = None;
+      let mut thumbnail_path: Option<PathBuf> = None;
 
-        if let Some(thumbnail_folder) = window_selector_folder.clone() {
-          app_icon_path = get_app_icon(thumbnail_folder.clone(), app_pid);
-
-          let path = generate_thumbnail_path(thumbnail_folder);
-          thumbnail_path = Some(path.clone());
-
-          let thumbnail_task = tauri::async_runtime::spawn_blocking(move || {
-            create_and_save_thumbnail(path, window_id, windows_for_thumbnail)
-          });
-
-          thumbnail_tasks.push(thumbnail_task);
+      if let Some(folder) = &window_selector_folder {
+        thumbnail_path = Some(generate_unique_path(folder));
+        if let Some(thumbnail_path) = &thumbnail_path {
+          create_and_save_thumbnail(thumbnail_path, window_id, available_windows_for_thumbnail);
         }
 
-        let target_id = targets.iter().find_map(|t| match t {
-          Target::Window(window_target) if window_target.title == title => Some(window_target.id),
-          _ => None,
-        });
-
-        all_windows.push(WindowDetails {
-          id: target_id.unwrap_or_default(),
-          title,
-          app_icon_path,
-          thumbnail_path,
-          size: LogicalSize::new(frame.size.width, frame.size.height),
-          position: LogicalPosition::new(frame.origin.x, frame.origin.y),
-          scale_factor,
-        });
+        if let Some(pid) = window_pid {
+          app_icon_path = get_app_icon(folder.clone(), pid);
+        }
       }
-    }
+
+      let mut details = WindowDetails::from_metadata(window, app_icon_path, thumbnail_path);
+      details.id = target_id;
+      windows_detail_results_for_task.lock().push(details);
+    }));
   }
 
-  let app_handle = APP_HANDLE.get().unwrap();
-  if !thumbnail_tasks.is_empty() {
-    let app_handle = app_handle.clone();
-    // Use async runtime for faster thumbnail generation
+  let app_handle = APP_HANDLE.get().unwrap().clone();
+  if !window_detail_tasks.is_empty() {
     tauri::async_runtime::spawn(async move {
-      join_all(thumbnail_tasks).await;
-
-      let _ = app_handle.emit(Events::WindowThumbnailsGenerated.as_ref(), ());
+      join_all(window_detail_tasks).await;
+      let mut details = windows_detail_results.lock().clone();
+      details.sort_by_key(|w| (w.app_icon_path.clone(), w.title.clone()));
+      app_handle
+        .emit(Events::WindowThumbnailsGenerated.as_ref(), details)
+        .ok();
     });
   } else {
-    let app_handle = app_handle.clone();
-    let _ = app_handle.emit(Events::WindowThumbnailsGenerated.as_ref(), ());
+    let mut details = windows_detail_results.lock().clone();
+    details.sort_by_key(|w| (w.app_icon_path.clone(), w.title.clone()));
+    app_handle
+      .emit(Events::WindowThumbnailsGenerated.as_ref(), details)
+      .ok();
   }
 
-  all_windows
+  // windows_details
 }
 
 #[cfg(target_os = "macos")]
@@ -230,11 +216,6 @@ fn get_app_icon(dir_path: PathBuf, pid: i32) -> Option<PathBuf> {
 
     let slice = std::slice::from_raw_parts(bytes, length);
 
-    if let Err(e) = fs::create_dir_all(&dir_path) {
-      eprintln!("Failed to create directory: {e}");
-      return None;
-    }
-
     if let Err(e) = File::create(&file_path).and_then(|mut f| f.write_all(slice)) {
       eprintln!("Failed to write PNG file: {e}");
       return None;
@@ -244,6 +225,47 @@ fn get_app_icon(dir_path: PathBuf, pid: i32) -> Option<PathBuf> {
   }
 }
 
+#[cfg(target_os = "macos")]
+pub fn get_os_visible_windows(monitors: &[Monitor]) -> Vec<WindowMetadata> {
+  let mut visible_windows = Vec::new();
+
+  // no sync method for current, this is the correct approach - https://github.com/yury/cidre/discussions/26
+  let (tx, rx) = std::sync::mpsc::channel();
+  sc::ShareableContent::current_with_ch(move |res, _err| {
+    tx.send(res.unwrap().retained()).unwrap();
+  });
+
+  let content = rx.recv().unwrap();
+  let displays = content.displays();
+  let windows = content.windows();
+
+  for window in windows.iter() {
+    if let Some(title) = window.title() {
+      if title.is_empty() || window.window_layer() != 0 || !window.is_on_screen() {
+        continue;
+      }
+
+      let frame = window.frame();
+      let display_index = get_window_display(&displays, frame);
+      let scale_factor = monitors[display_index].scale_factor();
+
+      visible_windows.push(WindowMetadata {
+        id: window.id(),
+        title: title.to_string(),
+        size: LogicalSize::new(frame.size.width, frame.size.height),
+        position: LogicalPosition::new(frame.origin.x, frame.origin.y),
+        scale_factor,
+        pid: Some(window.owning_app().unwrap().process_id()),
+      });
+    }
+  }
+
+  visible_windows
+}
+
+// TODO
+#[cfg(target_os = "windows")]
+fn get_os_visible_windows() -> Vec<WindowDetails> {}
 #[cfg(target_os = "windows")]
 pub fn get_visible_windows(
   _monitors: Vec<Monitor>,
@@ -508,14 +530,14 @@ fn get_app_icon(dir_path: PathBuf, pid: i32) -> Option<PathBuf> {
   }
 }
 
-pub fn generate_thumbnail_path(dir_path: PathBuf) -> PathBuf {
+pub fn generate_unique_path(dir_path: &Path) -> PathBuf {
   let uuid = Uuid::new_v4();
   dir_path.join(format!("{uuid}.png"))
 }
 
 /// Save screenshot of app with `app_pid`
 fn create_and_save_thumbnail(
-  thumbnail_path: PathBuf,
+  thumbnail_path: &PathBuf,
   window_id: u32,
   windows_for_thumbnail: Arc<Vec<Window>>,
 ) {
@@ -528,7 +550,7 @@ fn create_and_save_thumbnail(
 
     let dyn_image = DynamicImage::ImageRgba8(thumbnail);
     let resized = dyn_image.resize(width / 5, height / 5, image::imageops::FilterType::Nearest);
-    let _ = resized.save(&thumbnail_path);
+    let _ = resized.save(thumbnail_path);
   }
 }
 
