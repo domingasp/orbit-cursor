@@ -538,6 +538,22 @@ pub fn update_dock_opacity(app_handle: AppHandle, opacity: f64) {
 
 #[tauri::command]
 #[cfg(target_os = "windows")]
-pub fn update_dock_opacity(_app_handle: AppHandle, _opacity: f64) {
-  log::error!("Windows does not support dock opacity adjustment");
+pub fn update_dock_opacity(app_handle: AppHandle, opacity: f64) {
+  use crate::windows::service::set_hwnd_opacity;
+  use windows::Win32::Foundation::HWND;
+
+  let dock = app_handle
+    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
+    .unwrap();
+  let source_selector = app_handle
+    .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
+    .unwrap();
+
+  if let Ok(dock_hwnd) = dock.hwnd() {
+    set_hwnd_opacity(HWND(dock_hwnd.0), opacity);
+  }
+
+  if let Ok(source_selector_hwnd) = source_selector.hwnd() {
+    set_hwnd_opacity(HWND(source_selector_hwnd.0), opacity);
+  }
 }

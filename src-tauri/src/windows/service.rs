@@ -7,6 +7,8 @@ use tauri::{
   AppHandle, Emitter, Listener, LogicalPosition, LogicalSize, Manager, State, WebviewWindow,
   WindowEvent,
 };
+#[cfg(target_os = "windows")]
+use windows::Win32::Foundation::HWND;
 
 #[cfg(target_os = "macos")]
 use std::ffi::CString;
@@ -429,4 +431,28 @@ pub fn spawn_window_close_manager(
       }
     }
   });
+}
+
+#[cfg(target_os = "windows")]
+pub fn set_hwnd_opacity(hwnd: HWND, opacity: f64) {
+  unsafe {
+    use windows::Win32::{
+      Foundation::COLORREF,
+      UI::WindowsAndMessaging::{
+        GetWindowLongPtrW, SetLayeredWindowAttributes, SetWindowLongPtrW, GWL_EXSTYLE, LWA_ALPHA,
+        WS_EX_LAYERED,
+      },
+    };
+
+    let ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+
+    SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex_style | WS_EX_LAYERED.0 as isize);
+    SetLayeredWindowAttributes(
+      hwnd,
+      COLORREF(0),
+      (opacity * 255.0).round() as u8,
+      LWA_ALPHA,
+    )
+    .ok();
+  }
 }
