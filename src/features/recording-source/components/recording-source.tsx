@@ -1,5 +1,5 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { AppWindowMac, Monitor } from "lucide-react";
+import { AppWindowMac, Monitor, SquareDashed } from "lucide-react";
 import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 
@@ -9,6 +9,7 @@ import {
   RecordingType,
   useRecordingStateStore,
 } from "../../../stores/recording-state.store";
+import { useRegionSelectorStore } from "../../../stores/region-selector.store";
 
 type RecordingSourceProps = {
   onPress: () => void;
@@ -23,6 +24,9 @@ export const RecordingSource = ({ onPress }: RecordingSourceProps) => {
         state.selectedWindow,
       ])
     );
+  const setIsEditingRegion = useRegionSelectorStore(
+    useShallow((state) => state.setIsEditing)
+  );
 
   const isWindowSelector = useMemo(
     () => recordingType === RecordingType.Window,
@@ -82,6 +86,19 @@ export const RecordingSource = ({ onPress }: RecordingSourceProps) => {
           {!isWindowSelector && (selectedMonitor?.name ?? "None")}
         </ContentRotate>
       </Button>
+
+      {recordingType === RecordingType.Region && (
+        <Button
+          showFocus={false}
+          size="sm"
+          onPress={() => {
+            setIsEditingRegion(true);
+          }}
+        >
+          <SquareDashed size={14} />
+          Edit
+        </Button>
+      )}
     </div>
   );
 };

@@ -80,7 +80,7 @@
         "title": "Recording Source Selector",
         "label": "recording_source_selector",
         "url": "/recording-source-selector",
-        "width": 232,
+        "width": 300,
         "height": 40,
         "decorations": false,
         "resizable": false,

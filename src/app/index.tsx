@@ -5,6 +5,7 @@ import { checkPermissions } from "../api/permissions";
 import { getPlatform, rehydrateHotkeyStore } from "../stores/hotkeys.store";
 import { Permissions, usePermissionsStore } from "../stores/permissions.store";
 import { rehydrateRecordingStateStore } from "../stores/recording-state.store";
+import { rehydrateRegionSelectorState } from "../stores/region-selector.store";
 import { updateStandaloneListBoxStore } from "../stores/standalone-listbox.store";
 import { rehydrateWindowReopenState } from "../stores/window-open-state.store";
 import { Events } from "../types/events";
@@ -40,6 +41,7 @@ export const App = () => {
     rehydrateRecordingStateStore(e);
     rehydrateWindowReopenState(e);
     rehydrateHotkeyStore(e);
+    rehydrateRegionSelectorState(e);
   };
 
   useEffect(() => {

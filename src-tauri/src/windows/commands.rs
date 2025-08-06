@@ -318,6 +318,19 @@ pub fn show_start_recording_dock(
   }
 }
 
+#[cfg(target_os = "windows")]
+fn focus_start_recording_dock(app_handle: AppHandle) {
+  let start_recording_dock = app_handle
+    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
+    .unwrap();
+  let recording_source_selector = app_handle
+    .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
+    .unwrap();
+
+  let _ = recording_source_selector.set_focus();
+  let _ = start_recording_dock.set_focus();
+}
+
 #[tauri::command]
 pub fn show_region_selector(
   app_handle: AppHandle,
@@ -334,7 +347,8 @@ pub fn show_region_selector(
     eprintln!("Failed to show region selector: {e}");
   }
 
-  let _ = window.set_focus();
+  #[cfg(target_os = "windows")]
+  focus_start_recording_dock(app_handle);
 }
 
 #[tauri::command]
@@ -393,6 +407,13 @@ pub fn passthrough_region_selector(app_handle: AppHandle, passthrough: bool) {
     .get_webview_window(WindowLabel::RegionSelector.as_ref())
     .unwrap();
   let _ = window.set_ignore_cursor_events(passthrough);
+
+  // Refocus so dock appears in front of Region Selector
+  // Mac has levels windows does not
+  #[cfg(target_os = "windows")]
+  if passthrough {
+    focus_start_recording_dock(app_handle);
+  }
 }
 
 #[tauri::command]
@@ -449,7 +470,7 @@ pub fn collapse_recording_source_selector(
     .unwrap();
 
   let target_size = LogicalSize {
-    width: 232.0,
+    width: 300.0,
     height: 40.0,
   };
 

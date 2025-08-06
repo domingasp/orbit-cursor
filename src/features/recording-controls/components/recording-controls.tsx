@@ -19,7 +19,6 @@ import { Keyboard } from "../../../components/keyboard/keyboard";
 import { Separator } from "../../../components/separator/separator";
 import { Sparkles } from "../../../components/sparkles/sparkles";
 import { clearInteractionAttributes } from "../../../lib/styling";
-import { getPlatform } from "../../../stores/hotkeys.store";
 import { usePermissionsStore } from "../../../stores/permissions.store";
 import {
   RecordingType,
@@ -146,13 +145,10 @@ export const RecordingControls = () => {
     if (
       startRecordingDockOpened &&
       selectedMonitor &&
-      recordingType === RecordingType.Region
+      recordingType === RecordingType.Region &&
+      hasRequiredPermissions()
     ) {
-      if (getPlatform() === "macos" && hasRequiredPermissions()) {
-        showRegionSelector(selectedMonitor.position, selectedMonitor.size);
-      } else {
-        /* windows requires proper positioning to avoid blocking the recording dock */
-      }
+      showRegionSelector(selectedMonitor.position, selectedMonitor.size);
     }
   }, [recordingType, startRecordingDockOpened, selectedMonitor]);
 
