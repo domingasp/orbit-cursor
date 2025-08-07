@@ -23,7 +23,7 @@ use crate::{
     },
     screen::{resume_screen_recording, start_screen_recorder},
   },
-  windows::commands::{hide_region_selector, passthrough_region_selector},
+  windows::commands::hide_region_selector,
 };
 
 #[derive(Debug, Clone, Deserialize)]
@@ -180,7 +180,6 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
 pub async fn stop_recording(app_handle: AppHandle) {
   // Re-enable and hide region selector (not always applicable)
   hide_region_selector(app_handle.clone());
-  passthrough_region_selector(app_handle.clone(), false);
 
   {
     let recording_state: State<'_, Mutex<RecordingState>> = app_handle.state();

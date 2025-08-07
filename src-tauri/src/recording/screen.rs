@@ -24,7 +24,7 @@ use crate::{
     models::{RecordingType, Region, ScreenCaptureDetails, StreamSync},
   },
   recording_sources::{commands::list_monitors, service::get_os_visible_windows},
-  screen_capture::service::{get_app_targets, get_display},
+  screen_capture::service::{get_app_targets, get_display_scap_target},
   APP_HANDLE,
 };
 
@@ -151,7 +151,7 @@ fn create_screen_recorder(
   let (monitor_position, monitor_size, scale_factor) = get_monitor_details(&monitor_name);
 
   // Default to selected monitor
-  let mut target = get_display(monitor_name);
+  let mut target = get_display_scap_target(monitor_name);
   let mut width = monitor_size.width;
   let mut height = monitor_size.height;
 

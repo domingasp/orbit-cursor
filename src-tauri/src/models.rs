@@ -1,9 +1,4 @@
-use std::{
-  collections::HashMap,
-  path::PathBuf,
-  sync::{atomic::AtomicBool, Arc},
-  thread::JoinHandle,
-};
+use std::{collections::HashMap, path::PathBuf, sync::Arc, thread::JoinHandle};
 
 use ffmpeg_sidecar::child::FfmpegChild;
 use parking_lot::Mutex;
@@ -79,32 +74,6 @@ impl PreviewState {
 
   pub fn stop_camera(&self) {
     let _ = self.stop_camera_tx.send(());
-  }
-}
-
-pub struct MagnifierState {
-  pub magnifier_running: Arc<AtomicBool>,
-}
-
-impl MagnifierState {
-  pub fn new() -> Self {
-    MagnifierState {
-      magnifier_running: Arc::new(AtomicBool::new(false)),
-    }
-  }
-
-  pub fn start_magnifier(&mut self) -> Arc<AtomicBool> {
-    self
-      .magnifier_running
-      .store(true, std::sync::atomic::Ordering::SeqCst);
-
-    self.magnifier_running.clone()
-  }
-
-  pub fn stop_magnifier(&mut self) {
-    self
-      .magnifier_running
-      .store(false, std::sync::atomic::Ordering::SeqCst);
   }
 }
 

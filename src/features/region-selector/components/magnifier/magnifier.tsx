@@ -1,4 +1,3 @@
-import { Channel } from "@tauri-apps/api/core";
 import { LogicalSize, PhysicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { AnimatePresence, motion } from "motion/react";
@@ -6,22 +5,20 @@ import { RefObject, useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import { useRecordingStateStore } from "../../../../stores/recording-state.store";
-import {
-  startMagnifierCapture,
-  stopMagnifierCapture,
-} from "../../api/magnifier";
 import { ResizeDirection } from "../../types";
 
 import { Boundary } from "./boundary";
 
 type MagnifierProps = {
   activeHandle: RefObject<HTMLElement | null>;
+  magnifierScreenshot: ArrayBuffer;
   resizeDirection: ResizeDirection | undefined;
   zoomFactor?: number;
 };
 
 export const Magnifier = ({
   activeHandle,
+  magnifierScreenshot,
   resizeDirection,
   zoomFactor = 5,
 }: MagnifierProps) => {
@@ -36,7 +33,6 @@ export const Magnifier = ({
     logical: { x: 0, y: 0 },
     physical: { x: 0, y: 0 },
   });
-  const channel = useRef<Channel>(null);
   const fullsizeCanvasRef = useRef<HTMLCanvasElement>(null);
   const latestImageDataRef = useRef<ImageData | null>(null);
   const magnifiedCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -83,6 +79,7 @@ export const Magnifier = ({
   };
 
   useEffect(() => {
+    processFrame(magnifierScreenshot);
     const updateCursor = (_e: MouseEvent) => {
       updateMagnifierPosition();
     };
@@ -92,19 +89,6 @@ export const Magnifier = ({
     return () => {
       window.removeEventListener("mousemove", updateCursor);
     };
-  }, [resizeDirection]);
-
-  useEffect(() => {
-    if (resizeDirection && selectedMonitor) {
-      channel.current = new Channel();
-      channel.current.onmessage = (message) => {
-        processFrame(message as ArrayBuffer);
-      };
-
-      startMagnifierCapture(channel.current, selectedMonitor.name);
-    } else {
-      stopMagnifierCapture();
-    }
   }, [resizeDirection]);
 
   useEffect(() => {

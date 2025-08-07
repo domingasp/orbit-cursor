@@ -53,9 +53,8 @@ use rdev::set_is_main_thread;
 
 use crate::{
   export::commands::{cancel_export, export_recording, open_path_in_file_browser, path_exists},
-  models::{EditingState, GlobalState, MagnifierState, PreviewState, RecordingState},
+  models::{EditingState, GlobalState, PreviewState, RecordingState},
   recording::commands::{pause_recording, resume_recording},
-  screen_capture::commands::{start_magnifier_capture, stop_magnifier_capture},
   windows::{
     commands::{init_start_recording_dock, passthrough_region_selector},
     service::{editor_close_listener, spawn_window_close_manager},
@@ -133,8 +132,6 @@ pub fn run() {
     reset_panels,
     get_dock_bounds,
     update_dock_opacity,
-    start_magnifier_capture,
-    stop_magnifier_capture,
     list_windows,
     init_recording_dock,
     start_recording,
@@ -151,7 +148,6 @@ pub fn run() {
   app_builder = app_builder
     .manage(Mutex::new(GlobalState::new(input_event_tx.clone())))
     .manage(Mutex::new(PreviewState::new()))
-    .manage(Mutex::new(MagnifierState::new()))
     .manage(Mutex::new(RecordingState::new()))
     .manage(Mutex::new(EditingState::new()));
 

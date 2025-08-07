@@ -3,15 +3,21 @@ use std::sync::Once;
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, State};
+use tauri::{ipc::Channel, AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, State};
+#[cfg(target_os = "windows")]
+use windows::Win32::Foundation::HWND;
 
 #[cfg(target_os = "windows")]
 use crate::windows::service::convert_to_stationary_panel;
 use crate::{
   constants::{Events, WindowLabel},
   models::{EditingState, GlobalState, RecordingState},
+  screen_capture::commands::capture_display_screenshot,
   windows::service::handle_dock_positioning,
 };
+
+#[cfg(target_os = "windows")]
+use crate::windows::service::set_hwnd_opacity;
 
 use super::service::{
   add_close_panel_listener, animate_resize, position_recording_dock,
@@ -337,18 +343,17 @@ pub fn show_region_selector(
   size: LogicalSize<f64>,
   position: LogicalPosition<f64>,
 ) {
-  let window = app_handle
-    .get_webview_window(WindowLabel::RegionSelector.as_ref())
-    .unwrap();
-  let _ = window.set_size(size);
-  let _ = window.set_position(position);
+  if let Some(window) = app_handle.get_webview_window(WindowLabel::RegionSelector.as_ref()) {
+    let _ = window.set_size(size);
+    let _ = window.set_position(position);
 
-  if let Err(e) = window.show() {
-    eprintln!("Failed to show region selector: {e}");
+    if let Err(e) = window.show() {
+      eprintln!("Failed to show region selector: {e}");
+    }
+
+    #[cfg(target_os = "windows")]
+    focus_start_recording_dock(app_handle);
   }
-
-  #[cfg(target_os = "windows")]
-  focus_start_recording_dock(app_handle);
 }
 
 #[tauri::command]
@@ -402,7 +407,12 @@ pub fn hide_region_selector(app_handle: AppHandle) {
 }
 
 #[tauri::command]
-pub fn passthrough_region_selector(app_handle: AppHandle, passthrough: bool) {
+pub fn passthrough_region_selector(
+  app_handle: AppHandle,
+  passthrough: bool,
+  display_id: String,
+  channel: Channel,
+) {
   let window = app_handle
     .get_webview_window(WindowLabel::RegionSelector.as_ref())
     .unwrap();
@@ -413,6 +423,24 @@ pub fn passthrough_region_selector(app_handle: AppHandle, passthrough: bool) {
   #[cfg(target_os = "windows")]
   if passthrough {
     focus_start_recording_dock(app_handle);
+  }
+  // Only when in editing mode
+  if !passthrough {
+    #[cfg(target_os = "windows")] // Can't exclude windows on Windows
+    set_hwnd_opacity(HWND(window.hwnd().unwrap().0), 0.0);
+
+    let screenshot_for_magnifier = capture_display_screenshot(display_id);
+
+    channel
+      .send(tauri::ipc::InvokeResponseBody::Raw(
+        screenshot_for_magnifier,
+      ))
+      .ok();
+
+    #[cfg(target_os = "windows")]
+    set_hwnd_opacity(HWND(window.hwnd().unwrap().0), 1.0);
+
+    window.set_focus().ok();
   }
 }
 
@@ -563,18 +591,17 @@ pub fn update_dock_opacity(app_handle: AppHandle, opacity: f64) {
   use crate::windows::service::set_hwnd_opacity;
   use windows::Win32::Foundation::HWND;
 
-  let dock = app_handle
-    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
-    .unwrap();
-  let source_selector = app_handle
-    .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
-    .unwrap();
+  let dock = app_handle.get_webview_window(WindowLabel::StartRecordingDock.as_ref());
+  let source_selector =
+    app_handle.get_webview_window(WindowLabel::RecordingSourceSelector.as_ref());
 
-  if let Ok(dock_hwnd) = dock.hwnd() {
-    set_hwnd_opacity(HWND(dock_hwnd.0), opacity);
-  }
+  if let (Some(dock), Some(source_selector)) = (dock, source_selector) {
+    if let Ok(dock_hwnd) = dock.hwnd() {
+      set_hwnd_opacity(HWND(dock_hwnd.0), opacity);
+    }
 
-  if let Ok(source_selector_hwnd) = source_selector.hwnd() {
-    set_hwnd_opacity(HWND(source_selector_hwnd.0), opacity);
+    if let Ok(source_selector_hwnd) = source_selector.hwnd() {
+      set_hwnd_opacity(HWND(source_selector_hwnd.0), opacity);
+    }
   }
 }

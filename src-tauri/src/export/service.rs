@@ -15,6 +15,8 @@ use std::process::Command;
 use crate::models::EditingState;
 #[cfg(target_os = "windows")]
 use crate::recording::ffmpeg::get_hardware_encoder;
+#[cfg(debug_assertions)]
+use crate::recording::ffmpeg::log_ffmpeg_output;
 use crate::{constants::Events, recording::models::RecordingFile};
 
 pub fn encode_recording(
@@ -78,7 +80,10 @@ pub fn encode_recording(
 
   configure_output_options(&mut child, &output_path);
 
-  let ffmpeg_child = child.spawn().unwrap();
+  let mut ffmpeg_child = child.spawn().unwrap();
+
+  #[cfg(debug_assertions)]
+  log_ffmpeg_output(ffmpeg_child.take_stderr().unwrap(), "[export]".to_string());
 
   let ffmpeg_arc = Arc::new(Mutex::new(ffmpeg_child));
 

@@ -115,7 +115,7 @@ export const RecordingControls = () => {
     // Keep region selector open to show user where the recording is happening
     onCancel(recordingType !== RecordingType.Region); // Closes dock
     if (recordingType === RecordingType.Region) {
-      passthroughRegionSelector(true);
+      passthroughRegionSelector(selectedMonitor.id, true);
     }
 
     startRecording({

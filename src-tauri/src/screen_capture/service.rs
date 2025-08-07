@@ -1,29 +1,6 @@
-use scap::{
-  capturer::{Capturer, Options},
-  frame::BGRAFrame,
-  get_all_targets, Target,
-};
-use yuv::bgra_to_rgba;
+use scap::{get_all_targets, Target};
 
 use crate::windows::commands::APP_WEBVIEW_TITLES;
-
-pub fn init_magnifier_capturer(display_name: String) -> Capturer {
-  let targets_to_exclude = get_app_targets();
-  let display = get_display(display_name);
-
-  let options = Options {
-    // Update the frame twice a second in the magnifier
-    fps: 2,
-    target: display,
-    show_cursor: false,
-    show_highlight: false,
-    excluded_targets: Some(targets_to_exclude),
-    output_type: scap::frame::FrameType::BGRAFrame,
-    ..Default::default()
-  };
-
-  Capturer::build(options).unwrap()
-}
 
 /// Return targets which are part of the app
 pub fn get_app_targets() -> Vec<Target> {
@@ -44,7 +21,7 @@ pub fn get_app_targets() -> Vec<Target> {
 }
 
 /// Return display from name
-pub fn get_display(display_name: String) -> Option<Target> {
+pub fn get_display_scap_target(display_name: String) -> Option<Target> {
   let targets = get_all_targets();
 
   targets.into_iter().find(|t| {
@@ -54,20 +31,4 @@ pub fn get_display(display_name: String) -> Option<Target> {
       false
     }
   })
-}
-
-pub fn bgra_frame_to_rgba_buffer(bgra_frame: BGRAFrame) -> Vec<u8> {
-  let width = bgra_frame.width as u32;
-  let height = bgra_frame.height as u32;
-  let mut rgba_buffer = vec![0u8; (width * height * 4) as usize];
-  if let Err(_e) = bgra_to_rgba(
-    &bgra_frame.data,
-    width * 4,
-    &mut rgba_buffer,
-    width * 4,
-    width,
-    height,
-  ) {}
-
-  rgba_buffer
 }

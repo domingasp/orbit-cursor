@@ -1,3 +1,4 @@
+import { Channel } from "@tauri-apps/api/core";
 import { Check } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, useRef, useEffect } from "react";
@@ -119,6 +120,10 @@ export const RegionSelector = () => {
   const [size, setSize] = useState(region.size);
   const previousProximity = useRef(0);
 
+  const magnifierChannel = useRef<Channel<ArrayBuffer>>(null);
+  const [magnifierScreenshot, setMagnifierScreenshot] =
+    useState<ArrayBuffer | null>(null);
+
   const showRnd = !isRecording && isEditing;
   const showActionButtons =
     isEditing &&
@@ -192,7 +197,18 @@ export const RegionSelector = () => {
 
   useEffect(() => {
     updateDockOpacity(isEditing ? 0 : 1);
-    passthroughRegionSelector(!isEditing);
+    if (selectedMonitor) {
+      magnifierChannel.current = new Channel();
+      magnifierChannel.current.onmessage = (message) => {
+        setMagnifierScreenshot(message);
+      };
+
+      void passthroughRegionSelector(
+        selectedMonitor.id,
+        !isEditing,
+        magnifierChannel.current
+      );
+    }
   }, [isEditing]);
 
   if (recordingType !== RecordingType.Region) return;
@@ -293,10 +309,13 @@ export const RegionSelector = () => {
         </AnimatePresence>
       </div>
 
-      <Magnifier
-        activeHandle={activeResizeHandleRef}
-        resizeDirection={resizeDirection}
-      />
+      {magnifierScreenshot && (
+        <Magnifier
+          activeHandle={activeResizeHandleRef}
+          magnifierScreenshot={magnifierScreenshot}
+          resizeDirection={resizeDirection}
+        />
+      )}
     </div>
   );
 };
