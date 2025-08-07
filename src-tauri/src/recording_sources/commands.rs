@@ -3,8 +3,6 @@ use std::path::PathBuf;
 use serde::Serialize;
 use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, PhysicalSize};
 
-use crate::recording_sources::service::get_monitor_names;
-
 use super::service::get_visible_windows;
 
 #[derive(Debug, Clone, Serialize)]
@@ -62,7 +60,13 @@ impl WindowDetails {
 #[tauri::command]
 pub fn list_monitors(app_handle: AppHandle) -> Vec<MonitorDetails> {
   let monitors = app_handle.available_monitors().unwrap();
-  let monitor_names = get_monitor_names();
+
+  // Assume order of monitors consistent between xcap and Tauri
+  let monitor_names = xcap::Monitor::all()
+    .unwrap()
+    .iter()
+    .map(|monitor| monitor.name().unwrap_or_default())
+    .collect::<Vec<String>>();
 
   let mut monitor_details = Vec::new();
   for i in 0..monitors.len() {
