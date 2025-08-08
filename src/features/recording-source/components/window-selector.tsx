@@ -37,7 +37,7 @@ export const WindowSelector = ({
   useEffect(() => {
     setThumbnailsGenerated(false);
     if (isExpanded) {
-      void listWindows(true);
+      listWindows(true);
     }
   }, [isExpanded]);
 

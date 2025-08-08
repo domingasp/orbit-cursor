@@ -3,7 +3,7 @@ use std::{
   thread::JoinHandle,
 };
 
-use parking_lot::{Mutex, RwLock};
+use parking_lot::Mutex;
 use serde::Deserialize;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::broadcast;
