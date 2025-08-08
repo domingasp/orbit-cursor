@@ -13,7 +13,7 @@ use crate::{
   constants::{Events, WindowLabel},
   models::{EditingState, GlobalState, RecordingState},
   screen_capture::commands::capture_display_screenshot,
-  windows::service::handle_dock_positioning,
+  windows::service::{calculate_position_above_dock, handle_dock_positioning},
 };
 
 #[cfg(target_os = "windows")]
@@ -21,7 +21,7 @@ use crate::windows::service::set_hwnd_opacity;
 
 use super::service::{
   add_close_panel_listener, animate_resize, position_recording_dock,
-  position_recording_source_selector, position_window_above_dock, Anchor,
+  position_recording_source_selector,
 };
 
 #[cfg(target_os = "macos")]
@@ -128,11 +128,8 @@ pub fn init_recording_input_options(app_handle: AppHandle) {
         Events::RecordingInputOptionsDidResignKey,
         move |app_handle| {
           let _ = app_handle.emit(Events::ClosedRecordingInputOptions.as_ref(), ());
-
-          let global_state: State<'_, Mutex<GlobalState>> = app_handle.state();
-          global_state
-            .lock()
-            .window_closed(WindowLabel::RecordingInputOptions);
+          let global_state: State<'_, GlobalState> = app_handle.state();
+          global_state.window_closed(WindowLabel::RecordingInputOptions);
         },
       );
     }
@@ -239,20 +236,26 @@ pub fn show_standalone_listbox(
 #[tauri::command]
 pub fn show_recording_input_options(
   app_handle: AppHandle,
-  global_state: State<'_, Mutex<GlobalState>>,
+  global_state: State<'_, GlobalState>,
   x: f64,
 ) {
   {
-    global_state
-      .lock()
-      .window_opened(WindowLabel::RecordingInputOptions);
+    global_state.window_opened(WindowLabel::RecordingInputOptions);
   }
-
-  position_window_above_dock(app_handle.clone(), WindowLabel::RecordingInputOptions, x);
 
   let window = app_handle
     .get_webview_window(WindowLabel::RecordingInputOptions.as_ref())
     .unwrap();
+
+  window
+    .set_position(calculate_position_above_dock(
+      app_handle.clone(),
+      WindowLabel::RecordingInputOptions,
+      x,
+      None,
+    ))
+    .ok();
+
   if let Err(e) = window.show() {
     eprintln!("Failed to show recording input options: {e}");
   }
@@ -271,7 +274,7 @@ pub fn show_recording_input_options(
 #[tauri::command]
 pub fn show_start_recording_dock(
   app_handle: AppHandle,
-  global_state: State<'_, Mutex<GlobalState>>,
+  global_state: State<'_, GlobalState>,
   recording_state: State<'_, Mutex<RecordingState>>,
   editing_state: State<'_, Mutex<EditingState>>,
 ) {
@@ -281,11 +284,7 @@ pub fn show_start_recording_dock(
     }
   }
 
-  {
-    global_state
-      .lock()
-      .window_opened(WindowLabel::StartRecordingDock);
-  }
+  global_state.window_opened(WindowLabel::StartRecordingDock);
 
   let window = app_handle
     .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
@@ -308,11 +307,7 @@ pub fn show_start_recording_dock(
   if let Some(recording_source_selector) =
     app_handle.get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
   {
-    {
-      global_state
-        .lock()
-        .window_opened(WindowLabel::RecordingSourceSelector);
-    }
+    global_state.window_closed(WindowLabel::RecordingSourceSelector);
 
     let recording_source_selector_window = app_handle
       .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
@@ -326,15 +321,18 @@ pub fn show_start_recording_dock(
 
 #[cfg(target_os = "windows")]
 fn focus_start_recording_dock(app_handle: AppHandle) {
-  let start_recording_dock = app_handle
-    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
-    .unwrap();
-  let recording_source_selector = app_handle
-    .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
-    .unwrap();
+  let start_recording_dock =
+    app_handle.get_webview_window(WindowLabel::StartRecordingDock.as_ref());
 
-  let _ = recording_source_selector.set_focus();
-  let _ = start_recording_dock.set_focus();
+  let recording_source_selector =
+    app_handle.get_webview_window(WindowLabel::RecordingSourceSelector.as_ref());
+
+  if let (Some(start_recording_dock), Some(recording_source_selector)) =
+    (start_recording_dock, recording_source_selector)
+  {
+    let _ = recording_source_selector.set_focus();
+    let _ = start_recording_dock.set_focus();
+  }
 }
 
 #[tauri::command]
@@ -377,15 +375,9 @@ pub fn show_and_focus_editor(
 }
 
 #[tauri::command]
-pub fn hide_start_recording_dock(
-  app_handle: AppHandle,
-  global_state: State<'_, Mutex<GlobalState>>,
-) {
-  {
-    global_state
-      .lock()
-      .window_closed(WindowLabel::StartRecordingDock);
-  }
+pub async fn hide_start_recording_dock(app_handle: AppHandle) {
+  let global_state: State<'_, GlobalState> = app_handle.state();
+  global_state.window_closed(WindowLabel::StartRecordingDock);
 
   let panel = app_handle
     .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
@@ -396,7 +388,10 @@ pub fn hide_start_recording_dock(
     .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
     .unwrap();
   let _ = recording_source_selector.hide();
-  collapse_recording_source_selector(app_handle, global_state);
+
+  if global_state.is_window_open(&WindowLabel::RecordingSourceSelector) {
+    collapse_recording_source_selector(app_handle.clone()).await;
+  }
 }
 
 #[tauri::command]
@@ -445,23 +440,18 @@ pub fn passthrough_region_selector(
 }
 
 #[tauri::command]
-pub fn is_start_recording_dock_open(global_state: State<'_, Mutex<GlobalState>>) -> bool {
-  global_state
-    .lock()
-    .is_window_open(&WindowLabel::StartRecordingDock)
+pub fn is_start_recording_dock_open(global_state: State<'_, GlobalState>) -> bool {
+  global_state.is_window_open(&WindowLabel::StartRecordingDock)
 }
 
 #[tauri::command]
-pub fn is_recording_input_options_open(global_state: State<'_, Mutex<GlobalState>>) -> bool {
-  global_state
-    .lock()
-    .is_window_open(&WindowLabel::RecordingInputOptions)
+pub fn is_recording_input_options_open(global_state: State<'_, GlobalState>) -> bool {
+  global_state.is_window_open(&WindowLabel::RecordingInputOptions)
 }
 
 #[tauri::command]
-pub fn expand_recording_source_selector(
+pub async fn expand_recording_source_selector(
   app_handle: AppHandle,
-  global_state: State<'_, Mutex<GlobalState>>,
   size: Option<LogicalSize<f64>>,
 ) {
   let window = app_handle
@@ -477,22 +467,17 @@ pub fn expand_recording_source_selector(
     }
   };
 
-  if !global_state
-    .lock()
-    .is_window_open(&WindowLabel::RecordingSourceSelector)
-  {
-    animate_resize(window, target_size, Some(Anchor::Bottom));
-    global_state
-      .lock()
-      .window_opened(WindowLabel::RecordingSourceSelector);
-  }
+  animate_resize(window, target_size);
+
+  let global_state: State<'_, GlobalState> = app_handle.state();
+  global_state.window_opened(WindowLabel::RecordingSourceSelector);
 }
 
 #[tauri::command]
-pub fn collapse_recording_source_selector(
-  app_handle: AppHandle,
-  global_state: State<'_, Mutex<GlobalState>>,
-) {
+pub async fn collapse_recording_source_selector(app_handle: AppHandle) {
+  let global_state: State<'_, GlobalState> = app_handle.state();
+  global_state.window_closed(WindowLabel::RecordingSourceSelector);
+
   let window = app_handle
     .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
     .unwrap();
@@ -502,21 +487,15 @@ pub fn collapse_recording_source_selector(
     height: 40.0,
   };
 
-  if global_state
-    .lock()
-    .is_window_open(&WindowLabel::RecordingSourceSelector)
-  {
-    animate_resize(window, target_size, Some(Anchor::Bottom));
-    global_state
-      .lock()
-      .window_closed(WindowLabel::RecordingSourceSelector);
-  }
+  animate_resize(window.clone(), target_size);
 }
 
 /// Reset panels to default state.
 #[tauri::command]
-pub fn reset_panels(app_handle: AppHandle, global_state: State<'_, Mutex<GlobalState>>) {
-  collapse_recording_source_selector(app_handle.clone(), global_state);
+pub fn reset_panels(app_handle: AppHandle, global_state: State<'_, GlobalState>) {
+  if global_state.is_window_open(&WindowLabel::RecordingSourceSelector) {
+    tauri::async_runtime::block_on(collapse_recording_source_selector(app_handle.clone()));
+  }
 
   let _ = app_handle
     .get_webview_window(WindowLabel::RecordingInputOptions.as_ref())

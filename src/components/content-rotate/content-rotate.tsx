@@ -1,14 +1,18 @@
 import { AnimatePresence, motion, MotionProps } from "motion/react";
 import { ReactNode, useEffect, useState } from "react";
 
+import { cn } from "../../lib/styling";
+
 type ContentRotateProps = MotionProps & {
   children: ReactNode;
   contentKey: string;
   className?: string;
+  containerClassName?: string;
 };
 export const ContentRotate = ({
   children,
   className,
+  containerClassName,
   contentKey,
   ...props
 }: ContentRotateProps) => {
@@ -19,7 +23,7 @@ export const ContentRotate = ({
   }, []);
 
   return (
-    <div className="overflow-hidden">
+    <div className={cn("overflow-hidden", containerClassName)}>
       <AnimatePresence mode="wait">
         <motion.div
           key={contentKey}

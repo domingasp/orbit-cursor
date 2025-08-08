@@ -3,7 +3,7 @@ use std::{
   thread::JoinHandle,
 };
 
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use serde::Deserialize;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::broadcast;
@@ -133,16 +133,14 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
     log::info!("Screen recorder ready");
 
     log::info!("Starting extra writers: mouse_events, metadata");
-    {
-      let global_state: State<'_, Mutex<GlobalState>> = app_handle.state();
-      let input_event_rx = global_state.lock().subscribe_to_input_events();
-      let mouse_event_handle = start_mouse_event_recorder(
-        recording_dir.join(RecordingFile::MouseEvents.as_ref()),
-        synchronization.clone(),
-        input_event_rx,
-      );
-      recorder_handles.push(mouse_event_handle);
-    }
+    let global_state: State<'_, GlobalState> = app_handle.state();
+    let input_event_rx = global_state.subscribe_to_input_events();
+    let mouse_event_handle = start_mouse_event_recorder(
+      recording_dir.join(RecordingFile::MouseEvents.as_ref()),
+      synchronization.clone(),
+      input_event_rx,
+    );
+    recorder_handles.push(mouse_event_handle);
 
     write_metadata_to_file(
       recording_dir.join(RecordingFile::Metadata.as_ref()),

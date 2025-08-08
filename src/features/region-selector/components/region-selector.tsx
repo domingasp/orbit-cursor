@@ -201,7 +201,7 @@ export const RegionSelector = () => {
         setMagnifierScreenshot(message);
       };
 
-      void passthroughRegionSelector(
+      passthroughRegionSelector(
         selectedMonitor.id,
         !isEditing,
         magnifierChannel.current

@@ -146,7 +146,7 @@ pub fn run() {
 
   // State
   app_builder = app_builder
-    .manage(Mutex::new(GlobalState::new(input_event_tx.clone())))
+    .manage(GlobalState::new(input_event_tx.clone()))
     .manage(Mutex::new(PreviewState::new()))
     .manage(Mutex::new(RecordingState::new()))
     .manage(Mutex::new(EditingState::new()));

@@ -1,4 +1,9 @@
-use std::{collections::HashMap, path::PathBuf, sync::Arc, thread::JoinHandle};
+use std::{
+  collections::HashMap,
+  path::PathBuf,
+  sync::{atomic::AtomicBool, Arc},
+  thread::JoinHandle,
+};
 
 use ffmpeg_sidecar::child::FfmpegChild;
 use parking_lot::Mutex;
@@ -12,7 +17,7 @@ use crate::{
 };
 
 pub struct GlobalState {
-  pub open_windows: HashMap<WindowLabel, bool>,
+  pub open_windows: HashMap<WindowLabel, Arc<AtomicBool>>,
   pub input_event_tx: broadcast::Sender<rdev::Event>,
 }
 
@@ -20,24 +25,41 @@ impl GlobalState {
   pub fn new(input_event_tx: Sender<Event>) -> Self {
     GlobalState {
       open_windows: HashMap::from([
-        (WindowLabel::StartRecordingDock, false),
-        (WindowLabel::RecordingInputOptions, false),
-        (WindowLabel::RecordingSourceSelector, false),
+        (
+          WindowLabel::StartRecordingDock,
+          Arc::new(AtomicBool::new(false)),
+        ),
+        (
+          WindowLabel::RecordingInputOptions,
+          Arc::new(AtomicBool::new(false)),
+        ),
+        (
+          WindowLabel::RecordingSourceSelector,
+          Arc::new(AtomicBool::new(false)),
+        ),
       ]),
       input_event_tx,
     }
   }
 
-  pub fn window_closed(&mut self, window: WindowLabel) {
-    self.open_windows.insert(window, false);
+  pub fn window_closed(&self, window: WindowLabel) {
+    if let Some(flag) = self.open_windows.get(&window) {
+      flag.store(false, std::sync::atomic::Ordering::SeqCst);
+    }
   }
 
-  pub fn window_opened(&mut self, window: WindowLabel) {
-    self.open_windows.insert(window, true);
+  pub fn window_opened(&self, window: WindowLabel) {
+    if let Some(flag) = self.open_windows.get(&window) {
+      flag.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
   }
 
-  pub fn is_window_open(&mut self, window: &WindowLabel) -> bool {
-    self.open_windows.get(window).copied().unwrap_or(false)
+  pub fn is_window_open(&self, window: &WindowLabel) -> bool {
+    self
+      .open_windows
+      .get(window)
+      .map(|f| f.load(std::sync::atomic::Ordering::SeqCst))
+      .unwrap_or(false)
   }
 
   pub fn subscribe_to_input_events(&self) -> Receiver<rdev::Event> {

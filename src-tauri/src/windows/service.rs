@@ -45,8 +45,9 @@ use objc::{class, msg_send, sel, sel_impl};
 
 use crate::{
   constants::{Events, WindowLabel},
-  models::EditingState,
+  models::{EditingState, GlobalState},
   windows::commands::collapse_recording_source_selector,
+  APP_HANDLE,
 };
 
 #[allow(non_upper_case_globals)]
@@ -174,8 +175,16 @@ pub async fn open_permissions(app_handle: &AppHandle) {
   window.show().ok();
 }
 
-/// Position window above recording dock, `x` parameter determines the x position.
-pub fn position_window_above_dock(app_handle: AppHandle, window_label: WindowLabel, x: f64) {
+/// Return position above recording dock
+///
+/// Window will be centered horizontally on provided `x` position.
+/// Size can be provided, if not it will use the current window size.
+pub fn calculate_position_above_dock(
+  app_handle: AppHandle,
+  window_label: WindowLabel,
+  x: f64,
+  size: Option<LogicalSize<f64>>,
+) -> LogicalPosition<f64> {
   let margin_bottom = 5.0;
 
   let dock = app_handle
@@ -186,19 +195,34 @@ pub fn position_window_above_dock(app_handle: AppHandle, window_label: WindowLab
     .unwrap();
   let scale_factor = window.scale_factor().unwrap();
 
-  let window_logical_size = window.outer_size().unwrap().to_logical::<f64>(scale_factor);
+  let window_logical_size = if let Some(size) = size {
+    size
+  } else {
+    window.inner_size().unwrap().to_logical::<f64>(scale_factor)
+  };
+
   let dock_y = dock
     .outer_position()
     .unwrap()
     .to_logical::<f64>(scale_factor)
     .y;
 
-  window
-    .set_position(LogicalPosition {
-      x: x - (window_logical_size.width) / 2.0,
-      y: dock_y - window_logical_size.height - margin_bottom,
-    })
-    .ok();
+  let offset_x = if cfg!(target_os = "macos") {
+    0.0
+  } else {
+    16.0 // Offset on windows due to padding
+  };
+
+  let offset_y = if cfg!(target_os = "macos") {
+    0.0
+  } else {
+    9.0 // Offset on windows due to padding
+  };
+
+  LogicalPosition {
+    x: x - (window_logical_size.width + offset_x) / 2.0,
+    y: dock_y - window_logical_size.height - offset_y - margin_bottom,
+  }
 }
 
 /// Center the window horizontally and 200 px from the bottom of the monitor.
@@ -227,11 +251,14 @@ pub fn position_recording_source_selector(app_handle: AppHandle, window: &Webvie
     .to_logical::<f64>(scale_factor);
   let dock_size = dock.outer_size().unwrap().to_logical::<f64>(scale_factor);
 
-  position_window_above_dock(
-    app_handle,
-    WindowLabel::RecordingSourceSelector,
-    dock_pos.x + (dock_size.width / 2.0),
-  );
+  window
+    .set_position(calculate_position_above_dock(
+      app_handle,
+      WindowLabel::RecordingSourceSelector,
+      dock_pos.x + (dock_size.width / 2.0),
+      None,
+    ))
+    .ok();
 }
 
 pub fn position_recording_dock(window: &WebviewWindow) {
@@ -306,77 +333,67 @@ pub fn is_coordinate_in_window(x: f64, y: f64, window: &WebviewWindow) -> bool {
   y >= top && y <= bottom && x >= left && x <= right
 }
 
-#[allow(dead_code)]
-#[derive(Debug, Copy, Clone)]
-pub enum Anchor {
-  Bottom,
-  Left,
-  Top,
-  Right,
-}
-
 /// Resize window to target size with transition.
 ///
 /// When no anchor provided sizing happens from top-left.
-pub fn animate_resize(
-  window: WebviewWindow,
-  target_size: LogicalSize<f64>,
-  anchor: Option<Anchor>,
-) {
-  // TODO refactor - shifts around on windows
-  std::thread::spawn(move || {
-    let steps = 60;
-    let delay = Duration::from_millis(175 / steps);
+pub fn animate_resize(window: WebviewWindow, target_size: LogicalSize<f64>) {
+  let app_handle = APP_HANDLE.get().unwrap();
+  let start_recording_dock = app_handle
+    .get_webview_window(WindowLabel::StartRecordingDock.as_ref())
+    .unwrap();
+  let start_recording_dock_x = get_window_center_x(&start_recording_dock);
 
-    let start_size = window
-      .outer_size()
-      .unwrap()
-      .to_logical::<f64>(window.scale_factor().unwrap());
+  let steps = 30; // Resizing can take between 300nano to 10ms
+  let minimum_interim_duration = Duration::from_millis(10);
 
-    let start_position = window
-      .outer_position()
-      .unwrap()
-      .to_logical::<f64>(window.scale_factor().unwrap());
+  let start_size = window
+    .outer_size()
+    .unwrap()
+    .to_logical::<f64>(window.scale_factor().unwrap());
 
-    let start_x = start_position.x;
-    let start_y = start_position.y;
-    let start_width = start_size.width;
-    let start_height = start_size.height;
+  let start_width = start_size.width;
+  let start_height = start_size.height;
 
-    let delta_width = target_size.width - start_width;
-    let delta_height = target_size.height - start_height;
+  let delta_width = target_size.width - start_width;
+  let delta_height = target_size.height - start_height;
 
-    for i in 1..=steps {
-      let t = i as f64 / steps as f64;
+  for i in 1..=steps {
+    let start = std::time::Instant::now();
+    let t = i as f64 / steps as f64;
 
-      let transition_width = start_width + delta_width * t;
-      let transition_height = start_height + delta_height * t;
+    let interim_width = start_width + delta_width * t;
+    let interim_height = start_height + delta_height * t;
 
-      let _ = window.set_size(LogicalSize::new(transition_width, transition_height));
+    window
+      .set_size(LogicalSize::new(interim_width, interim_height))
+      .ok();
 
-      if let Some(anchor) = anchor {
-        let (offset_x, offset_y) = match anchor {
-          Anchor::Bottom => (
-            (start_width - transition_width) / 2.0,
-            start_height - transition_height,
-          ),
-          Anchor::Left => (0.0, (start_height - transition_height) / 2.0),
-          Anchor::Top => ((start_width - transition_width) / 2.0, 0.0),
-          Anchor::Right => (
-            start_width - transition_width,
-            (start_height - transition_height) / 2.0,
-          ),
-        };
+    window
+      .set_position(calculate_position_above_dock(
+        app_handle.clone(),
+        WindowLabel::RecordingSourceSelector,
+        start_recording_dock_x,
+        None, // Some(LogicalSize::new(interim_width, interim_height)),
+      ))
+      .ok();
 
-        let new_x = start_x + offset_x;
-        let new_y = start_y + offset_y;
-
-        let _ = window.set_position(LogicalPosition::new(new_x, new_y));
-      }
-
-      std::thread::sleep(delay);
+    // Avoid really fast transitions
+    if start.elapsed() < minimum_interim_duration {
+      std::thread::sleep(minimum_interim_duration - start.elapsed());
     }
-  });
+  }
+}
+
+/// Fetch dock center x position
+pub fn get_window_center_x(window: &WebviewWindow) -> f64 {
+  let scale_factor = window.scale_factor().unwrap();
+  let window_pos = window
+    .outer_position()
+    .unwrap()
+    .to_logical::<f64>(scale_factor);
+  let window_size = window.outer_size().unwrap().to_logical::<f64>(scale_factor);
+
+  window_pos.x + (window_size.width / 2.0)
 }
 
 /// Spawn a thread which closes windows based on input events
@@ -413,17 +430,27 @@ pub fn spawn_window_close_manager(
               .get_webview_window(WindowLabel::RecordingSourceSelector.as_ref())
               .unwrap();
 
-            // Recording input options close detection
-            if !is_coordinate_in_window(pos.0, pos.1, &recording_input_options_window)
-              && !is_coordinate_in_window(pos.0, pos.1, &standalone_listbox_window)
-            {
-              let _ = app_handle.emit(Events::RecordingInputOptionsDidResignKey.as_ref(), ());
-            }
+            let global_state: State<'_, GlobalState> = app_handle.state();
 
-            // Region source selector collapse detection
-            if !is_coordinate_in_window(pos.0, pos.1, &recording_source_selector) {
-              collapse_recording_source_selector(app_handle.clone(), app_handle.state());
-              let _ = app_handle.emit(Events::CollapsedRecordingSourceSelector.as_ref(), ());
+            if global_state.is_window_open(&WindowLabel::StartRecordingDock) {
+              // Recording input options close detection
+              if global_state.is_window_open(&WindowLabel::RecordingInputOptions)
+                && !is_coordinate_in_window(pos.0, pos.1, &recording_input_options_window)
+                && !is_coordinate_in_window(pos.0, pos.1, &standalone_listbox_window)
+              {
+                let _ = app_handle.emit(Events::RecordingInputOptionsDidResignKey.as_ref(), ());
+              }
+
+              // Region source selector collapse detection
+              if global_state.is_window_open(&WindowLabel::RecordingSourceSelector)
+                && !is_coordinate_in_window(pos.0, pos.1, &recording_source_selector)
+              {
+                tauri::async_runtime::block_on(collapse_recording_source_selector(
+                  app_handle.clone(),
+                ));
+
+                let _ = app_handle.emit(Events::CollapsedRecordingSourceSelector.as_ref(), ());
+              }
             }
           }
           _ => {}
