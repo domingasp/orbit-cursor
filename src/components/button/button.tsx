@@ -9,7 +9,7 @@ import { elementFocus, focusStyles } from "../../lib/styling";
 
 const buttonVariants = tv({
   base: [
-    "inline-flex items-center gap-2 rounded-md font-semibold transition",
+    "inline-flex items-center gap-2 rounded-md font-semibold transition select-none",
     focusStyles,
   ],
   compoundVariants: [

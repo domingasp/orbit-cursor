@@ -118,7 +118,6 @@ export const RegionSelector = () => {
   useState<Awaited<ReturnType<typeof getDockBounds>>>();
   const [position, setPosition] = useState(region.position);
   const [size, setSize] = useState(region.size);
-  const previousProximity = useRef(0);
 
   const magnifierChannel = useRef<Channel<ArrayBuffer>>(null);
   const [magnifierScreenshot, setMagnifierScreenshot] =
@@ -145,7 +144,6 @@ export const RegionSelector = () => {
         width: Math.max(1, size.width - 2),
       },
     });
-    previousProximity.current = -1; // ensure calculation happens
   };
 
   const onResizeStart: RndResizeStartCallback = (_e, dir, _elementRef) => {
@@ -280,7 +278,7 @@ export const RegionSelector = () => {
 
       <div
         className={cn(
-          "absolute left-0 right-0 top-0",
+          "absolute left-1/2 -translate-x-1/2 top-0",
           "select-none flex items-center justify-center",
           getPlatform() === "macos" ? "top-12" : "top-2" // Lower on Mac cause NOTCH
         )}
