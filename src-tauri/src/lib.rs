@@ -51,6 +51,8 @@ use permissions::{
 #[cfg(target_os = "macos")]
 use rdev::set_is_main_thread;
 
+#[cfg(target_os = "windows")]
+use crate::windows::commands::init_editor;
 use crate::{
   export::commands::{cancel_export, export_recording, open_path_in_file_browser, path_exists},
   models::{EditingState, GlobalState, PreviewState, RecordingState},
@@ -183,7 +185,11 @@ pub fn run() {
       let app_handle = app.handle().clone();
 
       #[cfg(target_os = "windows")]
-      init_system_tray(app_handle.clone())?;
+      {
+        init_system_tray(app_handle.clone())?;
+        init_editor(app_handle.clone());
+      }
+
       init_start_recording_dock(app_handle.clone());
       spawn_window_close_manager(app_handle.clone(), input_event_tx.subscribe());
       editor_close_listener(&app_handle.clone());

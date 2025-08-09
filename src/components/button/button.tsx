@@ -24,6 +24,24 @@ const buttonVariants = tv({
     },
     {
       class: [
+        "text-muted",
+        "data-[hovered]:bg-muted/10",
+        "data-[pressed]:bg-muted/5",
+      ],
+      color: "muted",
+      variant: "ghost",
+    },
+    {
+      class: [
+        "text-muted",
+        "data-[hovered]:bg-error/30",
+        "data-[pressed]:bg-error/20",
+      ],
+      color: "error",
+      variant: "ghost",
+    },
+    {
+      class: [
         "text-info bg-info/20",
         "data-[hovered]:bg-info/15",
         "data-[pressed]:bg-info/10",
@@ -48,11 +66,13 @@ const buttonVariants = tv({
   },
   variants: {
     color: {
+      error: [],
       info: [
         "text-white bg-info",
         "data-[hovered]:bg-info/90",
         "data-[pressed]:bg-info/80",
       ],
+      muted: [],
       neutral: [
         "text-content-fg bg-neutral",
         "data-[hovered]:bg-neutral-100",

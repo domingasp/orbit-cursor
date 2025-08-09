@@ -9,6 +9,7 @@ import { useToast } from "../../components/toast/toast-provider";
 import { ExportOptions } from "../../features/export-options/components/export-options";
 import { normalizePath } from "../../features/export-options/utils/file";
 import { PreviewPlayer } from "../../features/preview-player/components/preview-player";
+import { Titlebar } from "../../features/titlebar/components/titlebar";
 import { Toolbar } from "../../features/toolbar/components/toolbar";
 import { usePlaybackStore } from "../../stores/editor/playback.store";
 import { useRecordingStateStore } from "../../stores/recording-state.store";
@@ -92,13 +93,10 @@ export const Editor = () => {
 
   return (
     <div className="text-content-fg bg-transparent relative h-dvh">
-      <div
-        className="flex flex-row justify-center p-1 text-sm"
-        data-tauri-drag-region
-      >
+      <Titlebar>
         {!recordingManifest && "No Recording Created"}
         {recordingManifest && name}
-      </div>
+      </Titlebar>
 
       {!recordingManifest && (
         <div className="text-content-fg font-bold text-2xl flex items-center justify-center absolute -z-1 inset-0">

@@ -68,6 +68,14 @@ pub fn init_start_recording_dock(app_handle: AppHandle) {
   handle_dock_positioning(&window);
 }
 
+#[cfg(target_os = "windows")]
+pub fn init_editor(app_handle: AppHandle) {
+  if let Some(editor) = app_handle.get_webview_window(WindowLabel::Editor.as_ref()) {
+    // To support custom title bar in windows
+    editor.set_decorations(false).ok();
+  }
+}
+
 #[tauri::command]
 pub fn init_standalone_listbox(app_handle: AppHandle) {
   INIT_STANDALONE_LISTBOX.call_once(|| {
