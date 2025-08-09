@@ -245,9 +245,13 @@ export const RegionSelector = () => {
 
       <Rnd
         bounds="parent"
+        // YUV420p requires even values for both size and position
+        // for chroma subsampling - if any are odd, color bleeding will occur
+        dragGrid={[2, 2]}
         onResizeStart={onResizeStart}
         onResizeStop={onResizeEnd}
         position={{ x: position.x, y: position.y }}
+        resizeGrid={[2, 2]}
         resizeHandleClasses={handleClasses}
         resizeHandleStyles={handleStyles}
         size={{ height: size.height, width: size.width }}
