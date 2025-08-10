@@ -2,9 +2,10 @@ import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
 
 import { checkPermissions } from "../api/permissions";
-import { rehydrateHotkeyStore } from "../stores/hotkeys.store";
+import { getPlatform, rehydrateHotkeyStore } from "../stores/hotkeys.store";
 import { Permissions, usePermissionsStore } from "../stores/permissions.store";
 import { rehydrateRecordingStateStore } from "../stores/recording-state.store";
+import { rehydrateRegionSelectorState } from "../stores/region-selector.store";
 import { updateStandaloneListBoxStore } from "../stores/standalone-listbox.store";
 import { rehydrateWindowReopenState } from "../stores/window-open-state.store";
 import { Events } from "../types/events";
@@ -19,6 +20,7 @@ export const App = () => {
   const [unlisten, setUnlisten] = useState<UnlistenFn | null>(null);
 
   const setupPermissions = async () => {
+    if (getPlatform() !== "macos") return;
     const prefetch = await checkPermissions();
     setPermissions(prefetch);
     setCanUnlock(prefetch);
@@ -39,6 +41,7 @@ export const App = () => {
     rehydrateRecordingStateStore(e);
     rehydrateWindowReopenState(e);
     rehydrateHotkeyStore(e);
+    rehydrateRegionSelectorState(e);
   };
 
   useEffect(() => {

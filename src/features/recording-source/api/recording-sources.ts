@@ -31,7 +31,6 @@ export const listMonitors = async () => {
   return monitors as MonitorDetails[];
 };
 
-export const listWindows = async (generateThumbnails: boolean) => {
-  const windows = await invoke(Commands.ListWindows, { generateThumbnails });
-  return windows as WindowDetails[];
+export const listWindows = (generateThumbnails: boolean) => {
+  void invoke(Commands.ListWindows, { generateThumbnails });
 };

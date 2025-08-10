@@ -27,7 +27,7 @@ pub async fn ensure_permissions() -> bool {
 }
 
 /// Polls permissions every second - stops polling once all required permissions granted.
-pub async fn monitor_permissions(app_handle: Arc<AppHandle>) -> Result<(), String> {
+pub async fn monitor_permissions(app_handle: AppHandle) -> Result<(), String> {
   let mut interval = interval(Duration::from_secs(1));
 
   loop {

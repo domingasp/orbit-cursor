@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "orbit-cursor",
+  "productName": "Orbit Cursor",
   "version": "0.1.0",
   "identifier": "com.orbit-cursor.app",
   "build": {
@@ -22,8 +22,11 @@
         "resizable": false,
         "shadow": true,
         "transparent": true,
+        "visible": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
         "windowEffects": {
-          "effects": ["underWindowBackground"],
+          "effects": ["underWindowBackground", "mica"],
           "radius": 10,
           "state": "active"
         }
@@ -35,7 +38,10 @@
         "decorations": false,
         "resizable": false,
         "fullscreen": false,
-        "transparent": true
+        "transparent": true,
+        "visible": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true
       },
       {
         "title": "Recording Input Options",
@@ -48,8 +54,10 @@
         "shadow": true,
         "transparent": true,
         "visible": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
         "windowEffects": {
-          "effects": ["underWindowBackground"],
+          "effects": ["underWindowBackground", "mica"],
           "radius": 10,
           "state": "active"
         }
@@ -64,21 +72,25 @@
         "shadow": false,
         "visible": false,
         "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
         "acceptFirstMouse": true
       },
       {
         "title": "Recording Source Selector",
         "label": "recording_source_selector",
         "url": "/recording-source-selector",
-        "width": 232,
+        "width": 300,
         "height": 40,
         "decorations": false,
         "resizable": false,
         "shadow": true,
         "transparent": true,
         "visible": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
         "windowEffects": {
-          "effects": ["underWindowBackground"],
+          "effects": ["underWindowBackground", "mica"],
           "radius": 10,
           "state": "active"
         }
@@ -94,8 +106,10 @@
         "shadow": true,
         "transparent": true,
         "visible": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
         "windowEffects": {
-          "effects": ["underWindowBackground"],
+          "effects": ["underWindowBackground", "mica"],
           "radius": 10,
           "state": "active"
         }
@@ -121,14 +135,20 @@
     },
     "trayIcon": {
       "id": "tray_icon",
-      "iconPath": "icons/32x32.png",
+      "iconPath": "icons/system-tray.ico",
       "iconAsTemplate": true
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": ["icons/32x32.png"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
     "macOS": {
       "entitlements": "entitlements.plist"
     }

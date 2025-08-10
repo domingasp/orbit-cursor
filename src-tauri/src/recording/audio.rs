@@ -88,11 +88,15 @@ fn spawn_audio_recorder(
   let stream = build_audio_stream(
     &device,
     &config,
-    writer.clone(),
-    tail_buffer.clone(),
-    silence_written,
-    synchronization.should_write.clone(),
-    silence_bytes,
+    AudioStreamContext {
+      writer: writer.clone(),
+      tail_buffer: tail_buffer.clone(),
+      silence_written,
+      should_write: synchronization.should_write.clone(),
+      silence_bytes,
+      #[cfg(target_os = "windows")]
+      stop_rx: synchronization.stop_tx.subscribe(),
+    },
   );
 
   spawn_audio_thread(
@@ -182,16 +186,66 @@ fn prepare_offset_handling(
   (silence_bytes, tail_buffer, silence_written)
 }
 
-/// Build audio stream for reading and writing audio data
-fn build_audio_stream(
-  device: &Device,
-  config: &StreamConfig,
+struct AudioStreamContext {
   writer: Arc<Mutex<ChildStdin>>,
   tail_buffer: Arc<Mutex<TailBuffer>>,
   silence_written: Arc<OnceCell<bool>>,
   should_write: Arc<AtomicBool>,
   silence_bytes: Vec<u8>,
+  #[cfg(target_os = "windows")]
+  stop_rx: broadcast::Receiver<()>,
+}
+/// Build audio stream for reading and writing audio data
+fn build_audio_stream(
+  device: &Device,
+  config: &StreamConfig,
+  context: AudioStreamContext,
 ) -> cpal::Stream {
+  let AudioStreamContext {
+    writer,
+    tail_buffer,
+    silence_written,
+    should_write,
+    silence_bytes,
+    #[cfg(target_os = "windows")]
+    mut stop_rx,
+  } = context;
+
+  #[cfg(target_os = "windows")]
+  let audio_started = Arc::new(AtomicBool::new(false));
+
+  #[cfg(target_os = "windows")]
+  {
+    // WASAPI only starts running once some audio has been played
+    // we feed ffmpeg silence until actual audio starts playing
+    let audio_started_for_thread = audio_started.clone();
+    let should_write_for_thread = should_write.clone();
+    let writer_for_thread = writer.clone();
+
+    let sample_rate = config.sample_rate.0 as usize;
+    let channels = config.channels as usize;
+
+    std::thread::spawn(move || {
+      let delay_ms = 10;
+      let samples_per_buffer = (sample_rate * channels * delay_ms) / 1000;
+      let empty_buffer = vec![0u8; samples_per_buffer * 2]; // 2 bytes per i16 sample
+      let sleep_duration = std::time::Duration::from_millis(delay_ms as u64);
+
+      while !audio_started_for_thread.load(std::sync::atomic::Ordering::SeqCst) {
+        if should_write_for_thread.load(std::sync::atomic::Ordering::SeqCst) {
+          writer_for_thread.lock().write_all(&empty_buffer).ok();
+        }
+
+        if stop_rx.try_recv().is_ok() {
+          // In case the main stream never starts in the entirie recording
+          return;
+        }
+
+        std::thread::sleep(sleep_duration);
+      }
+    });
+  }
+
   device
     .build_input_stream(
       config,
@@ -199,6 +253,9 @@ fn build_audio_stream(
         if !should_write.load(std::sync::atomic::Ordering::SeqCst) {
           return;
         }
+
+        #[cfg(target_os = "windows")]
+        audio_started.store(true, std::sync::atomic::Ordering::SeqCst);
 
         let bytes = f32_samples_to_i16_bytes(samples);
         let mut writer = writer.lock();

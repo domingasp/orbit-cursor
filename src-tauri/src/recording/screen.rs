@@ -12,7 +12,7 @@ use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use scap::{
   capturer::{Capturer, Options},
-  frame::{Frame, YUVFrame},
+  frame::Frame,
   get_all_targets, Target,
 };
 use tauri::{LogicalPosition, PhysicalPosition, PhysicalSize};
@@ -23,8 +23,8 @@ use crate::{
     ffmpeg::{spawn_rawvideo_ffmpeg, FfmpegInputDetails},
     models::{RecordingType, Region, ScreenCaptureDetails, StreamSync},
   },
-  recording_sources::{commands::list_monitors, service::get_visible_windows},
-  screen_capture::service::{get_app_targets, get_display},
+  recording_sources::{commands::list_monitors, service::get_os_visible_windows},
+  screen_capture::service::{get_app_targets, get_display_scap_target},
   APP_HANDLE,
 };
 
@@ -66,8 +66,13 @@ pub fn start_screen_recorder(
     width,
     height,
     frame_rate: 60,
-    pixel_format: "nv12".to_string(),
+    pixel_format: if cfg!(target_os = "macos") {
+      "nv12".to_string()
+    } else {
+      "bgra".to_string()
+    },
     wallclock_timestamps: true,
+    set_output_rate: true,
     crop,
   };
   let (ffmpeg, stdin) = spawn_rawvideo_ffmpeg(
@@ -146,7 +151,7 @@ fn create_screen_recorder(
   let (monitor_position, monitor_size, scale_factor) = get_monitor_details(&monitor_name);
 
   // Default to selected monitor
-  let mut target = get_display(monitor_name);
+  let mut target = get_display_scap_target(monitor_name);
   let mut width = monitor_size.width;
   let mut height = monitor_size.height;
 
@@ -202,18 +207,27 @@ fn get_monitor_details(monitor_name: &str) -> (LogicalPosition<f64>, PhysicalSiz
 }
 
 fn get_window_target(window_id: u32) -> Option<(Target, f64, f64, LogicalPosition<f64>)> {
-  let app_handle = APP_HANDLE.get().unwrap();
-  let windows = get_visible_windows(app_handle.clone().available_monitors().unwrap(), None);
-  let window_details = windows.into_iter().find(|w| w.id == window_id)?;
+  #[cfg(target_os = "macos")]
+  let visible_windows = {
+    let app_handle = APP_HANDLE.get().unwrap();
+    get_os_visible_windows(&app_handle.clone().available_monitors().unwrap())
+  };
 
-  let size: PhysicalSize<f64> = window_details.size.to_physical(window_details.scale_factor);
+  #[cfg(target_os = "windows")]
+  let visible_windows = get_os_visible_windows();
+
+  let window_metadata = visible_windows.into_iter().find(|w| w.id == window_id)?;
+
+  let size: PhysicalSize<f64> = window_metadata
+    .size
+    .to_physical(window_metadata.scale_factor);
   let target = get_window(window_id)?;
 
   Some((
     target,
     size.width as f64,
     size.height as f64,
-    window_details.position,
+    window_metadata.position,
   ))
 }
 
@@ -227,7 +241,11 @@ fn create_scap_capturer(target: Option<Target>) -> Capturer {
     show_cursor: false,
     show_highlight: false,
     excluded_targets: Some(targets_to_exclude),
-    output_type: scap::frame::FrameType::YUVFrame,
+    output_type: if cfg!(target_os = "macos") {
+      scap::frame::FrameType::YUVFrame
+    } else {
+      scap::frame::FrameType::BGRAFrame
+    },
     ..Default::default()
   };
 
@@ -235,7 +253,7 @@ fn create_scap_capturer(target: Option<Target>) -> Capturer {
 }
 
 fn build_capturer_stream(
-  capturer: Capturer,
+  mut capturer: Capturer,
   writer: Arc<Mutex<ChildStdin>>,
   should_write: Arc<AtomicBool>,
   mut stop_rx: broadcast::Receiver<()>,
@@ -246,46 +264,54 @@ fn build_capturer_stream(
 
     // Required as MacOS ScreenCaptureKit only sends frames when data
     // actually changes, at least on application recording
-    let mut cached_frame: Option<YUVFrame> = None;
+    let mut cached_frame: Option<Vec<u8>> = None;
 
     loop {
       if stop_rx.try_recv().is_ok() {
         log::info!("Screen recorder received stop signal");
+        capturer.stop_capture();
         break;
       }
 
-      let frame: Option<&YUVFrame> =
-        match capturer.get_next_frame_or_timeout(Duration::from_millis(1)) {
+      let frame_buffer: Option<Vec<u8>> =
+        match capturer.get_next_frame_or_timeout(Duration::from_micros(16_667)) {
           Ok(Frame::YUVFrame(frame)) => {
             once.get_or_init(|| ready_barrier.wait());
-            cached_frame = Some(frame);
-            cached_frame.as_ref()
+            let width = frame.width as usize;
+            let height = frame.height as usize;
+
+            let mut buffer = Vec::with_capacity(width * height + (width * height / 2));
+
+            // Y plane with stride removal
+            for row in 0..height {
+              let y_start = row * frame.luminance_stride as usize;
+              let y_end = y_start + width;
+              buffer.extend_from_slice(&frame.luminance_bytes[y_start..y_end]);
+            }
+
+            // Copy UV plane with stride removal (NV12)
+            let chroma_height = height / 2;
+            for row in 0..chroma_height {
+              let uv_start = row * frame.chrominance_stride as usize;
+              let uv_end = uv_start + width;
+              buffer.extend_from_slice(&frame.chrominance_bytes[uv_start..uv_end]);
+            }
+
+            cached_frame = Some(buffer.clone());
+            Some(buffer)
           }
-          _ => cached_frame.as_ref(),
+          Ok(Frame::BGRA(frame)) => {
+            once.get_or_init(|| ready_barrier.wait());
+            let buffer = frame.data;
+
+            cached_frame = Some(buffer.clone());
+            Some(buffer)
+          }
+          _ => cached_frame.clone(),
         };
 
       if should_write.load(std::sync::atomic::Ordering::SeqCst) {
-        if let Some(frame) = frame {
-          let width = frame.width as usize;
-          let height = frame.height as usize;
-
-          let mut buffer = Vec::with_capacity(width * height + (width * height / 2));
-
-          // Y plane with stride removal
-          for row in 0..height {
-            let y_start = row * frame.luminance_stride as usize;
-            let y_end = y_start + width;
-            buffer.extend_from_slice(&frame.luminance_bytes[y_start..y_end]);
-          }
-
-          // Copy UV plane with stride removal (NV12)
-          let chroma_height = height / 2;
-          for row in 0..chroma_height {
-            let uv_start = row * frame.chrominance_stride as usize;
-            let uv_end = uv_start + width;
-            buffer.extend_from_slice(&frame.chrominance_bytes[uv_start..uv_end]);
-          }
-
+        if let Some(buffer) = frame_buffer {
           let _ = writer.lock().write_all(&buffer);
         }
       }
@@ -318,7 +344,18 @@ fn spawn_screen_thread(
 
 /// Returns a dummy stdin allow swapping out where required
 fn closed_child_stdin() -> ChildStdin {
-  std::process::Command::new("true")
+  let dummy_command = if cfg!(target_os = "macos") {
+    "true"
+  } else {
+    "cmd"
+  };
+
+  std::process::Command::new(dummy_command)
+    .args(if cfg!(target_os = "windows") {
+      vec!["/C", "echo"]
+    } else {
+      vec![]
+    })
     .stdin(std::process::Stdio::piped())
     .spawn()
     .expect("Failed to spawn dummy process")

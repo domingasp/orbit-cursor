@@ -19,6 +19,7 @@ import { Keyboard } from "../../../components/keyboard/keyboard";
 import { Separator } from "../../../components/separator/separator";
 import { Sparkles } from "../../../components/sparkles/sparkles";
 import { clearInteractionAttributes } from "../../../lib/styling";
+import { usePermissionsStore } from "../../../stores/permissions.store";
 import {
   RecordingType,
   useRecordingStateStore,
@@ -49,6 +50,9 @@ export const RecordingControls = () => {
       state.windows[AppWindow.StartRecordingDock],
       state.setWindowOpenState,
     ])
+  );
+  const hasRequiredPermissions = usePermissionsStore(
+    (state) => state.hasRequired
   );
 
   const [
@@ -111,7 +115,7 @@ export const RecordingControls = () => {
     // Keep region selector open to show user where the recording is happening
     onCancel(recordingType !== RecordingType.Region); // Closes dock
     if (recordingType === RecordingType.Region) {
-      passthroughRegionSelector(true);
+      passthroughRegionSelector(selectedMonitor.id, true);
     }
 
     startRecording({
@@ -141,7 +145,8 @@ export const RecordingControls = () => {
     if (
       startRecordingDockOpened &&
       selectedMonitor &&
-      recordingType === RecordingType.Region
+      recordingType === RecordingType.Region &&
+      hasRequiredPermissions()
     ) {
       showRegionSelector(selectedMonitor.position, selectedMonitor.size);
     }

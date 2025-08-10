@@ -16,6 +16,11 @@ import {
 import { Events } from "../../types/events";
 
 export const StartRecordingDock = () => {
+    // top level overflow hidden
+  document.body.classList.add(
+    "overflow-hidden"
+  );
+
   const [{ accessibility, screen }, canUnlock] = usePermissionsStore(
     useShallow((state) => [state.permissions, state.canUnlock])
   );

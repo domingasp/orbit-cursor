@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import { LogicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 
 import { Commands } from "../types/api";
@@ -27,8 +27,16 @@ export const hideStartRecordingDock = () => {
   void invoke(Commands.HideStartRecordingDock);
 };
 
-export const passthroughRegionSelector = (passthrough: boolean = false) => {
-  void invoke(Commands.PassthroughRegionSelector, { passthrough });
+export const passthroughRegionSelector = (
+  displayId: string,
+  passthrough: boolean = false,
+  channel?: Channel<ArrayBuffer>
+) => {
+  void invoke(Commands.PassthroughRegionSelector, {
+    channel: channel ?? new Channel<ArrayBuffer>(), // No way to have it optional rust side
+    displayId,
+    passthrough,
+  });
 };
 
 export const showStandaloneListBox = async (

@@ -20,6 +20,8 @@ pub struct FfmpegInputDetails {
   pub frame_rate: u32,
   pub pixel_format: String,
   pub wallclock_timestamps: bool,
+  // On windows, without rate ffmpeg drops frames
+  pub set_output_rate: bool,
   pub crop: Option<(PhysicalSize<f64>, PhysicalPosition<f64>)>,
 }
 
@@ -37,6 +39,7 @@ pub fn spawn_rawvideo_ffmpeg(
     frame_rate,
     pixel_format,
     wallclock_timestamps,
+    set_output_rate,
     crop,
   } = input_details;
 
@@ -52,6 +55,7 @@ pub fn spawn_rawvideo_ffmpeg(
     .format("rawvideo")
     .pix_fmt(pixel_format)
     .size(width, height)
+    .realtime()
     .input("-");
 
   if let Some((PhysicalSize { width, height }, PhysicalPosition { x, y })) = crop {
@@ -71,11 +75,17 @@ pub fn spawn_rawvideo_ffmpeg(
     command.args(["-tag:v", "hvc1"]);
   }
 
-  #[cfg(not(target_os = "macos"))]
-  command.codec_video("libx264").crf(20);
+  #[cfg(target_os = "windows")]
+  {
+    command.codec_video(get_hardware_encoder()).crf(20);
+    command.args(["-b:v", "12000k"]);
+  }
 
-  #[cfg(target_os = "macos")]
-  command.pix_fmt("yuv420p"); // QuickTime compatibility
+  command.pix_fmt("yuv420p"); // General, and QuickTime, compatibility
+
+  if set_output_rate {
+    command.rate(frame_rate as f32);
+  }
 
   command.output(file_path.to_string_lossy());
 
@@ -89,6 +99,39 @@ pub fn spawn_rawvideo_ffmpeg(
     .expect("Failed to take stdin for video Ffmpeg");
 
   (ffmpeg, stdin)
+}
+
+/// Return the hardware-accelerated encoder if available, otherwise "libx264".
+#[cfg(target_os = "windows")]
+pub fn get_hardware_encoder() -> String {
+  // Priority list: NVIDIA > Intel QSV > AMD AMF
+  let preferred_encoders = [
+    "h264_nvenc",
+    "hevc_nvenc",
+    "h264_qsv",
+    "hevc_qsv",
+    "h264_amf",
+    "hevc_amf",
+  ];
+
+  let output = std::process::Command::new("ffmpeg")
+    .arg("-hide_banner")
+    .arg("-encoders")
+    .output();
+
+  if let Ok(output) = output {
+    if output.status.success() {
+      let stdout = String::from_utf8_lossy(&output.stdout);
+      for encoder in preferred_encoders {
+        if stdout.contains(encoder) {
+          return encoder.to_string();
+        }
+      }
+    }
+  }
+
+  // Fallback to software encoder
+  "libx264".to_string()
 }
 
 /// Concat provided screen segments into a single file

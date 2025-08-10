@@ -28,6 +28,7 @@ import { InputToggle } from "./input-toggle";
 export enum WarningType {
   Empty = "empty",
   Disconnected = "disconnected",
+  NoPermission = "noPermission",
 }
 
 type InputToggleGroupProps = {
@@ -128,40 +129,42 @@ export const InputToggleGroup = ({
 
   return (
     <div className="flex flex-row justify-between px-2 text-content-fg">
-      {permissions.screen.hasAccess && (
-        <InputToggle
-          offIcon={<VolumeOff size={16} />}
-          onIcon={<Volume2 size={16} />}
-          openRecordingInputOptions={openRecordingInputOptions}
-          permission={permissions.screen}
-          setValue={setSystemAudio}
-          value={systemAudio}
-        />
-      )}
+      <InputToggle
+        offIcon={<VolumeOff size={16} />}
+        onIcon={<Volume2 size={16} />}
+        openRecordingInputOptions={openRecordingInputOptions}
+        permission={permissions.screen}
+        setValue={setSystemAudio}
+        value={systemAudio}
+      />
 
-      {permissions.microphone.hasAccess && (
-        <InputToggle
-          offIcon={<MicOff size={16} />}
-          onIcon={<Mic size={16} />}
-          openRecordingInputOptions={openRecordingInputOptions}
-          permission={permissions.microphone}
-          setValue={setMicrophone}
-          value={microphone}
-          warning={microphoneWarning}
-        />
-      )}
+      <InputToggle
+        offIcon={<MicOff size={16} />}
+        onIcon={<Mic size={16} />}
+        openRecordingInputOptions={openRecordingInputOptions}
+        permission={permissions.microphone}
+        setValue={setMicrophone}
+        value={microphone}
+        warning={
+          permissions.microphone.hasAccess
+            ? microphoneWarning
+            : WarningType.NoPermission
+        }
+      />
 
-      {permissions.camera.hasAccess && (
-        <InputToggle
-          offIcon={<CameraOff size={16} />}
-          onIcon={<Camera size={16} />}
-          openRecordingInputOptions={openRecordingInputOptions}
-          permission={permissions.camera}
-          setValue={setCamera}
-          value={camera}
-          warning={cameraWarning}
-        />
-      )}
+      <InputToggle
+        offIcon={<CameraOff size={16} />}
+        onIcon={<Camera size={16} />}
+        openRecordingInputOptions={openRecordingInputOptions}
+        permission={permissions.camera}
+        setValue={setCamera}
+        value={camera}
+        warning={
+          permissions.camera.hasAccess
+            ? cameraWarning
+            : WarningType.NoPermission
+        }
+      />
     </div>
   );
 };

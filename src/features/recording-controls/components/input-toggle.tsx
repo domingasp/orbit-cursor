@@ -1,7 +1,8 @@
-import { CircleOff, TriangleAlert } from "lucide-react";
+import { CircleOff, Lock, TriangleAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 
 import { ToggleButton } from "../../../components/button/toggle-button";
+import { cn } from "../../../lib/styling";
 import { PermissionStatus } from "../../../stores/permissions.store";
 
 import { WarningType } from "./input-toggle-groups";
@@ -35,14 +36,21 @@ export const InputToggle = ({
     <div className="relative flex justify-center">
       <AnimatePresence>
         {warning &&
-          ((warning === WarningType.Empty && value) ||
+          (warning === WarningType.NoPermission ||
+            (warning === WarningType.Empty && value) ||
             warning === WarningType.Disconnected) && (
             <motion.div
               animate={{ opacity: 1, y: 0 }}
-              className="absolute text-warning -top-3"
               exit={{ opacity: 0, y: -5 }}
               initial={{ opacity: 0, y: -5 }}
+              className={cn(
+                "absolute -top-3",
+                warning === WarningType.NoPermission
+                  ? "text-muted"
+                  : "text-warning"
+              )}
             >
+              {warning === WarningType.NoPermission && <Lock size={12} />}
               {warning === WarningType.Disconnected && (
                 <TriangleAlert size={12} />
               )}

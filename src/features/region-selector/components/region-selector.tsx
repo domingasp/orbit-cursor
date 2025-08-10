@@ -1,3 +1,6 @@
+import { Channel } from "@tauri-apps/api/core";
+import { Check } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useState, useRef, useEffect } from "react";
 import {
   HandleClasses,
@@ -11,18 +14,17 @@ import {
   getDockBounds,
   updateDockOpacity,
   resetPanels,
+  passthroughRegionSelector,
 } from "../../../api/windows";
+import { Button } from "../../../components/button/button";
 import { cn } from "../../../lib/styling";
+import { getPlatform } from "../../../stores/hotkeys.store";
 import {
   useRecordingStateStore,
   RecordingType,
 } from "../../../stores/recording-state.store";
-import {
-  AppWindow,
-  useWindowReopenStore,
-} from "../../../stores/window-open-state.store";
+import { useRegionSelectorStore } from "../../../stores/region-selector.store";
 import { ResizeDirection } from "../types";
-import { getRectProximity } from "../utils/rect-proximity";
 
 import { Magnifier } from "./magnifier/magnifier";
 
@@ -93,9 +95,6 @@ const handleClasses: HandleClasses = {
 };
 
 export const RegionSelector = () => {
-  const startRecordingDockOpened = useWindowReopenStore(
-    useShallow((state) => state.windows[AppWindow.StartRecordingDock])
-  );
   const [region, setRegion, recordingType, selectedMonitor, isRecording] =
     useRecordingStateStore(
       useShallow((state) => [
@@ -106,18 +105,30 @@ export const RegionSelector = () => {
         state.isRecording,
       ])
     );
+  const [isEditing, setIsEditing] = useRegionSelectorStore(
+    useShallow((state) => [state.isEditing, state.setIsEditing])
+  );
 
   const [resizeDirection, setResizeDirection] = useState<
     ResizeDirection | undefined
   >(undefined);
   const activeResizeHandleRef = useRef<HTMLElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const [ignoreDockBounds, setIgnoreDockBounds] = useState(false);
-  const [dockBounds, setDockBounds] =
-    useState<Awaited<ReturnType<typeof getDockBounds>>>();
+  useState<Awaited<ReturnType<typeof getDockBounds>>>();
   const [position, setPosition] = useState(region.position);
   const [size, setSize] = useState(region.size);
-  const previousProximity = useRef(0);
+
+  const magnifierChannel = useRef<Channel<ArrayBuffer>>(null);
+  const [magnifierScreenshot, setMagnifierScreenshot] =
+    useState<ArrayBuffer | null>(null);
+
+  const showRnd = !isRecording && isEditing;
+  const showActionButtons =
+    isEditing &&
+    !isRecording &&
+    activeResizeHandleRef.current == null &&
+    !isDragging;
 
   // To avoid too many storage updates we only update store at the end
   const onEnd = () => {
@@ -133,8 +144,6 @@ export const RegionSelector = () => {
         width: Math.max(1, size.width - 2),
       },
     });
-    updateDockOpacity(1);
-    previousProximity.current = -1; // ensure calculation happens
   };
 
   const onResizeStart: RndResizeStartCallback = (_e, dir, _elementRef) => {
@@ -151,19 +160,6 @@ export const RegionSelector = () => {
     setResizeDirection(undefined);
     activeResizeHandleRef.current = null;
   };
-
-  useEffect(() => {
-    if (startRecordingDockOpened) {
-      void getDockBounds().then((bounds) => {
-        if (dockBounds === undefined) setDockBounds(bounds);
-
-        // Dock bounds not relevant when region selector on monitor 2
-        setIgnoreDockBounds(
-          selectedMonitor !== null && selectedMonitor.id !== bounds.displayId
-        );
-      });
-    }
-  }, [startRecordingDockOpened, selectedMonitor]);
 
   // Fits region into monitor
   useEffect(() => {
@@ -198,22 +194,20 @@ export const RegionSelector = () => {
   }, [selectedMonitor]);
 
   useEffect(() => {
-    if (!ignoreDockBounds && dockBounds) {
-      const proximity = getRectProximity(
-        {
-          position,
-          size,
-        },
-        { ...dockBounds }
+    updateDockOpacity(isEditing ? 0 : 1);
+    if (selectedMonitor) {
+      magnifierChannel.current = new Channel();
+      magnifierChannel.current.onmessage = (message) => {
+        setMagnifierScreenshot(message);
+      };
+
+      passthroughRegionSelector(
+        selectedMonitor.id,
+        !isEditing,
+        magnifierChannel.current
       );
-
-      if (proximity !== previousProximity.current) {
-        updateDockOpacity(proximity);
-      }
-
-      previousProximity.current = proximity;
     }
-  }, [position, size]);
+  }, [isEditing]);
 
   if (recordingType !== RecordingType.Region) return;
 
@@ -251,20 +245,30 @@ export const RegionSelector = () => {
 
       <Rnd
         bounds="parent"
-        onDragStart={resetPanels}
-        onDragStop={onEnd}
+        // YUV420p requires even values for both size and position
+        // for chroma subsampling - if any are odd, color bleeding will occur
+        dragGrid={[2, 2]}
         onResizeStart={onResizeStart}
         onResizeStop={onResizeEnd}
         position={{ x: position.x, y: position.y }}
+        resizeGrid={[2, 2]}
         resizeHandleClasses={handleClasses}
         resizeHandleStyles={handleStyles}
         size={{ height: size.height, width: size.width }}
         className={cn(
-          "border-white border-2 border-dashed",
-          isRecording && "invisible"
+          "border-white border-2 border-dashed relative select-none transition-opacity",
+          !showRnd && "opacity-0 invisible"
         )}
         onDrag={(_e, d) => {
           setPosition({ x: d.x, y: d.y });
+        }}
+        onDragStart={() => {
+          resetPanels();
+          setIsDragging(true);
+        }}
+        onDragStop={() => {
+          onEnd();
+          setIsDragging(false);
         }}
         // eslint-disable-next-line @typescript-eslint/max-params
         onResize={(_e, _direction, ref, _delta, position) => {
@@ -276,10 +280,44 @@ export const RegionSelector = () => {
         }}
       />
 
-      <Magnifier
-        activeHandle={activeResizeHandleRef}
-        resizeDirection={resizeDirection}
-      />
+      <div
+        className={cn(
+          "absolute left-1/2 -translate-x-1/2 top-0",
+          "select-none flex items-center justify-center",
+          getPlatform() === "macos" ? "top-12" : "top-2" // Lower on Mac cause NOTCH
+        )}
+      >
+        <AnimatePresence>
+          {showActionButtons && (
+            <motion.div
+              animate={{ opacity: 1 }}
+              className="flex flex-row gap-2 p-2 bg-content rounded-md border-1 border-muted/25"
+              exit={{ opacity: 0 }}
+              initial={{ opacity: 0 }}
+            >
+              <Button
+                color="success"
+                showFocus={false}
+                size="sm"
+                onPress={() => {
+                  setIsEditing(false);
+                }}
+              >
+                <Check size={18} />
+                Finish
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {magnifierScreenshot && (
+        <Magnifier
+          activeHandle={activeResizeHandleRef}
+          magnifierScreenshot={magnifierScreenshot}
+          resizeDirection={resizeDirection}
+        />
+      )}
     </div>
   );
 };

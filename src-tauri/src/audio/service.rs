@@ -64,6 +64,9 @@ pub fn get_microphone(device_name: String) -> Option<(Device, StreamConfig)> {
 #[cfg(target_os = "macos")]
 pub fn get_system_audio_device() -> (Device, StreamConfig) {
   let host = cpal::host_from_id(cpal::HostId::ScreenCaptureKit).unwrap();
+
+  // ScreenCaptureKit needs to be the input device, I think
+  // it uses a loopback under the hood
   let device = host
     .default_input_device()
     .expect("No default device found");
@@ -74,9 +77,20 @@ pub fn get_system_audio_device() -> (Device, StreamConfig) {
   (device, config.into())
 }
 
+/// Return system audio device and config
 #[cfg(target_os = "windows")]
 pub fn get_system_audio_device() -> (Device, StreamConfig) {
-  unimplemented!("System audio not supported on windows");
+  let host = cpal::host_from_id(cpal::HostId::Wasapi).unwrap();
+
+  // Notice we are getting default output
+  let device = host
+    .default_output_device()
+    .expect("No default device found");
+  let config = device
+    .default_output_config()
+    .expect("Unsupported input config");
+
+  (device, config.into())
 }
 
 fn buffer_to_decibels(samples: &[f32]) -> f32 {

@@ -9,7 +9,7 @@ import { elementFocus, focusStyles } from "../../lib/styling";
 
 const buttonVariants = tv({
   base: [
-    "inline-flex items-center gap-2 rounded-md font-semibold transition",
+    "inline-flex items-center gap-2 rounded-md font-semibold transition select-none",
     focusStyles,
   ],
   compoundVariants: [
@@ -20,6 +20,24 @@ const buttonVariants = tv({
         "data-[pressed]:bg-info/5",
       ],
       color: "info",
+      variant: "ghost",
+    },
+    {
+      class: [
+        "text-muted",
+        "data-[hovered]:bg-muted/10",
+        "data-[pressed]:bg-muted/5",
+      ],
+      color: "muted",
+      variant: "ghost",
+    },
+    {
+      class: [
+        "text-muted",
+        "data-[hovered]:bg-error/30",
+        "data-[pressed]:bg-error/20",
+      ],
+      color: "error",
       variant: "ghost",
     },
     {
@@ -48,11 +66,13 @@ const buttonVariants = tv({
   },
   variants: {
     color: {
+      error: [],
       info: [
         "text-white bg-info",
         "data-[hovered]:bg-info/90",
         "data-[pressed]:bg-info/80",
       ],
+      muted: [],
       neutral: [
         "text-content-fg bg-neutral",
         "data-[hovered]:bg-neutral-100",
