@@ -35,9 +35,9 @@ export const RecordingSource = ({ onPress }: RecordingSourceProps) => {
   );
 
   return (
-    <div className="w-full max-w-[284px] min-h-[26px] flex flex-row gap-2 items-center justify-center overflow-hidden">
+    <div className="w-full max-w-[284px] min-h-[24px] flex flex-row gap-2 items-center justify-center overflow-hidden">
       <ContentRotate
-        className=" flex gap-2 items-center text-xxs justify-center text-muted font-semibold"
+        className="flex gap-2 items-center text-xxs justify-center text-muted font-semibold"
         containerClassName="min-w-16"
         contentKey={
           recordingType === RecordingType.Window ? "window" : "monitor"
@@ -62,7 +62,7 @@ export const RecordingSource = ({ onPress }: RecordingSourceProps) => {
         layout
       >
         <motion.div
-          className="flex-1 min-w-0"
+          className="flex flex-1 min-w-0"
           transition={{ duration: 0.2, ease: "linear" }}
           layout
         >

@@ -97,11 +97,12 @@ export const RecordingSourceSelector = () => {
     const unlisten = listen(Events.WindowThumbnailsGenerated, (result) => {
       // Fetching here due to conditional rendering, we need to verify
       // window still exists on reloading
-      setWindows(result.payload as WindowDetails[]);
+      const windowResults = result.payload as WindowDetails[];
+      setWindows(windowResults);
 
       if (selectedWindow) {
         const doesSelectedExist =
-          windows.findIndex((x) => x.id === selectedWindow.id) > -1;
+          windowResults.findIndex((x) => x.id === selectedWindow.id) > -1;
         if (!doesSelectedExist) setSelectedWindow(null);
       }
     });
