@@ -16,8 +16,8 @@ use crate::recording::ffmpeg::FfmpegInputDetails;
 #[derive(Debug, Clone)]
 pub struct StreamSync {
   pub should_write: Arc<AtomicBool>,
-  // Separate as we stop screen recording anytime we pause/resume
-  pub stop_screen_tx: broadcast::Sender<()>,
+  // Separate as we stop screen/camera recording anytime we pause/resume
+  pub stop_video_tx: broadcast::Sender<()>,
   pub stop_tx: broadcast::Sender<()>,
   pub ready_barrier: Arc<Barrier>,
 }
@@ -119,8 +119,8 @@ impl Default for RecordingFileSet {
 }
 
 #[derive(Debug, Clone)]
-pub struct ScreenCaptureDetails {
-  pub writer: Arc<Mutex<ChildStdin>>,
+pub struct VideoCaptureDetails {
+  pub writer: Arc<Mutex<Option<ChildStdin>>>,
   pub ffmpeg_input_details: FfmpegInputDetails,
   pub log_prefix: String,
 }

@@ -43,15 +43,14 @@ pub fn live_frame_callback(frame: Buffer, channel: &Channel) {
   let _ = channel.send(tauri::ipc::InvokeResponseBody::Raw(combined));
 }
 
-pub fn get_camera_details(camera_index: CameraIndex) -> (Resolution, u32, FrameFormat) {
+pub fn get_camera_details(camera_index: CameraIndex) -> (Resolution, FrameFormat) {
   let requested = RequestedFormat::new::<RgbAFormat>(RequestedFormatType::AbsoluteHighestFrameRate);
   let camera = Camera::new(camera_index, requested).unwrap();
 
   let resolution = camera.resolution();
-  let frame_rate = camera.frame_rate();
   let frame_format = camera.frame_format();
 
-  (resolution, frame_rate, frame_format)
+  (resolution, frame_format)
 }
 
 pub fn create_camera(

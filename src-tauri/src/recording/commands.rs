@@ -1,4 +1,5 @@
 use std::{
+  path::{Path, PathBuf},
   sync::{atomic::AtomicBool, Arc, Barrier},
   thread::JoinHandle,
 };
@@ -10,18 +11,22 @@ use tokio::sync::broadcast;
 
 use crate::{
   constants::{Events, WindowLabel},
-  models::{EditingState, GlobalState, RecordingState, StoppedRecording},
+  models::{
+    EditingState, GlobalState, RecordingState, StoppedRecording, VideoTrackDetails,
+    VideoTrackStartDetails,
+  },
   recording::{
     audio::{start_microphone_recorder, start_system_audio_recorder},
     camera::start_camera_recorder,
-    ffmpeg::concat_screen_segments,
+    ffmpeg::concat_video_segments,
     file::{create_recording_directory, write_metadata_to_file},
     input_events::start_mouse_event_recorder,
     models::{
       RecordingFile, RecordingFileSet, RecordingManifest, RecordingMetadata, RecordingType, Region,
       StreamSync,
     },
-    screen::{resume_screen_recording, start_screen_recorder},
+    screen::start_screen_recorder,
+    video::resume_video_recording,
   },
   windows::commands::hide_region_selector,
 };
@@ -67,11 +72,11 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
 
     let ready_barrier = Arc::new(Barrier::new(barrier_count));
     let should_write = Arc::new(AtomicBool::new(false));
-    let (stop_screen_tx, _) = broadcast::channel::<()>(1);
+    let (stop_video_tx, _) = broadcast::channel::<()>(1);
     let (stop_tx, _) = broadcast::channel::<()>(1);
     let synchronization = StreamSync {
       should_write: should_write.clone(),
-      stop_screen_tx: stop_screen_tx.clone(),
+      stop_video_tx: stop_video_tx.clone(),
       stop_tx: stop_tx.clone(),
       ready_barrier: ready_barrier.clone(),
     };
@@ -102,18 +107,22 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
       log::info!("Input audio recorder ready");
     }
 
-    if let Some(camera_name) = options.camera_name {
+    let camera_recorder = options.camera_name.and_then(|camera_name| {
       log::info!("Starting camera recorder");
       recording_file_set.camera = Some(RecordingFile::Camera);
-      if let Some(handle) = start_camera_recorder(
-        recording_dir.join(RecordingFile::Camera.as_ref()),
-        synchronization.clone(),
-        camera_name,
-      ) {
-        recorder_handles.push(handle);
-      }
-      log::info!("Camera recorder ready");
-    }
+
+      let camera_file = recording_dir.join(RecordingFile::Camera.unique());
+      start_camera_recorder(camera_file.clone(), synchronization.clone(), camera_name).map(
+        |(handle, capture_details)| {
+          log::info!("Camera recorder ready");
+          VideoTrackStartDetails {
+            path: camera_file,
+            handle,
+            capture_details,
+          }
+        },
+      )
+    });
 
     // Always
     // MUST be after the optionals
@@ -164,9 +173,12 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
       },
       synchronization,
       recorder_handles,
-      screen_file,
-      screen_handle,
-      screen_capture_details,
+      VideoTrackStartDetails {
+        path: screen_file,
+        handle: screen_handle,
+        capture_details: screen_capture_details,
+      },
+      camera_recorder,
     );
     log::info!("Recording started");
   });
@@ -186,6 +198,8 @@ pub async fn stop_recording(app_handle: AppHandle) {
       stream_handles: Some(stream_handles),
       screen_handle: Some(screen_stream_handle),
       screen_files: Some(screen_files),
+      camera_handle,
+      camera_files,
     } = recording_state.lock().recording_stopped()
     {
       for stream_handle in stream_handles {
@@ -195,7 +209,20 @@ pub async fn stop_recording(app_handle: AppHandle) {
       }
 
       let _ = screen_stream_handle.join();
-      concat_screen_segments(screen_files, recording_manifest.directory.clone());
+      concat_video_segments(
+        screen_files,
+        recording_manifest.directory.clone(),
+        RecordingFile::Screen,
+      );
+
+      if let (Some(camera_handle), Some(camera_files)) = (camera_handle, camera_files) {
+        let _ = camera_handle.join();
+        concat_video_segments(
+          camera_files,
+          recording_manifest.directory.clone(),
+          RecordingFile::Camera,
+        );
+      }
 
       let _ = app_handle.emit(Events::RecordingComplete.as_ref(), recording_manifest);
     };
@@ -226,26 +253,58 @@ pub async fn resume_recording(app_handle: AppHandle) {
   log::info!("Resuming recording");
 
   let recording_state: State<'_, Mutex<RecordingState>> = app_handle.state();
-  let mut recording_state_guard = recording_state.lock();
-  if let Some(recording_manifest) = &recording_state_guard.recording_manifest {
-    if let Some(screen_capture_details) = &recording_state_guard.screen_capture_details {
-      if let Some(stream_sync) = &recording_state_guard.stream_sync {
-        let screen_file = recording_manifest
-          .directory
-          .join(RecordingFile::Screen.unique());
+  let mut state = recording_state.lock();
 
-        let screen_handle = resume_screen_recording(
-          screen_file.clone(),
-          screen_capture_details.clone(),
-          stream_sync.stop_screen_tx.subscribe(),
-        );
+  let Some(recording_manifest) = state.recording_manifest.clone() else {
+    log::warn!("No recording manifest found, cannot resume");
+    return;
+  };
+  let Some(stream_sync) = state.stream_sync.clone() else {
+    log::warn!("No stream sync found, cannot resume");
+    return;
+  };
 
-        recording_state_guard.resume_recording(screen_handle, screen_file);
-      }
-    }
+  let screen_resume = resume_video_track(
+    &state.screen_capture_details,
+    &recording_manifest.directory,
+    RecordingFile::Screen,
+    stream_sync.clone(),
+  );
+
+  let camera_resume = resume_video_track(
+    &state.camera_capture_details,
+    &recording_manifest.directory,
+    RecordingFile::Camera,
+    stream_sync,
+  );
+
+  if let Some((screen_handle, screen_file)) = screen_resume {
+    let (camera_handle, camera_file) = camera_resume
+      .map(|(h, f)| (Some(h), Some(f)))
+      .unwrap_or((None, None));
+
+    state.resume_recording(screen_handle, screen_file, camera_handle, camera_file);
   }
 
   log::info!("Recording resumed");
+}
+
+fn resume_video_track(
+  details: &Option<VideoTrackDetails>,
+  directory: &Path,
+  file_type: RecordingFile,
+  stream_sync: StreamSync,
+) -> Option<(JoinHandle<()>, PathBuf)> {
+  details.as_ref()?.capture_details.as_ref().map(|details| {
+    let file_path = directory.join(file_type.unique());
+    let handle = resume_video_recording(
+      file_path.clone(),
+      details.clone(),
+      stream_sync.stop_video_tx.subscribe(),
+    );
+
+    (handle, file_path)
+  })
 }
 
 #[tauri::command]

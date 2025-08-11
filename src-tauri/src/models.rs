@@ -13,7 +13,7 @@ use tokio::sync::broadcast::{self, Receiver, Sender};
 use crate::{
   audio::models::AudioStream,
   constants::WindowLabel,
-  recording::models::{RecordingManifest, ScreenCaptureDetails, StreamSync},
+  recording::models::{RecordingManifest, StreamSync, VideoCaptureDetails},
 };
 
 pub struct GlobalState {
@@ -104,6 +104,39 @@ pub struct StoppedRecording {
   pub stream_handles: Option<Vec<JoinHandle<()>>>,
   pub screen_handle: Option<JoinHandle<()>>,
   pub screen_files: Option<Vec<PathBuf>>,
+  pub camera_handle: Option<JoinHandle<()>>,
+  pub camera_files: Option<Vec<PathBuf>>,
+}
+
+pub struct VideoTrackDetails {
+  pub capture_details: Option<VideoCaptureDetails>,
+  pub files: Option<Vec<PathBuf>>,
+  pub stream_handle: Option<JoinHandle<()>>,
+}
+
+impl VideoTrackDetails {
+  pub fn add_segment(&mut self, handle: Option<JoinHandle<()>>, file: Option<PathBuf>) {
+    self.stream_handle = handle;
+    if let Some(files) = &mut self.files {
+      if let Some(file) = file {
+        files.push(file);
+      }
+    }
+  }
+}
+
+trait TakeStreamAndFiles {
+  fn take_stream_and_files(&mut self) -> (Option<JoinHandle<()>>, Option<Vec<PathBuf>>);
+}
+
+impl TakeStreamAndFiles for Option<VideoTrackDetails> {
+  fn take_stream_and_files(&mut self) -> (Option<JoinHandle<()>>, Option<Vec<PathBuf>>) {
+    if let Some(details) = self.take() {
+      (details.stream_handle, details.files)
+    } else {
+      (None, None)
+    }
+  }
 }
 
 pub struct RecordingState {
@@ -111,9 +144,24 @@ pub struct RecordingState {
   pub recording_manifest: Option<RecordingManifest>,
   pub stream_sync: Option<StreamSync>,
   pub stream_handles: Option<Vec<JoinHandle<()>>>,
-  pub screen_capture_details: Option<ScreenCaptureDetails>,
-  pub screen_files: Option<Vec<PathBuf>>,
-  pub screen_stream_handle: Option<JoinHandle<()>>,
+  pub screen_capture_details: Option<VideoTrackDetails>,
+  pub camera_capture_details: Option<VideoTrackDetails>,
+}
+
+pub struct VideoTrackStartDetails {
+  pub path: PathBuf,
+  pub handle: JoinHandle<()>,
+  pub capture_details: VideoCaptureDetails,
+}
+
+impl VideoTrackStartDetails {
+  fn into_video_track_details(self) -> VideoTrackDetails {
+    VideoTrackDetails {
+      capture_details: Some(self.capture_details),
+      files: Some(vec![self.path]),
+      stream_handle: Some(self.handle),
+    }
+  }
 }
 
 impl RecordingState {
@@ -124,8 +172,7 @@ impl RecordingState {
       stream_sync: None,
       stream_handles: None,
       screen_capture_details: None,
-      screen_files: None,
-      screen_stream_handle: None,
+      camera_capture_details: None,
     }
   }
 
@@ -134,9 +181,8 @@ impl RecordingState {
     recording_manifest: RecordingManifest,
     stream_sync: StreamSync,
     stream_handles: Vec<JoinHandle<()>>,
-    screen_file: PathBuf,
-    screen_stream_handle: JoinHandle<()>,
-    screen_capture_details: ScreenCaptureDetails,
+    screen_recorder: VideoTrackStartDetails,
+    camera_recorder: Option<VideoTrackStartDetails>,
   ) {
     self.is_recording = true;
     self.recording_manifest = Some(recording_manifest);
@@ -144,9 +190,13 @@ impl RecordingState {
     self.stream_handles = Some(stream_handles);
 
     // Separate due to pause/resume creating separate screen files
-    self.screen_capture_details = Some(screen_capture_details);
-    self.screen_files = Some(vec![screen_file]);
-    self.screen_stream_handle = Some(screen_stream_handle);
+    self.screen_capture_details = Some(screen_recorder.into_video_track_details());
+
+    if let Some(camera_recorder) = camera_recorder {
+      self.camera_capture_details = Some(camera_recorder.into_video_track_details());
+    } else {
+      self.camera_capture_details = None;
+    }
   }
 
   pub fn recording_stopped(&mut self) -> StoppedRecording {
@@ -158,14 +208,19 @@ impl RecordingState {
         .store(false, std::sync::atomic::Ordering::SeqCst);
 
       let _ = stream_sync.stop_tx.send(());
-      let _ = stream_sync.stop_screen_tx.send(());
+      let _ = stream_sync.stop_video_tx.send(());
     }
+
+    let (screen_handle, screen_files) = self.screen_capture_details.take_stream_and_files();
+    let (camera_handle, camera_files) = self.camera_capture_details.take_stream_and_files();
 
     StoppedRecording {
       manifest: self.recording_manifest.take(),
       stream_handles: self.stream_handles.take(),
-      screen_handle: self.screen_stream_handle.take(),
-      screen_files: self.screen_files.take(),
+      screen_handle,
+      screen_files,
+      camera_handle,
+      camera_files,
     }
   }
 
@@ -175,16 +230,27 @@ impl RecordingState {
         .should_write
         .store(false, std::sync::atomic::Ordering::SeqCst);
 
-      // Send a stop to screen, this is because screen uses wallclock
-      // timestamps meaning empty frames when not writing
-      let _ = stream_sync.stop_screen_tx.send(());
+      // Send a stop to video streams, screen/camera use wallclock timestamps and
+      // must be stopped to avoid issues with audio/video sync
+      // For example - video paused T = 5, resumed T = 10 and stopped at T = 15,
+      // the video would be 15 seconds long while audio will be 10 seconds long
+      let _ = stream_sync.stop_video_tx.send(());
     }
   }
 
-  pub fn resume_recording(&mut self, screen_stream_handle: JoinHandle<()>, screen_file: PathBuf) {
-    self.screen_stream_handle = Some(screen_stream_handle);
-    if let Some(screen_files) = self.screen_files.as_mut() {
-      screen_files.push(screen_file);
+  pub fn resume_recording(
+    &mut self,
+    screen_stream_handle: JoinHandle<()>,
+    screen_file: PathBuf,
+    camera_stream_handle: Option<JoinHandle<()>>,
+    camera_file: Option<PathBuf>,
+  ) {
+    if let Some(screen_capture_details) = &mut self.screen_capture_details {
+      screen_capture_details.add_segment(Some(screen_stream_handle), Some(screen_file));
+    }
+
+    if let Some(camera_capture_details) = &mut self.camera_capture_details {
+      camera_capture_details.add_segment(camera_stream_handle, camera_file);
     }
 
     if let Some(stream_sync) = &self.stream_sync {
