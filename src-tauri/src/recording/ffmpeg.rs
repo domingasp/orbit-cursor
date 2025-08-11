@@ -17,15 +17,15 @@ use std::io::Write;
 pub struct FfmpegInputDetails {
   pub width: u32,
   pub height: u32,
-  pub frame_rate: u32,
   pub pixel_format: String,
-  pub wallclock_timestamps: bool,
-  // On windows, without rate ffmpeg drops frames
-  pub set_output_rate: bool,
   pub crop: Option<(PhysicalSize<f64>, PhysicalPosition<f64>)>,
+  // On windows, without rate ffmpeg drops frames
+  pub output_frame_rate: Option<u32>,
 }
 
 /// Create and spawn the camera writer ffmpeg
+///
+/// Uses wallclock timestamps to maintain order and timing of frames.
 pub fn spawn_rawvideo_ffmpeg(
   file_path: &Path,
   input_details: FfmpegInputDetails,
@@ -36,22 +36,15 @@ pub fn spawn_rawvideo_ffmpeg(
   let FfmpegInputDetails {
     width,
     height,
-    frame_rate,
     pixel_format,
-    wallclock_timestamps,
-    set_output_rate,
     crop,
+    output_frame_rate,
   } = input_details;
 
   let mut command = FfmpegCommand::new();
 
-  if wallclock_timestamps {
-    command.args(["-use_wallclock_as_timestamps", "1"]);
-  } else {
-    command.args(["-framerate", &frame_rate.to_string()]);
-  }
-
   command
+    .args(["-use_wallclock_as_timestamps", "1"])
     .format("rawvideo")
     .pix_fmt(pixel_format)
     .size(width, height)
@@ -83,7 +76,7 @@ pub fn spawn_rawvideo_ffmpeg(
 
   command.pix_fmt("yuv420p"); // General, and QuickTime, compatibility
 
-  if set_output_rate {
+  if let Some(frame_rate) = output_frame_rate {
     command.rate(frame_rate as f32);
   }
 
@@ -134,35 +127,35 @@ pub fn get_hardware_encoder() -> String {
   "libx264".to_string()
 }
 
-/// Concat provided screen segments into a single file
+/// Concat provided video segments into a single file
 ///
 /// Deletes segments after operation is complete.
-pub fn concat_screen_segments(screen_segments: Vec<PathBuf>, recording_dir: PathBuf) {
-  log::info!("Generating screen segment list file");
-  let segments_path = recording_dir.join(format!("screen-segments_{}.txt", Uuid::new_v4()));
+pub fn concat_video_segments(
+  video_segments: Vec<PathBuf>,
+  recording_dir: PathBuf,
+  output_file: RecordingFile,
+) {
+  log::info!("Generating video segment list file");
+  let segments_path: PathBuf = recording_dir.join(format!("video-segments_{}.txt", Uuid::new_v4()));
   let mut file = File::create(&segments_path).unwrap();
-  for path in &screen_segments {
+  for path in &video_segments {
     let _ = writeln!(file, "file '{}'", path.display());
   }
 
-  log::info!("Concating screen recording segments");
+  log::info!("Concating video recording segments");
   let mut child = FfmpegCommand::new();
 
   child.format("concat");
   child.args(["-safe", "0"]);
   child.input(segments_path.to_string_lossy());
   child.args(["-c", "copy"]);
-  child.output(
-    recording_dir
-      .join(RecordingFile::Screen.as_ref())
-      .to_string_lossy(),
-  );
+  child.output(recording_dir.join(output_file.as_ref()).to_string_lossy());
 
   let mut ffmpeg_child = child.spawn().unwrap();
   let _ = ffmpeg_child.wait();
 
   log::info!("Concat complete, cleaning up");
-  for segment in &screen_segments {
+  for segment in &video_segments {
     if let Err(e) = std::fs::remove_file(segment) {
       log::warn!(
         "Failed to delete recording segment {}: {}",

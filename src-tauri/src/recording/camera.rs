@@ -9,7 +9,6 @@ use std::{
   thread::JoinHandle,
 };
 
-use ffmpeg_sidecar::child::FfmpegChild;
 use nokhwa::{
   utils::{mjpeg_to_rgb, CameraInfo, FrameFormat},
   CallbackCamera,
@@ -17,13 +16,12 @@ use nokhwa::{
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 
-use tokio::sync::broadcast;
-
 use crate::{
   camera::service::{create_camera, get_camera_details},
   recording::{
-    ffmpeg::{spawn_rawvideo_ffmpeg, FfmpegInputDetails},
-    models::StreamSync,
+    ffmpeg::FfmpegInputDetails,
+    models::{StreamSync, VideoCaptureDetails},
+    video::{create_ffmpeg_writer, spawn_video_cleanup_thread},
   },
 };
 
@@ -44,7 +42,7 @@ pub fn start_camera_recorder(
   file_path: PathBuf,
   synchronization: StreamSync,
   camera_name: String,
-) -> Option<JoinHandle<()>> {
+) -> Option<(JoinHandle<()>, VideoCaptureDetails)> {
   let available_cameras = nokhwa::query(nokhwa::utils::ApiBackend::Auto).unwrap();
   if let Some(camera_info) = available_cameras
     .iter()
@@ -61,6 +59,7 @@ pub fn start_camera_recorder(
     tauri::async_runtime::spawn_blocking(move || {
       synchronization.ready_barrier.wait();
     });
+
     None
   }
 }
@@ -70,45 +69,58 @@ fn spawn_camera_recorder(
   file_path: PathBuf,
   camera_info: CameraInfo,
   synchronization: StreamSync,
-) -> JoinHandle<()> {
+) -> (JoinHandle<()>, VideoCaptureDetails) {
   let camera_name = camera_info.human_name();
   let log_prefix = format!("[camera:{camera_name}]");
 
-  // TODO frame_format rework - camera to use wallclock timings
-  let (resolution, frame_rate, frame_format) = get_camera_details(camera_info.index().clone());
-  let (ffmpeg, stdin) = spawn_rawvideo_ffmpeg(
-    &file_path,
-    FfmpegInputDetails {
-      width: resolution.width(),
-      height: resolution.height(),
-      frame_rate,
-      pixel_format: camera_frame_format_to_ffmpeg(if frame_format == FrameFormat::MJPEG {
-        FrameFormat::RAWRGB // MJPEG gets converted to RGB
-      } else {
-        FrameFormat::YUYV
-      })
-      .to_string(),
-      wallclock_timestamps: true,
-      set_output_rate: false,
-      crop: None,
-    },
-    log_prefix.clone(),
-  );
-  let writer = Arc::new(Mutex::new(Some(stdin)));
+  let (resolution, frame_format) = get_camera_details(camera_info.index().clone());
 
-  let camera = build_camera_stream(
+  let ffmpeg_input_details = FfmpegInputDetails {
+    width: resolution.width(),
+    height: resolution.height(),
+    pixel_format: camera_frame_format_to_ffmpeg(if frame_format == FrameFormat::MJPEG {
+      FrameFormat::RAWRGB // MJPEG gets converted to RGB
+    } else {
+      FrameFormat::YUYV
+    })
+    .to_string(),
+    output_frame_rate: None,
+    crop: None,
+  };
+
+  let (writer, ffmpeg) =
+    create_ffmpeg_writer(&file_path, ffmpeg_input_details.clone(), log_prefix.clone());
+
+  let mut camera = build_camera_stream(
     camera_info,
     writer.clone(),
     synchronization.should_write.clone(),
     synchronization.ready_barrier,
   );
 
-  spawn_camera_thread(
-    camera,
-    writer,
-    synchronization.stop_tx.subscribe(),
+  log::info!("{log_prefix} Starting camera stream");
+
+  // Thread required to keep camera from dropping
+  let mut stop_rx_for_camera = synchronization.stop_tx.subscribe();
+  std::thread::spawn(move || {
+    let _ = camera.open_stream();
+    let _ = stop_rx_for_camera.blocking_recv();
+  });
+
+  let handle = spawn_video_cleanup_thread(
+    synchronization.stop_video_tx.subscribe(),
+    writer.clone(),
     ffmpeg,
-    log_prefix,
+    log_prefix.clone(),
+  );
+
+  (
+    handle,
+    VideoCaptureDetails {
+      writer: writer.clone(),
+      ffmpeg_input_details,
+      log_prefix,
+    },
   )
 }
 
@@ -122,8 +134,8 @@ fn build_camera_stream(
   let skipped_count = Arc::new(AtomicUsize::new(0));
 
   create_camera(camera_info.index().clone(), move |frame| {
-    // Skip a few frames to flush startup frames (black screen)
-    if skipped_count.load(std::sync::atomic::Ordering::SeqCst) < 2 {
+    // Skip a few frames to flush startup frames (black/color flashes)
+    if skipped_count.load(std::sync::atomic::Ordering::SeqCst) < 4 {
       skipped_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
       return;
     }
@@ -146,28 +158,4 @@ fn build_camera_stream(
     }
   })
   .unwrap()
-}
-
-/// Spawn camera thread for tearing down and finalizing recording
-fn spawn_camera_thread(
-  mut camera: CallbackCamera,
-  writer: Arc<Mutex<Option<ChildStdin>>>,
-  mut stop_rx: broadcast::Receiver<()>,
-  mut ffmpeg: FfmpegChild,
-  log_prefix: String,
-) -> JoinHandle<()> {
-  std::thread::spawn(move || {
-    log::info!("{log_prefix} Starting camera stream");
-    let _ = camera.open_stream();
-
-    let _ = stop_rx.blocking_recv();
-
-    log::info!("{log_prefix} Audio stream received stop message, finishing writing");
-    let _ = writer.lock().take(); // Closes the stdin pipe allowing shutdown
-
-    log::info!("{log_prefix} Cleaning up audio ffmpeg");
-    let _ = ffmpeg.wait();
-
-    log::info!("{log_prefix} Audio ffmpeg finished");
-  })
 }
