@@ -19,10 +19,6 @@ export const initRegionSelector = () => {
   void invoke(Commands.InitRegionSelector);
 };
 
-export const initRecordingDock = () => {
-  void invoke(Commands.InitRecordingDock);
-};
-
 export const hideStartRecordingDock = () => {
   void invoke(Commands.HideStartRecordingDock);
 };

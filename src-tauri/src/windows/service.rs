@@ -261,20 +261,6 @@ pub fn position_recording_source_selector(app_handle: AppHandle, window: &Webvie
     .ok();
 }
 
-pub fn position_recording_dock(window: &WebviewWindow) {
-  if let Ok(Some(monitor)) = window.current_monitor() {
-    let scale_factor = monitor.scale_factor();
-    let window_size = window.outer_size().unwrap().to_logical::<f64>(scale_factor);
-    let monitor_size = monitor.size().to_logical::<f64>(scale_factor);
-
-    let margin = 10.0;
-    let x = monitor_size.width / 2.0 - window_size.width / 2.0;
-    let y = window_size.height + margin;
-
-    let _ = window.set_position(LogicalPosition { x, y });
-  }
-}
-
 #[cfg(target_os = "macos")]
 fn register_workspace_listener(name: String, callback: Box<dyn Fn()>) {
   let workspace: id = unsafe { msg_send![class!(NSWorkspace), sharedWorkspace] };

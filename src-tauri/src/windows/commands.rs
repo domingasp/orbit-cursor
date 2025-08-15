@@ -20,8 +20,7 @@ use crate::{
 use crate::windows::service::set_hwnd_opacity;
 
 use super::service::{
-  add_close_panel_listener, animate_resize, position_recording_dock,
-  position_recording_source_selector,
+  add_close_panel_listener, animate_resize, position_recording_source_selector,
 };
 
 #[cfg(target_os = "macos")]
@@ -40,7 +39,6 @@ pub static INIT_RECORDING_SOURCE_SELECTOR: Once = Once::new();
 static INIT_STANDALONE_LISTBOX: Once = Once::new();
 static INIT_RECORDING_OPTIONS_PANEL: Once = Once::new();
 static INIT_REGION_SELECTOR: Once = Once::new();
-static INIT_RECORDING_DOCK: Once = Once::new();
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -174,34 +172,6 @@ pub fn init_recording_source_selector(app_handle: AppHandle) {
       convert_to_stationary_panel(&window);
 
       position_recording_source_selector(app_handle, &window);
-    }
-  });
-}
-
-#[tauri::command]
-pub fn init_recording_dock(app_handle: AppHandle) {
-  INIT_RECORDING_DOCK.call_once(|| {
-    if let Some(window) = app_handle.get_webview_window(WindowLabel::RecordingDock.as_ref()) {
-      #[cfg(target_os = "macos")]
-      {
-        add_border(&window);
-        add_animation(&window, 3);
-        let _ = convert_to_stationary_panel(&window, PanelLevel::RecordingDock);
-      }
-
-      #[cfg(target_os = "windows")]
-      convert_to_stationary_panel(&window);
-
-      position_recording_dock(&window);
-
-      // Capture all available webview window titles
-      let titles = app_handle
-        .webview_windows()
-        .iter()
-        .map(|w| w.1.title().unwrap())
-        .collect();
-
-      APP_WEBVIEW_TITLES.set(titles).ok();
     }
   });
 }

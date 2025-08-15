@@ -141,6 +141,7 @@ impl TakeStreamAndFiles for Option<VideoTrackDetails> {
 
 pub struct RecordingState {
   pub is_recording: bool,
+  pub is_paused: bool,
   pub recording_manifest: Option<RecordingManifest>,
   pub stream_sync: Option<StreamSync>,
   pub stream_handles: Option<Vec<JoinHandle<()>>>,
@@ -168,6 +169,7 @@ impl RecordingState {
   pub fn new() -> Self {
     RecordingState {
       is_recording: false,
+      is_paused: false,
       recording_manifest: None,
       stream_sync: None,
       stream_handles: None,
@@ -185,6 +187,8 @@ impl RecordingState {
     camera_recorder: Option<VideoTrackStartDetails>,
   ) {
     self.is_recording = true;
+    self.is_paused = false;
+
     self.recording_manifest = Some(recording_manifest);
     self.stream_sync = Some(stream_sync);
     self.stream_handles = Some(stream_handles);
@@ -201,6 +205,7 @@ impl RecordingState {
 
   pub fn recording_stopped(&mut self) -> StoppedRecording {
     self.is_recording = false;
+    self.is_paused = false;
 
     if let Some(stream_sync) = self.stream_sync.take() {
       stream_sync
@@ -236,6 +241,8 @@ impl RecordingState {
       // the video would be 15 seconds long while audio will be 10 seconds long
       let _ = stream_sync.stop_video_tx.send(());
     }
+
+    self.is_paused = true;
   }
 
   pub fn resume_recording(
@@ -258,10 +265,16 @@ impl RecordingState {
         .should_write
         .store(true, std::sync::atomic::Ordering::SeqCst);
     }
+
+    self.is_paused = false;
   }
 
   pub fn is_recording(&self) -> bool {
     self.is_recording
+  }
+
+  pub fn is_paused(&self) -> bool {
+    self.is_paused
   }
 }
 

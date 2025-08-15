@@ -20,7 +20,7 @@ use constants::store::{FIRST_RUN, STORE_NAME};
 
 use parking_lot::Mutex;
 use rdev::listen;
-use recording::commands::{start_recording, stop_recording};
+use recording::commands::start_recording;
 use recording_sources::commands::{list_monitors, list_windows};
 use serde_json::{json, Value};
 use system_tray::service::init_system_tray;
@@ -29,10 +29,10 @@ use tauri_plugin_store::{Store, StoreExt};
 use tokio::sync::broadcast;
 use windows::commands::{
   collapse_recording_source_selector, expand_recording_source_selector, get_dock_bounds,
-  hide_region_selector, hide_start_recording_dock, init_recording_dock,
-  init_recording_input_options, init_recording_source_selector, init_region_selector,
-  init_standalone_listbox, is_recording_input_options_open, is_start_recording_dock_open, quit_app,
-  reset_panels, show_recording_input_options, show_region_selector, show_standalone_listbox,
+  hide_region_selector, hide_start_recording_dock, init_recording_input_options,
+  init_recording_source_selector, init_region_selector, init_standalone_listbox,
+  is_recording_input_options_open, is_start_recording_dock_open, quit_app, reset_panels,
+  show_recording_input_options, show_region_selector, show_standalone_listbox,
   show_start_recording_dock, update_dock_opacity,
 };
 
@@ -56,7 +56,6 @@ use crate::windows::commands::init_editor;
 use crate::{
   export::commands::{cancel_export, export_recording, open_path_in_file_browser, path_exists},
   models::{EditingState, GlobalState, PreviewState, RecordingState},
-  recording::commands::{pause_recording, resume_recording},
   windows::{
     commands::{init_start_recording_dock, passthrough_region_selector},
     service::{editor_close_listener, spawn_window_close_manager},
@@ -135,15 +134,11 @@ pub fn run() {
     get_dock_bounds,
     update_dock_opacity,
     list_windows,
-    init_recording_dock,
     start_recording,
-    stop_recording,
     open_path_in_file_browser,
     path_exists,
     export_recording,
     cancel_export,
-    pause_recording,
-    resume_recording
   ]);
 
   // State

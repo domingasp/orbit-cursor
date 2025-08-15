@@ -96,25 +96,6 @@
         }
       },
       {
-        "title": "Recording Dock",
-        "label": "recording_dock",
-        "url": "/recording-dock",
-        "width": 162,
-        "height": 40,
-        "decorations": false,
-        "resizable": false,
-        "shadow": true,
-        "transparent": true,
-        "visible": false,
-        "alwaysOnTop": true,
-        "skipTaskbar": true,
-        "windowEffects": {
-          "effects": ["underWindowBackground", "mica"],
-          "radius": 10,
-          "state": "active"
-        }
-      },
-      {
         "title": "Editor",
         "label": "editor",
         "url": "/editor",
@@ -135,7 +116,7 @@
     },
     "trayIcon": {
       "id": "tray_icon",
-      "iconPath": "icons/system-tray.ico",
+      "iconPath": "icons/system-tray-default.ico",
       "iconAsTemplate": true
     }
   },
