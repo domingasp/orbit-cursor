@@ -28,6 +28,7 @@ use crate::{
     screen::start_screen_recorder,
     video::resume_video_recording,
   },
+  system_tray::service::update_system_tray_icon,
   windows::commands::hide_region_selector,
 };
 
@@ -45,13 +46,12 @@ pub struct StartRecordingOptions {
 
 #[tauri::command]
 pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) -> Result<(), ()> {
-  let recording_dock = app_handle
-    .get_webview_window(WindowLabel::RecordingDock.as_ref())
-    .unwrap();
-  let _ = recording_dock.show();
+  update_system_tray_icon(
+    app_handle.clone(),
+    crate::system_tray::service::SystemTrayIcon::Loading,
+  );
 
-  // Setup in a separate thread, this way we don't block UI and the
-  // recording dock will show
+  // Setup in a separate thread, this way we don't block UI
   std::thread::spawn(move || {
     log::info!("Starting recording");
 
@@ -165,6 +165,11 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
     should_write.store(true, std::sync::atomic::Ordering::SeqCst);
     let _ = app_handle.emit(Events::RecordingStarted.as_ref(), ());
 
+    update_system_tray_icon(
+      app_handle.clone(),
+      crate::system_tray::service::SystemTrayIcon::Recording,
+    );
+
     let recording_state: State<'_, Mutex<RecordingState>> = app_handle.state();
     recording_state.lock().recording_started(
       RecordingManifest {
@@ -186,10 +191,14 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
   Ok(())
 }
 
-#[tauri::command]
 pub async fn stop_recording(app_handle: AppHandle) {
   // Re-enable and hide region selector (not always applicable)
   hide_region_selector(app_handle.clone());
+
+  update_system_tray_icon(
+    app_handle.clone(),
+    crate::system_tray::service::SystemTrayIcon::Loading,
+  );
 
   {
     let recording_state: State<'_, Mutex<RecordingState>> = app_handle.state();
@@ -228,10 +237,10 @@ pub async fn stop_recording(app_handle: AppHandle) {
     };
   }
 
-  let recording_dock = app_handle
-    .get_webview_window(WindowLabel::RecordingDock.as_ref())
-    .unwrap();
-  let _ = recording_dock.hide();
+  update_system_tray_icon(
+    app_handle.clone(),
+    crate::system_tray::service::SystemTrayIcon::Default,
+  );
 
   {
     let editing_state: State<'_, Mutex<EditingState>> = app_handle.state();
@@ -248,9 +257,13 @@ pub async fn stop_recording(app_handle: AppHandle) {
   let _ = app_handle.set_activation_policy(tauri::ActivationPolicy::Regular);
 }
 
-#[tauri::command]
 pub async fn resume_recording(app_handle: AppHandle) {
   log::info!("Resuming recording");
+
+  update_system_tray_icon(
+    app_handle.clone(),
+    crate::system_tray::service::SystemTrayIcon::Loading,
+  );
 
   let recording_state: State<'_, Mutex<RecordingState>> = app_handle.state();
   let mut state = recording_state.lock();
@@ -284,6 +297,11 @@ pub async fn resume_recording(app_handle: AppHandle) {
       .unwrap_or((None, None));
 
     state.resume_recording(screen_handle, screen_file, camera_handle, camera_file);
+
+    update_system_tray_icon(
+      app_handle.clone(),
+      crate::system_tray::service::SystemTrayIcon::Recording,
+    );
   }
 
   log::info!("Recording resumed");
@@ -307,8 +325,12 @@ fn resume_video_track(
   })
 }
 
-#[tauri::command]
-pub fn pause_recording(recording_state: State<'_, Mutex<RecordingState>>) {
+pub fn pause_recording(app_handle: AppHandle, recording_state: State<'_, Mutex<RecordingState>>) {
   log::info!("Pausing recording");
   recording_state.lock().pause_recording();
+
+  update_system_tray_icon(
+    app_handle,
+    crate::system_tray::service::SystemTrayIcon::Paused,
+  );
 }

@@ -78,9 +78,6 @@ pub enum WindowLabel {
   #[strum(serialize = "recording_source_selector")]
   RecordingSourceSelector,
 
-  #[strum(serialize = "recording_dock")]
-  RecordingDock,
-
   #[strum(serialize = "editor")]
   Editor,
 }
@@ -96,7 +93,6 @@ pub enum PanelLevel {
   RecordingSourceSelector = 5,
   RecordingInputOptions = 6,
   StandaloneListBox = 7,
-  RecordingDock = 8,
 }
 
 #[cfg(target_os = "macos")]

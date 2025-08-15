@@ -28,13 +28,9 @@ export enum Commands {
   GetDockBounds = "get_dock_bounds",
   UpdateDockOpacity = "update_dock_opacity",
   ListWindows = "list_windows",
-  InitRecordingDock = "init_recording_dock",
   StartRecording = "start_recording",
-  StopRecording = "stop_recording",
   PathExists = "path_exists",
   ExportRecording = "export_recording",
   OpenPathInFileBrowser = "open_path_in_file_browser",
   CancelExport = "cancel_export",
-  PauseRecording = "pause_recording",
-  ResumeRecording = "resume_recording",
 }

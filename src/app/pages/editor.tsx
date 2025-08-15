@@ -45,8 +45,8 @@ export const Editor = () => {
     useShallow((state) => [state.pause, state.seek])
   );
 
-  const [setIsPaused, setIsFinalizing] = useRecordingStateStore(
-    useShallow((state) => [state.setIsPaused, state.setIsFinalizing])
+  const setIsFinalizing = useRecordingStateStore(
+    useShallow((state) => state.setIsFinalizing)
   );
 
   const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
@@ -60,7 +60,6 @@ export const Editor = () => {
       setRecordingManifest(data.payload as RecordingManifest);
 
       // Recording dock clean up
-      setIsPaused(false);
       setIsFinalizing(false);
     });
 

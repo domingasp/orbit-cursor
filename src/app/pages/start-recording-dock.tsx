@@ -16,10 +16,8 @@ import {
 import { Events } from "../../types/events";
 
 export const StartRecordingDock = () => {
-    // top level overflow hidden
-  document.body.classList.add(
-    "overflow-hidden"
-  );
+  // top level overflow hidden
+  document.body.classList.add("overflow-hidden");
 
   const [{ accessibility, screen }, canUnlock] = usePermissionsStore(
     useShallow((state) => [state.permissions, state.canUnlock])
@@ -29,12 +27,8 @@ export const StartRecordingDock = () => {
     useShallow((state) => [state.addWindow, state.setWindowOpenState])
   );
 
-  const [setIsRecording, setIsPaused, setIsFinalizing] = useRecordingStateStore(
-    useShallow((state) => [
-      state.setIsRecording,
-      state.setIsPaused,
-      state.setIsFinalizing,
-    ])
+  const [setIsRecording, setIsFinalizing] = useRecordingStateStore(
+    useShallow((state) => [state.setIsRecording, state.setIsFinalizing])
   );
 
   const noPermissions =
@@ -42,7 +36,6 @@ export const StartRecordingDock = () => {
 
   useEffect(() => {
     setIsRecording(false); // On first mount reset recording state
-    setIsPaused(false);
     setIsFinalizing(false);
 
     const addWindowToStore = async () => {
@@ -53,7 +46,6 @@ export const StartRecordingDock = () => {
     const unlisten = listen(Events.StartRecordingDockOpened, () => {
       setWindowOpenState(AppWindow.StartRecordingDock, true);
       setIsRecording(false);
-      setIsPaused(false);
       setIsFinalizing(false);
     });
 
