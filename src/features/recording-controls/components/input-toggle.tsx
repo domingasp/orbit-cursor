@@ -62,11 +62,13 @@ export const InputToggle = ({
       <ToggleButton
         isSelected={value}
         off={offIcon}
-        on={onIcon}
+        variant="ghost"
         onChange={() => {
           onToggle();
         }}
-      />
+      >
+        {onIcon}
+      </ToggleButton>
     </div>
   );
 };

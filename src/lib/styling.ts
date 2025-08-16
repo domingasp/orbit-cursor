@@ -15,7 +15,7 @@ export function availableVariants<T extends readonly string[]>(
 }
 
 export const focusStyles =
-  "outline-none ring-content-fg/75 ring-offset-content transition-shadow";
+  "outline-none ring-content-fg/75 ring-offset-content transition";
 
 export const elementFocus =
   "data-[focus-visible]:ring-offset-1 data-[focus-visible]:ring-1";
