@@ -8,6 +8,7 @@ import {
   collapseRecordingSourceSelector,
   expandRecordingSourceSelector,
 } from "../../api/windows";
+import { AspectRatio } from "../../components/shared/aspect-ratio/aspect-ratio";
 import {
   listMonitors,
   listWindows,
@@ -155,6 +156,8 @@ export const RecordingSourceSelector = () => {
             />
           </SelectorWrapper>
         ))}
+
+      {isExpanded && recordingType === RecordingType.Window && <AspectRatio />}
 
       <RecordingSource onPress={onToggle} />
     </div>

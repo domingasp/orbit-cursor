@@ -14,6 +14,7 @@ const variants: React.ComponentProps<typeof NumberField>["variant"][] = [
 
 const meta = {
   argTypes: {
+    centered: { control: "boolean" },
     showSteppers: { control: "boolean" },
     size: {
       control: "inline-radio",
@@ -27,6 +28,7 @@ const meta = {
     },
   },
   args: {
+    centered: false,
     defaultValue: 5,
     label: "Amount",
     maxValue: 100,

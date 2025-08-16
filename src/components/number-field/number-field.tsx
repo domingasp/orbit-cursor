@@ -29,10 +29,10 @@ const numberFieldVariants = tv({
   slots: {
     base: "flex flex-col gap-1 w-full",
     field: "group relative flex flex-row items-center",
-    input: "text-content-fg outline-none",
+    input: "text-content-fg outline-none w-full",
     inputWrapper:
       "outline-none text-muted/75 flex flex-row items-center justify-between w-full gap-3",
-    label: "text-muted font-medium",
+    label: "text-muted font-medium tabular-nums",
     line: [
       "absolute bottom-0 inset-x-1 bg-transparent h-[2px] pointer-events-none transition-shadow shadow-[0_1px_0_0] shadow-muted/30",
       "group-data-[focus-within]:shadow-[0_2px_0_0] group-data-[focus-within]:shadow-content-fg/75",
@@ -43,6 +43,7 @@ const numberFieldVariants = tv({
     ],
   },
   variants: {
+    centered: { true: { input: "text-center" } },
     size: {
       md: {
         input: "text-sm py-2",
@@ -57,7 +58,7 @@ const numberFieldVariants = tv({
     },
     steppers: {
       false: {
-        inputWrapper: "pl-3",
+        inputWrapper: "px-3",
       },
       true: { inputWrapper: "px-0" },
     },
@@ -72,6 +73,8 @@ const numberFieldVariants = tv({
 
 export type NumberFieldProps = AriaNumberFieldProps &
   VariantProps<typeof numberFieldVariants> & {
+    centered?: boolean;
+    className?: string;
     label?: string;
     leftSection?: React.ReactNode;
     rightSection?: React.ReactNode;
@@ -79,6 +82,8 @@ export type NumberFieldProps = AriaNumberFieldProps &
   };
 
 export const NumberField = ({
+  centered,
+  className,
   label,
   leftSection,
   rightSection,
@@ -96,13 +101,14 @@ export const NumberField = ({
     line,
     stepper,
   } = numberFieldVariants({
+    centered,
     size,
     steppers: showSteppers,
     variant,
   });
 
   return (
-    <AriaNumberField {...props} className={base()}>
+    <AriaNumberField {...props} className={base({ className })}>
       {label && <Label className={_label()}>{label}</Label>}
 
       <Group className={field()}>
