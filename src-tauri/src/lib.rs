@@ -56,6 +56,7 @@ use crate::windows::commands::init_editor;
 use crate::{
   export::commands::{cancel_export, export_recording, open_path_in_file_browser, path_exists},
   models::{EditingState, GlobalState, PreviewState, RecordingState},
+  recording_sources::commands::resize_window,
   windows::{
     commands::{init_start_recording_dock, passthrough_region_selector},
     service::{editor_close_listener, spawn_window_close_manager},
@@ -139,6 +140,7 @@ pub fn run() {
     path_exists,
     export_recording,
     cancel_export,
+    resize_window
   ]);
 
   // State

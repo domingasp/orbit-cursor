@@ -41,9 +41,6 @@ use tauri::{Emitter, LogicalPosition, LogicalSize};
 use uuid::Uuid;
 use xcap::Window;
 
-#[cfg(target_os = "windows")]
-use crate::recording_sources::commands::WindowMetadata;
-#[cfg(target_os = "macos")]
 use crate::recording_sources::commands::WindowMetadata;
 use crate::{constants::Events, APP_HANDLE};
 #[cfg(target_os = "macos")]
@@ -107,9 +104,7 @@ pub fn get_visible_windows(
           create_and_save_thumbnail(thumbnail_path, window_id, available_windows_for_thumbnail);
         }
 
-        if let Some(pid) = window_pid {
-          app_icon_path = get_app_icon(folder.clone(), pid);
-        }
+        app_icon_path = get_app_icon(folder.clone(), window_pid);
       }
 
       let mut details = WindowDetails::from_metadata(window, app_icon_path, thumbnail_path);
@@ -268,7 +263,7 @@ pub fn get_os_visible_windows(monitors: &[Monitor]) -> Vec<WindowMetadata> {
         size: LogicalSize::new(frame.size.width, frame.size.height),
         position: LogicalPosition::new(frame.origin.x, frame.origin.y),
         scale_factor,
-        pid: Some(window.owning_app().unwrap().process_id()),
+        pid: window.owning_app().unwrap().process_id(),
       });
     }
   }

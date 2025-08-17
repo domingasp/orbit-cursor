@@ -33,4 +33,5 @@ export enum Commands {
   ExportRecording = "export_recording",
   OpenPathInFileBrowser = "open_path_in_file_browser",
   CancelExport = "cancel_export",
+  ResizeWindow = "resize_window",
 }

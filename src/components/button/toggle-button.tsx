@@ -4,7 +4,11 @@ import { ToggleButton as AriaToggleButton } from "react-aria-components";
 import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../tailwind-merge.config";
-import { elementFocus, focusStyles } from "../../lib/styling";
+import {
+  availableVariants,
+  elementFocus,
+  focusStyles,
+} from "../../lib/styling";
 
 const toggleButtonVariants = tv({
   base: [
@@ -30,9 +34,7 @@ const toggleButtonVariants = tv({
   ],
   defaultVariants: { showFocus: true, size: "md", variant: "solid" },
   variants: {
-    showFocus: {
-      true: "",
-    },
+    showFocus: availableVariants("true"),
     size: { md: "text-md", sm: "text-xs" },
     variant: {
       ghost:

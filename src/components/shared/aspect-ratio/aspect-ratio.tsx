@@ -2,9 +2,9 @@ import { Link, Unlink, WandSparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Selection, ToggleButtonGroup } from "react-aria-components";
 
-import { Button } from "../../button/button";
 import { ToggleButton } from "../../button/toggle-button";
 import { NumberField } from "../../number-field/number-field";
+import { CheckOnClickButton } from "../check-on-click-button/check-on-click-button";
 
 /** Simplified whole-number aspect ratio units for width and height. */
 type AspectRatioParts = { ratioHeight: number; ratioWidth: number };
@@ -310,14 +310,15 @@ export const AspectRatio = ({
         </ToggleButton>
       </ToggleButtonGroup>
 
-      <Button
+      <CheckOnClickButton
+        blur="xs"
         onPress={onPressApply}
         showFocus={false}
         size="sm"
         variant="ghost"
       >
         <WandSparkles size={16} />
-      </Button>
+      </CheckOnClickButton>
     </div>
   );
 };

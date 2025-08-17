@@ -20,7 +20,7 @@ pub struct MonitorDetails {
 #[serde(rename_all = "camelCase")]
 pub struct WindowMetadata {
   pub id: u32,
-  pub pid: Option<i32>, // For app icon generation
+  pub pid: i32,
   pub title: String,
   pub size: LogicalSize<f64>,
   pub position: LogicalPosition<f64>,
@@ -31,6 +31,7 @@ pub struct WindowMetadata {
 #[serde(rename_all = "camelCase")]
 pub struct WindowDetails {
   pub id: u32,
+  pub pid: i32,
   pub title: String,
   pub app_icon_path: Option<PathBuf>,
   pub thumbnail_path: Option<PathBuf>,
@@ -47,6 +48,7 @@ impl WindowDetails {
   ) -> Self {
     Self {
       id: data.id,
+      pid: data.pid,
       title: data.title,
       size: data.size,
       position: data.position,
@@ -99,4 +101,81 @@ pub async fn list_windows(app_handle: AppHandle, generate_thumbnails: bool) {
 
   #[cfg(target_os = "windows")]
   get_visible_windows(app_temp_dir);
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+pub async fn resize_window(pid: i32, title: String, size: LogicalSize<f64>) {
+  let app = cidre::ax::UiElement::with_app_pid(pid);
+
+  let mut app_windows = match app.children() {
+    Ok(c) => c,
+    Err(e) => {
+      log::error!("Failed to get children for app with pid {pid}: {e}");
+      return;
+    }
+  };
+
+  // Track best fuzzy match as no way to get window id using
+  // accessibility API - closest title match
+  let mut best_idx: Option<usize> = None;
+  let mut best_score: f64 = -1.0;
+  let mut best_title: Option<String> = None;
+
+  for (idx, app_window) in app_windows.iter().enumerate() {
+    let role = app_window
+      .role()
+      .ok()
+      .map(|r| r.to_string())
+      .unwrap_or_else(|| "???".into());
+
+    if role != "AXWindow" {
+      continue;
+    }
+
+    let Ok(window_title) = app_window.attr_value(cidre::ax::attr::title()) else {
+      continue;
+    };
+
+    let title_cf_string: cidre::arc::Retained<cidre::cf::String> =
+      unsafe { cidre::cf::Type::retain(&window_title) };
+    let current_title = title_cf_string.to_string();
+
+    let score = rapidfuzz::fuzz::ratio(current_title.chars(), title.chars());
+
+    if score > best_score {
+      best_score = score;
+      best_idx = Some(idx);
+      best_title = Some(current_title);
+    }
+  }
+
+  if let Some(idx) = best_idx {
+    let app_window = &mut app_windows[idx];
+
+    // Resize window
+    if app_window
+      .is_settable(cidre::ax::attr::size())
+      .unwrap_or(false)
+    {
+      let ax_size = cidre::ax::Value::with_cg_size(&cidre::cg::Size {
+        width: size.width,
+        height: size.height,
+      });
+
+      if let Err(e) = app_window.set_attr(cidre::ax::attr::size(), ax_size.as_ref()) {
+        log::error!(
+          "Failed to set AX size: {e:?} (best match: '{best_title:?}', score: {best_score:.1}%)"
+        );
+      }
+    }
+  } else {
+    log::warn!("No AXWindow candidates found for pid {pid}");
+  }
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+pub async fn resize_window(pid: i32, title: String, size: LogicalSize<f64>) {
+  log::error!("resize_window command is not implemented for Windows");
 }

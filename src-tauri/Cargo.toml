@@ -53,6 +53,7 @@ tauri-plugin-log = "2"
 log = "0.4"
 rayon = "1.10.0"
 parking_lot = { version = "0.12.4", features = ["deadlock_detection"] }
+rapidfuzz = "0.5"
 
 [dependencies.nokhwa]
 git = "https://github.com/l1npengtul/nokhwa.git"
@@ -67,7 +68,7 @@ features = ["default-formats"]
 tauri-plugin-macos-permissions = "2.2.0"
 cocoa = "0.26"
 objc = "0.2.7"
-cidre = { git = "https://github.com/yury/cidre" }
+cidre = "0.11.3"
 tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2" }
 border = { git = "https://github.com/ahkohd/tauri-toolkit", branch = "v2" }
 

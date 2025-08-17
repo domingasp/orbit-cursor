@@ -1,6 +1,7 @@
-import { LogicalSize } from "@tauri-apps/api/dpi";
+import { LogicalSize, PhysicalSize } from "@tauri-apps/api/dpi";
 import { listen } from "@tauri-apps/api/event";
 import clsx from "clsx";
+import { Info } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
@@ -13,6 +14,7 @@ import {
   listMonitors,
   listWindows,
   MonitorDetails,
+  resizeWindow,
   WindowDetails,
 } from "../../features/recording-source/api/recording-sources";
 import { MonitorSelector } from "../../features/recording-source/components/monitor-selector";
@@ -57,10 +59,6 @@ export const RecordingSourceSelector = () => {
       setSelectedWindow(source);
     } else {
       setSelectedMonitor(source);
-    }
-    if (source !== null) {
-      setIsExpanded(false);
-      collapseRecordingSourceSelector();
     }
   };
 
@@ -157,7 +155,25 @@ export const RecordingSourceSelector = () => {
           </SelectorWrapper>
         ))}
 
-      {isExpanded && recordingType === RecordingType.Window && <AspectRatio />}
+      {isExpanded && recordingType === RecordingType.Window && (
+        <>
+          <AspectRatio
+            onApply={(width, height) => {
+              if (selectedWindow === null) return;
+              resizeWindow(
+                selectedWindow.pid,
+                selectedWindow.title,
+                new PhysicalSize(width, height).toLogical(
+                  selectedWindow.scaleFactor
+                )
+              );
+            }}
+          />
+          <span className="flex flex-row items-center text-xxs text-muted gap-1 font-extralight">
+            <Info size={10} /> Apps may impose own sizing restrictions.
+          </span>
+        </>
+      )}
 
       <RecordingSource onPress={onToggle} />
     </div>

@@ -895,17 +895,19 @@ name = "cidre"
 version = "0.7.0"
 source = "git+https://github.com/yury/cidre.git?rev=561036b#561036bcc45f0a46a3ceef9f84a2161499243f03"
 dependencies = [
- "cidre-macros 0.1.0 (git+https://github.com/yury/cidre.git?rev=561036b)",
+ "cidre-macros 0.1.0",
  "parking_lot",
  "tokio",
 ]
 
 [[package]]
 name = "cidre"
-version = "0.7.0"
-source = "git+https://github.com/yury/cidre#e49c28f345324541268ab9bb1bfa31c5c5a9ec36"
+version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cc0eb4d7faf9f94493eaf7e7c0534dee2dfa9642353382039572abb4e0e56e9"
 dependencies = [
- "cidre-macros 0.1.0 (git+https://github.com/yury/cidre)",
+ "cidre-macros 0.3.0",
+ "half",
  "parking_lot",
  "tokio",
 ]
@@ -917,8 +919,9 @@ source = "git+https://github.com/yury/cidre.git?rev=561036b#561036bcc45f0a46a3ce
 
 [[package]]
 name = "cidre-macros"
-version = "0.1.0"
-source = "git+https://github.com/yury/cidre#e49c28f345324541268ab9bb1bfa31c5c5a9ec36"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82bc2f84c0baaa09299da3a03864491549685912c1e338a54211e00589dc1e4c"
 
 [[package]]
 name = "cipher"
@@ -1267,7 +1270,7 @@ version = "0.15.3"
 source = "git+https://github.com/domingasp/cpal.git#46b356b7a63dac86eb757c9d4173de3ccba19b28"
 dependencies = [
  "alsa",
- "cidre 0.7.0 (git+https://github.com/yury/cidre.git?rev=561036b)",
+ "cidre 0.7.0",
  "core-foundation-sys 0.8.7",
  "coreaudio-rs",
  "dasp_sample",
@@ -4239,7 +4242,7 @@ dependencies = [
  "base64 0.22.1",
  "border",
  "chrono",
- "cidre 0.7.0 (git+https://github.com/yury/cidre)",
+ "cidre 0.11.3",
  "cocoa 0.26.0",
  "cpal",
  "dispatch",
@@ -4252,6 +4255,7 @@ dependencies = [
  "objc",
  "once_cell",
  "parking_lot",
+ "rapidfuzz",
  "rayon",
  "rdev",
  "rmp-serde",
@@ -4973,6 +4977,12 @@ name = "range-alloc"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d6831663a5098ea164f89cff59c6284e95f4e3c76ce9848d4529f5ccca9bde"
+
+[[package]]
+name = "rapidfuzz"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "270e04e5ea61d40841942bb15e451c29ee1618637bcf97fc7ede5dd4a9b1601b"
 
 [[package]]
 name = "rav1e"
