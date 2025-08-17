@@ -334,7 +334,7 @@ pub fn get_os_visible_windows() -> Vec<WindowMetadata> {
             y: rect.top as f64,
           },
           scale_factor: get_window_display_scale_factor(hwnd),
-          pid: Some(pid as i32),
+          pid: pid as i32,
         });
       }
       Target::Display(_) => continue,
