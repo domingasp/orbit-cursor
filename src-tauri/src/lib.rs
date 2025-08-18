@@ -56,7 +56,7 @@ use crate::windows::commands::init_editor;
 use crate::{
   export::commands::{cancel_export, export_recording, open_path_in_file_browser, path_exists},
   models::{EditingState, GlobalState, PreviewState, RecordingState},
-  recording_sources::commands::resize_window,
+  recording_sources::commands::{center_window, resize_window},
   windows::{
     commands::{init_start_recording_dock, passthrough_region_selector},
     service::{editor_close_listener, spawn_window_close_manager},
@@ -64,7 +64,7 @@ use crate::{
 };
 
 #[cfg(target_os = "windows")]
-use crate::recording_sources::commands::{center_window, make_borderless, restore_border};
+use crate::recording_sources::commands::{make_borderless, restore_border};
 
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
@@ -148,7 +148,6 @@ pub fn run() {
     make_borderless,
     #[cfg(target_os = "windows")]
     restore_border,
-    #[cfg(target_os = "windows")]
     center_window
   ]);
 

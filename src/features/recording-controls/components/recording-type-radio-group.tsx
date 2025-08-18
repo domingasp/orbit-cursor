@@ -32,9 +32,17 @@ export const RecordingTypeRadioGroup = () => {
       }}
     >
       <IconRadio
+        aria-label="Screen"
+        icon={<Monitor size={30} />}
+        shortcut={<Keyboard {...KEYBOARD_STYLE}>1</Keyboard>}
+        subtext="Screen"
+        value={RecordingType.Screen}
+      />
+
+      <IconRadio
         aria-label="Region"
         icon={<SquareDashed size={30} />}
-        shortcut={<Keyboard {...KEYBOARD_STYLE}>1</Keyboard>}
+        shortcut={<Keyboard {...KEYBOARD_STYLE}>2</Keyboard>}
         subtext="Region"
         value={RecordingType.Region}
       />
@@ -42,17 +50,9 @@ export const RecordingTypeRadioGroup = () => {
       <IconRadio
         aria-label="Window"
         icon={<AppWindowMac size={30} />}
-        shortcut={<Keyboard {...KEYBOARD_STYLE}>2</Keyboard>}
+        shortcut={<Keyboard {...KEYBOARD_STYLE}>3</Keyboard>}
         subtext="Window"
         value={RecordingType.Window}
-      />
-
-      <IconRadio
-        aria-label="Screen"
-        icon={<Monitor size={30} />}
-        shortcut={<Keyboard {...KEYBOARD_STYLE}>3</Keyboard>}
-        subtext="Screen"
-        value={RecordingType.Screen}
       />
     </RadioGroup>
   );

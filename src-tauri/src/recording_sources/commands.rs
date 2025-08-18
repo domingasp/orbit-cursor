@@ -5,6 +5,8 @@ use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, PhysicalSize};
 
 use super::service::get_visible_windows;
 
+#[cfg(target_os = "macos")]
+use crate::recording_sources::service::find_ax_window_by_pid_and_title;
 #[cfg(target_os = "windows")]
 use crate::recording_sources::service::find_window_by_pid_and_title;
 
@@ -110,6 +112,10 @@ pub async fn list_windows(app_handle: AppHandle, generate_thumbnails: bool) {
 #[tauri::command]
 pub async fn resize_window(pid: i32, title: String, size: LogicalSize<f64>) {
   let app = cidre::ax::UiElement::with_app_pid(pid);
+  let Some((idx, best_title, best_score)) = find_ax_window_by_pid_and_title(pid, &title) else {
+    log::warn!("No AXWindow candidates found for pid {pid}");
+    return;
+  };
 
   let mut app_windows = match app.children() {
     Ok(c) => c,
@@ -119,61 +125,23 @@ pub async fn resize_window(pid: i32, title: String, size: LogicalSize<f64>) {
     }
   };
 
-  // Track best fuzzy match as no way to get window id using
-  // accessibility API - closest title match
-  let mut best_idx: Option<usize> = None;
-  let mut best_score: f64 = -1.0;
-  let mut best_title: Option<String> = None;
+  let app_window = &mut app_windows[idx];
 
-  for (idx, app_window) in app_windows.iter().enumerate() {
-    let role = app_window
-      .role()
-      .ok()
-      .map(|r| r.to_string())
-      .unwrap_or_else(|| "???".into());
+  // Resize window
+  if app_window
+    .is_settable(cidre::ax::attr::size())
+    .unwrap_or(false)
+  {
+    let ax_size = cidre::ax::Value::with_cg_size(&cidre::cg::Size {
+      width: size.width,
+      height: size.height,
+    });
 
-    if role != "AXWindow" {
-      continue;
+    if let Err(e) = app_window.set_attr(cidre::ax::attr::size(), ax_size.as_ref()) {
+      log::error!(
+        "Failed to set AX size: {e:?} (best match: '{best_title:?}', score: {best_score:.1}%)"
+      );
     }
-
-    let Ok(window_title) = app_window.attr_value(cidre::ax::attr::title()) else {
-      continue;
-    };
-
-    let title_cf_string: cidre::arc::Retained<cidre::cf::String> =
-      unsafe { cidre::cf::Type::retain(&window_title) };
-    let current_title = title_cf_string.to_string();
-
-    let score = rapidfuzz::fuzz::ratio(current_title.chars(), title.chars());
-
-    if score > best_score {
-      best_score = score;
-      best_idx = Some(idx);
-      best_title = Some(current_title);
-    }
-  }
-
-  if let Some(idx) = best_idx {
-    let app_window = &mut app_windows[idx];
-
-    // Resize window
-    if app_window
-      .is_settable(cidre::ax::attr::size())
-      .unwrap_or(false)
-    {
-      let ax_size = cidre::ax::Value::with_cg_size(&cidre::cg::Size {
-        width: size.width,
-        height: size.height,
-      });
-
-      if let Err(e) = app_window.set_attr(cidre::ax::attr::size(), ax_size.as_ref()) {
-        log::error!(
-          "Failed to set AX size: {e:?} (best match: '{best_title:?}', score: {best_score:.1}%)"
-        );
-      }
-    }
-  } else {
-    log::warn!("No AXWindow candidates found for pid {pid}");
   }
 }
 
@@ -214,7 +182,119 @@ pub async fn resize_window(pid: i32, title: String, size: LogicalSize<f64>) {
 #[cfg(target_os = "macos")]
 #[tauri::command]
 pub fn center_window(pid: i32, title: String) {
-  log::error!("not implemented for macos")
+  use cocoa::base::id;
+  use cocoa::foundation::NSRect;
+  use objc::{class, msg_send, sel, sel_impl};
+
+  let app = cidre::ax::UiElement::with_app_pid(pid);
+  let Some((idx, best_title, best_score)) = find_ax_window_by_pid_and_title(pid, &title) else {
+    log::warn!("No AXWindow candidates found for pid {pid}");
+    return;
+  };
+
+  let mut app_windows = match app.children() {
+    Ok(c) => c,
+    Err(e) => {
+      log::error!("Failed to get children for app with pid {pid}: {e}");
+      return;
+    }
+  };
+
+  let app_window = &mut app_windows[idx];
+
+  // Read current window size and position via AX
+  let Ok(size_value) = app_window.attr_value(cidre::ax::attr::size()) else {
+    log::error!(
+      "Failed to get AXSize for window (best match: '{best_title:?}', score: {best_score:.1}%)"
+    );
+    return;
+  };
+  let size_ax: cidre::arc::Retained<cidre::ax::Value> =
+    unsafe { cidre::cf::Type::retain(&size_value) };
+  let Some(win_size) = size_ax.cg_size() else {
+    log::error!("Failed to parse AXSize value");
+    return;
+  };
+
+  let Ok(pos_value) = app_window.attr_value(cidre::ax::attr::pos()) else {
+    log::error!(
+      "Failed to get AXPosition for window (best match: '{best_title:?}', score: {best_score:.1}%)"
+    );
+    return;
+  };
+  let pos_ax: cidre::arc::Retained<cidre::ax::Value> =
+    unsafe { cidre::cf::Type::retain(&pos_value) };
+  let Some(win_pos) = pos_ax.cg_point() else {
+    log::error!("Failed to parse AXPosition value");
+    return;
+  };
+
+  // Determine best screen by overlap with current window rect
+  let window_left = win_pos.x;
+  let window_bottom = win_pos.y;
+  let window_right = window_left + win_size.width;
+  let window_top = window_bottom + win_size.height;
+
+  unsafe {
+    let screens: id = msg_send![class!(NSScreen), screens];
+    let count: usize = msg_send![screens, count];
+
+    if count == 0 {
+      log::warn!("No NSScreen available to center window");
+      return;
+    }
+
+    let mut best_visible: Option<NSRect> = None;
+    let mut best_area: f64 = -1.0;
+
+    for i in 0..count {
+      let screen: id = msg_send![screens, objectAtIndex: i];
+      let visible: NSRect = msg_send![screen, visibleFrame];
+
+      let s_left = visible.origin.x;
+      let s_bottom = visible.origin.y;
+      let s_right = s_left + visible.size.width;
+      let s_top = s_bottom + visible.size.height;
+
+      let overlap_w = (s_right.min(window_right) - s_left.max(window_left)).max(0.0);
+      let overlap_h = (s_top.min(window_top) - s_bottom.max(window_bottom)).max(0.0);
+      let area = overlap_w * overlap_h;
+
+      if area > best_area {
+        best_area = area;
+        best_visible = Some(visible);
+      }
+    }
+
+    let Some(target_visible) = best_visible else {
+      log::warn!("Could not determine target screen to center window");
+      return;
+    };
+
+    // Centered position within visible frame
+    let target_x = target_visible.origin.x + ((target_visible.size.width - win_size.width) / 2.0);
+    let target_y = target_visible.origin.y + ((target_visible.size.height - win_size.height) / 2.0);
+
+    if app_window
+      .is_settable(cidre::ax::attr::pos())
+      .unwrap_or(false)
+    {
+      let ax_point = cidre::ax::Value::with_cg_point(&cidre::cg::Point {
+        x: target_x,
+        y: target_y,
+      });
+
+      if let Err(e) = app_window.set_attr(cidre::ax::attr::pos(), ax_point.as_ref()) {
+        log::error!(
+          "Failed to set AXPosition (best match: '{best_title:?}', score: {best_score:.1}%) - {e:?}"
+        );
+      }
+    } else {
+      log::warn!(
+        "AXPosition attribute not settable (best match: '{best_title:?}', score: {best_score:.1}%)"
+      );
+    }
+  }
 }
 
 #[cfg(target_os = "windows")]

@@ -596,3 +596,51 @@ pub fn find_window_by_pid_and_title(
 
   best_hwnd.map(|hwnd| (hwnd, best_title.unwrap_or_default(), best_score))
 }
+
+#[cfg(target_os = "macos")]
+pub fn find_ax_window_by_pid_and_title(pid: i32, title: &str) -> Option<(usize, String, f64)> {
+  use rapidfuzz::fuzz::ratio;
+
+  let app = cidre::ax::UiElement::with_app_pid(pid);
+  let app_windows = match app.children() {
+    Ok(c) => c,
+    Err(e) => {
+      log::error!("Failed to get children for app with pid {pid}: {e}");
+      return None;
+    }
+  };
+
+  let mut best_idx: Option<usize> = None;
+  let mut best_score: f64 = -1.0;
+  let mut best_title: Option<String> = None;
+
+  for (idx, app_window) in app_windows.iter().enumerate() {
+    let role = app_window
+      .role()
+      .ok()
+      .map(|r| r.to_string())
+      .unwrap_or_else(|| "???".into());
+
+    if role != "AXWindow" {
+      continue;
+    }
+
+    let Ok(window_title) = app_window.attr_value(cidre::ax::attr::title()) else {
+      continue;
+    };
+
+    let title_cf_string: cidre::arc::Retained<cidre::cf::String> =
+      unsafe { cidre::cf::Type::retain(&window_title) };
+    let current_title = title_cf_string.to_string();
+
+    let score = ratio(current_title.chars(), title.chars());
+
+    if score > best_score {
+      best_score = score;
+      best_idx = Some(idx);
+      best_title = Some(current_title);
+    }
+  }
+
+  best_idx.map(|idx| (idx, best_title.unwrap_or_default(), best_score))
+}

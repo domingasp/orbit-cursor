@@ -120,12 +120,16 @@ fn create_screen_recorder(
   let mut recording_origin = monitor_position;
   let mut crop: Option<(PhysicalSize<f64>, PhysicalPosition<f64>)> = None;
 
+  #[cfg(target_os = "windows")]
   let mut output_size: Option<(u32, u32)> = None;
+  #[cfg(not(target_os = "windows"))]
+  let output_size: Option<(u32, u32)> = None;
+
   if let (RecordingType::Window, Some(window_id)) = (recording_type, window_id) {
     if let Some((window_target, window_width, window_height, window_position)) =
       get_window_target(window_id)
     {
-      // For Windows: crop out only invisible margins (keep title bar), using EFB (Extended Frame Bounds)
+      // Crop out only invisible margins (keep title bar), using EFB (Extended Frame Bounds)
       #[cfg(target_os = "windows")]
       if let Some((_ox, _oy, cw, ch)) = get_efb_crop_for_window(&window_target) {
         // Use a zero offset so we crop from the top-left; this avoids shifting and black bars.
