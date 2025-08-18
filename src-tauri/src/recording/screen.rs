@@ -31,6 +31,8 @@ struct CapturerInfo {
   crop: Option<(PhysicalSize<f64>, PhysicalPosition<f64>)>,
   recording_origin: LogicalPosition<f64>,
   scale_factor: f64,
+  // Optional final output size after filters (e.g. crop + scale)
+  output_size: Option<(u32, u32)>,
 }
 
 pub fn start_screen_recorder(
@@ -55,6 +57,7 @@ pub fn start_screen_recorder(
     crop,
     recording_origin,
     scale_factor,
+    output_size,
   } = create_screen_recorder(recording_type, monitor_name, window_id, region);
 
   let ffmpeg_input_details = FfmpegInputDetails {
@@ -67,6 +70,7 @@ pub fn start_screen_recorder(
     },
     output_frame_rate: Some(60),
     crop,
+    output_size,
   };
 
   let (writer, ffmpeg) = create_ffmpeg_writer(
@@ -114,11 +118,28 @@ fn create_screen_recorder(
   let mut width = monitor_size.width;
   let mut height = monitor_size.height;
   let mut recording_origin = monitor_position;
+  let mut crop: Option<(PhysicalSize<f64>, PhysicalPosition<f64>)> = None;
 
+  let mut output_size: Option<(u32, u32)> = None;
   if let (RecordingType::Window, Some(window_id)) = (recording_type, window_id) {
     if let Some((window_target, window_width, window_height, window_position)) =
       get_window_target(window_id)
     {
+      // For Windows: crop out only invisible margins (keep title bar), using EFB (Extended Frame Bounds)
+      #[cfg(target_os = "windows")]
+      if let Some((_ox, _oy, cw, ch)) = get_efb_crop_for_window(&window_target) {
+        // Use a zero offset so we crop from the top-left; this avoids shifting and black bars.
+        crop = Some((
+          PhysicalSize {
+            width: cw as f64,
+            height: ch as f64,
+          },
+          PhysicalPosition { x: 0.0, y: 0.0 },
+        ));
+        // Keep final output at the intended window size; ffmpeg -s will upscale as needed
+        output_size = Some((window_width as u32, window_height as u32));
+      }
+
       target = Some(window_target);
       width = window_width;
       height = window_height;
@@ -126,7 +147,6 @@ fn create_screen_recorder(
     }
   }
 
-  let mut crop = None;
   if recording_type == RecordingType::Region {
     // We don't use scap crop area due to strange behaviour with ffmpeg, instead we crop directly
     // in ffmpeg
@@ -144,6 +164,49 @@ fn create_screen_recorder(
     crop,
     recording_origin,
     scale_factor,
+    output_size,
+  }
+}
+
+#[cfg(target_os = "windows")]
+/// Compute crop information using EFB (Extended Frame Bounds).
+fn get_efb_crop_for_window(target: &Target) -> Option<(i32, i32, i32, i32)> {
+  use windows::Win32::Foundation::RECT;
+  use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_EXTENDED_FRAME_BOUNDS};
+  use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
+
+  if let Target::Window(win) = target {
+    let hwnd = win.raw_handle.get_handle();
+    unsafe {
+      let mut win_rect = RECT::default();
+      if GetWindowRect(hwnd, &mut win_rect).is_err() {
+        return None;
+      }
+
+      let mut efb: RECT = RECT::default();
+      if DwmGetWindowAttribute(
+        hwnd,
+        DWMWA_EXTENDED_FRAME_BOUNDS,
+        &mut efb as *mut _ as *mut _,
+        std::mem::size_of::<RECT>() as u32,
+      )
+      .is_err()
+      {
+        return None;
+      }
+
+      let ox = efb.left - win_rect.left;
+      let oy = efb.top - win_rect.top;
+      let cw = efb.right - efb.left;
+      let ch = efb.bottom - efb.top;
+      if cw > 0 && ch > 0 {
+        Some((ox, oy, cw, ch))
+      } else {
+        None
+      }
+    }
+  } else {
+    None
   }
 }
 

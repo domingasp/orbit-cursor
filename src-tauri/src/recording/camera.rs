@@ -86,6 +86,7 @@ fn spawn_camera_recorder(
     .to_string(),
     output_frame_rate: None,
     crop: None,
+    output_size: None,
   };
 
   let (writer, ffmpeg) =

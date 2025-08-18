@@ -531,12 +531,13 @@ fn create_and_save_thumbnail(
     .iter()
     .find(|w| w.id().unwrap_or_default() == window_id)
   {
-    let thumbnail = window_for_thumbnail.capture_image().unwrap();
-    let (width, height) = thumbnail.dimensions();
+    if let Ok(thumbnail) = window_for_thumbnail.capture_image() {
+      let (width, height) = thumbnail.dimensions();
 
-    let dyn_image = DynamicImage::ImageRgba8(thumbnail);
-    let resized = dyn_image.resize(width / 5, height / 5, image::imageops::FilterType::Nearest);
-    let _ = resized.save(thumbnail_path);
+      let dyn_image = DynamicImage::ImageRgba8(thumbnail);
+      let resized = dyn_image.resize(width / 5, height / 5, image::imageops::FilterType::Nearest);
+      let _ = resized.save(thumbnail_path);
+    }
   }
 }
 
