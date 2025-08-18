@@ -150,7 +150,10 @@ extern "C" {
 /// Many edge cases not managed, down to the user to properly position their
 /// windows.
 #[cfg(target_os = "macos")]
-fn get_window_display(shareable_displays: &Array<Display>, window_frame: cidre::ns::Rect) -> usize {
+pub fn get_window_display(
+  shareable_displays: &Array<Display>,
+  window_frame: cidre::ns::Rect,
+) -> usize {
   let mut display_index: usize = 0;
 
   let mut largest_intersection_size: f64 = 0.0;

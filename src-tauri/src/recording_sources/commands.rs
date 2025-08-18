@@ -5,10 +5,10 @@ use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, PhysicalSize};
 
 use super::service::get_visible_windows;
 
-#[cfg(target_os = "macos")]
-use crate::recording_sources::service::find_ax_window_by_pid_and_title;
 #[cfg(target_os = "windows")]
 use crate::recording_sources::service::find_window_by_pid_and_title;
+#[cfg(target_os = "macos")]
+use crate::recording_sources::service::{find_ax_window_by_pid_and_title, get_window_display};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -182,10 +182,6 @@ pub async fn resize_window(pid: i32, title: String, size: LogicalSize<f64>) {
 #[cfg(target_os = "macos")]
 #[tauri::command]
 pub fn center_window(pid: i32, title: String) {
-  use cocoa::base::id;
-  use cocoa::foundation::NSRect;
-  use objc::{class, msg_send, sel, sel_impl};
-
   let app = cidre::ax::UiElement::with_app_pid(pid);
   let Some((idx, best_title, best_score)) = find_ax_window_by_pid_and_title(pid, &title) else {
     log::warn!("No AXWindow candidates found for pid {pid}");
@@ -229,71 +225,62 @@ pub fn center_window(pid: i32, title: String) {
     return;
   };
 
-  // Determine best screen by overlap with current window rect
-  let window_left = win_pos.x;
-  let window_bottom = win_pos.y;
-  let window_right = window_left + win_size.width;
-  let window_top = window_bottom + win_size.height;
+  let window_frame = cidre::ns::Rect {
+    origin: cidre::ns::Point {
+      x: win_pos.x,
+      y: win_pos.y,
+    },
+    size: cidre::ns::Size {
+      width: win_size.width,
+      height: win_size.height,
+    },
+  };
 
-  unsafe {
-    let screens: id = msg_send![class!(NSScreen), screens];
-    let count: usize = msg_send![screens, count];
-
-    if count == 0 {
-      log::warn!("No NSScreen available to center window");
+  let (tx, rx) = std::sync::mpsc::channel();
+  cidre::sc::ShareableContent::current_with_ch(move |res, _err| {
+    tx.send(res.unwrap().retained()).unwrap();
+  });
+  let content = match rx.recv() {
+    Ok(c) => c,
+    Err(e) => {
+      log::error!("Failed to get ShareableContent: {e:?}");
       return;
     }
+  };
+  let displays = content.displays();
+  if displays.is_empty() {
+    log::warn!("No displays from ScreenCaptureKit; cannot center window");
+    return;
+  }
 
-    let mut best_visible: Option<NSRect> = None;
-    let mut best_area: f64 = -1.0;
+  let display_index = get_window_display(&displays, window_frame);
+  let target_display = displays
+    .get(display_index)
+    .unwrap_or(displays.get(0).unwrap());
+  let display_frame = target_display.frame();
 
-    for i in 0..count {
-      let screen: id = msg_send![screens, objectAtIndex: i];
-      let visible: NSRect = msg_send![screen, visibleFrame];
+  // Centered position within display frame
+  let target_x = display_frame.origin.x + ((display_frame.size.width - win_size.width) / 2.0);
+  let target_y = display_frame.origin.y + ((display_frame.size.height - win_size.height) / 2.0);
 
-      let s_left = visible.origin.x;
-      let s_bottom = visible.origin.y;
-      let s_right = s_left + visible.size.width;
-      let s_top = s_bottom + visible.size.height;
+  if app_window
+    .is_settable(cidre::ax::attr::pos())
+    .unwrap_or(false)
+  {
+    let ax_point = cidre::ax::Value::with_cg_point(&cidre::cg::Point {
+      x: target_x,
+      y: target_y,
+    });
 
-      let overlap_w = (s_right.min(window_right) - s_left.max(window_left)).max(0.0);
-      let overlap_h = (s_top.min(window_top) - s_bottom.max(window_bottom)).max(0.0);
-      let area = overlap_w * overlap_h;
-
-      if area > best_area {
-        best_area = area;
-        best_visible = Some(visible);
-      }
-    }
-
-    let Some(target_visible) = best_visible else {
-      log::warn!("Could not determine target screen to center window");
-      return;
-    };
-
-    // Centered position within visible frame
-    let target_x = target_visible.origin.x + ((target_visible.size.width - win_size.width) / 2.0);
-    let target_y = target_visible.origin.y + ((target_visible.size.height - win_size.height) / 2.0);
-
-    if app_window
-      .is_settable(cidre::ax::attr::pos())
-      .unwrap_or(false)
-    {
-      let ax_point = cidre::ax::Value::with_cg_point(&cidre::cg::Point {
-        x: target_x,
-        y: target_y,
-      });
-
-      if let Err(e) = app_window.set_attr(cidre::ax::attr::pos(), ax_point.as_ref()) {
-        log::error!(
-          "Failed to set AXPosition (best match: '{best_title:?}', score: {best_score:.1}%) - {e:?}"
-        );
-      }
-    } else {
-      log::warn!(
-        "AXPosition attribute not settable (best match: '{best_title:?}', score: {best_score:.1}%)"
+    if let Err(e) = app_window.set_attr(cidre::ax::attr::pos(), ax_point.as_ref()) {
+      log::error!(
+        "Failed to set AXPosition (best match: '{best_title:?}', score: {best_score:.1}%) - {e:?}"
       );
     }
+  } else {
+    log::warn!(
+      "AXPosition attribute not settable (best match: '{best_title:?}', score: {best_score:.1}%)"
+    );
   }
 }
 
