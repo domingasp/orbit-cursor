@@ -555,3 +555,43 @@ fn clear_folder_contents(folder_path: &PathBuf) -> io::Result<()> {
 
   Ok(())
 }
+
+#[cfg(target_os = "windows")]
+pub fn find_window_by_pid_and_title(
+  pid: i32,
+  title: &str,
+) -> Option<(windows::Win32::Foundation::HWND, String, f64)> {
+  use rapidfuzz::fuzz::ratio;
+  use scap::{get_all_targets, Target};
+  use windows::Win32::Foundation::HWND;
+  use windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId;
+
+  let mut best_hwnd: Option<HWND> = None;
+  let mut best_score: f64 = -1.0;
+  let mut best_title: Option<String> = None;
+
+  for target in get_all_targets() {
+    if let Target::Window(win) = target {
+      let hwnd = win.raw_handle.get_handle();
+
+      let mut window_pid: u32 = 0;
+      unsafe { GetWindowThreadProcessId(hwnd, Some(&mut window_pid)) };
+      if window_pid as i32 != pid {
+        continue;
+      }
+
+      if win.title.is_empty() {
+        continue;
+      }
+
+      let score = ratio(win.title.chars(), title.chars());
+      if score > best_score {
+        best_score = score;
+        best_hwnd = Some(hwnd);
+        best_title = Some(win.title);
+      }
+    }
+  }
+
+  best_hwnd.map(|hwnd| (hwnd, best_title.unwrap_or_default(), best_score))
+}

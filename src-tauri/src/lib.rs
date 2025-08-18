@@ -63,6 +63,9 @@ use crate::{
   },
 };
 
+#[cfg(target_os = "windows")]
+use crate::recording_sources::commands::{center_window, make_borderless, restore_border};
+
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
 async fn setup_store(app: &App) -> Arc<Store<Wry>> {
@@ -140,7 +143,13 @@ pub fn run() {
     path_exists,
     export_recording,
     cancel_export,
-    resize_window
+    resize_window,
+    #[cfg(target_os = "windows")]
+    make_borderless,
+    #[cfg(target_os = "windows")]
+    restore_border,
+    #[cfg(target_os = "windows")]
+    center_window
   ]);
 
   // State

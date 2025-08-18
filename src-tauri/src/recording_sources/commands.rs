@@ -5,6 +5,9 @@ use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, PhysicalSize};
 
 use super::service::get_visible_windows;
 
+#[cfg(target_os = "windows")]
+use crate::recording_sources::service::find_window_by_pid_and_title;
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MonitorDetails {
@@ -177,42 +180,10 @@ pub async fn resize_window(pid: i32, title: String, size: LogicalSize<f64>) {
 #[cfg(target_os = "windows")]
 #[tauri::command]
 pub async fn resize_window(pid: i32, title: String, size: LogicalSize<f64>) {
-  use scap::{get_all_targets, Target};
-  use windows::Win32::Foundation::HWND;
   use windows::Win32::UI::WindowsAndMessaging::{
-    GetWindowThreadProcessId, SetWindowPos, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOZORDER,
+    SetWindowPos, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOZORDER,
   };
-
-  // Track best fuzzy match as no way to get window id using
-  // accessibility API - closest title match
-  let mut best_hwnd: Option<HWND> = None;
-  let mut best_score: f64 = -1.0;
-  let mut best_title: Option<String> = None;
-
-  for target in get_all_targets() {
-    if let Target::Window(win) = target {
-      let hwnd = win.raw_handle.get_handle();
-
-      let mut window_pid: u32 = 0;
-      unsafe { GetWindowThreadProcessId(hwnd, Some(&mut window_pid)) };
-      if window_pid as i32 != pid {
-        continue;
-      }
-
-      if win.title.is_empty() {
-        continue;
-      }
-
-      let score = rapidfuzz::fuzz::ratio(win.title.chars(), title.chars());
-      if score > best_score {
-        best_score = score;
-        best_hwnd = Some(hwnd);
-        best_title = Some(win.title);
-      }
-    }
-  }
-
-  let Some(hwnd) = best_hwnd else {
+  let Some((hwnd, best_title, best_score)) = find_window_by_pid_and_title(pid, &title) else {
     log::warn!("No window candidates found for pid {pid}");
     return;
   };
@@ -232,6 +203,178 @@ pub async fn resize_window(pid: i32, title: String, size: LogicalSize<f64>) {
     ) {
       log::error!(
         "Failed to resize window: {:?} (best match: '{:?}', score: {:.1}%)",
+        e,
+        best_title,
+        best_score
+      );
+    }
+  }
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+pub fn center_window(pid: i32, title: String) {
+  log::error!("not implemented for macos")
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+pub fn center_window(pid: i32, title: String) {
+  use std::mem::size_of;
+  use windows::Win32::Foundation::RECT;
+  use windows::Win32::Graphics::Gdi::{
+    GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
+  };
+  use windows::Win32::UI::WindowsAndMessaging::{
+    GetWindowRect, SetWindowPos, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER,
+  };
+
+  let Some((hwnd, best_title, best_score)) = find_window_by_pid_and_title(pid, &title) else {
+    log::warn!("No window candidates found for pid {pid}");
+    return;
+  };
+
+  unsafe {
+    let mut rect = RECT::default();
+    if let Err(e) = GetWindowRect(hwnd, &mut rect) {
+      log::error!(
+        "GetWindowRect failed: {:?} (best match: '{:?}', score: {:.1}%)",
+        e,
+        best_title,
+        best_score
+      );
+      return;
+    }
+
+    let hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    if hmon.0.is_null() {
+      log::warn!("MonitorFromWindow returned null, cannot center window");
+      return;
+    }
+
+    let mut mi = MONITORINFO {
+      cbSize: size_of::<MONITORINFO>() as u32,
+      ..Default::default()
+    };
+    if !GetMonitorInfoW(hmon, &mut mi).as_bool() {
+      log::error!("GetMonitorInfoW failed");
+      return;
+    }
+
+    let work = mi.rcWork;
+    let win_w = rect.right - rect.left;
+    let win_h = rect.bottom - rect.top;
+
+    let target_x = work.left + (work.right - work.left - win_w) / 2;
+    let target_y = work.top + (work.bottom - work.top - win_h) / 2;
+
+    if let Err(e) = SetWindowPos(
+      hwnd,
+      None,
+      target_x,
+      target_y,
+      0,
+      0,
+      SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
+    ) {
+      log::error!(
+        "Failed to center window: {:?} (best match: '{:?}', score: {:.1}%)",
+        e,
+        best_title,
+        best_score
+      );
+    }
+  }
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+pub fn make_borderless(pid: i32, title: String) {
+  use windows::Win32::UI::WindowsAndMessaging::{
+    GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, GWL_STYLE, SWP_FRAMECHANGED,
+    SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_CAPTION, WS_EX_CLIENTEDGE, WS_EX_DLGMODALFRAME,
+    WS_EX_STATICEDGE, WS_MAXIMIZEBOX, WS_MINIMIZEBOX, WS_SYSMENU, WS_THICKFRAME,
+  };
+
+  let Some((hwnd, best_title, best_score)) = find_window_by_pid_and_title(pid, &title) else {
+    log::warn!("No window candidates found for pid {pid}");
+    return;
+  };
+
+  unsafe {
+    let style = GetWindowLongPtrW(hwnd, GWL_STYLE) as u32;
+    let ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
+
+    // Remove decorations for borderless
+    let mut new_style = style;
+    new_style &= !WS_CAPTION.0;
+    new_style &= !WS_THICKFRAME.0;
+    new_style &= !WS_MINIMIZEBOX.0;
+    new_style &= !WS_MAXIMIZEBOX.0;
+    new_style &= !WS_SYSMENU.0;
+
+    let mut new_ex_style = ex_style;
+    new_ex_style &= !WS_EX_DLGMODALFRAME.0;
+    new_ex_style &= !WS_EX_CLIENTEDGE.0;
+    new_ex_style &= !WS_EX_STATICEDGE.0;
+
+    let _ = SetWindowLongPtrW(hwnd, GWL_STYLE, new_style as isize);
+    let _ = SetWindowLongPtrW(hwnd, GWL_EXSTYLE, new_ex_style as isize);
+
+    if let Err(e) = SetWindowPos(
+      hwnd,
+      None,
+      0,
+      0,
+      0,
+      0,
+      SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
+    ) {
+      log::error!(
+        "Failed to make borderless: {:?} (best match: '{:?}', score: {:.1}%)",
+        e,
+        best_title,
+        best_score
+      );
+    }
+  }
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+pub fn restore_border(pid: i32, title: String) {
+  use windows::Win32::UI::WindowsAndMessaging::{
+    GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, GWL_STYLE, SWP_FRAMECHANGED,
+    SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_EX_CLIENTEDGE, WS_EX_WINDOWEDGE, WS_OVERLAPPEDWINDOW,
+  };
+
+  let Some((hwnd, best_title, best_score)) = find_window_by_pid_and_title(pid, &title) else {
+    log::warn!("No window candidates found for pid {pid}");
+    return;
+  };
+
+  unsafe {
+    let style = GetWindowLongPtrW(hwnd, GWL_STYLE) as u32;
+    let ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
+
+    // Re-add typical decorations
+    let new_style = style | WS_OVERLAPPEDWINDOW.0;
+    let new_ex_style = ex_style | WS_EX_WINDOWEDGE.0 | WS_EX_CLIENTEDGE.0;
+
+    let _ = SetWindowLongPtrW(hwnd, GWL_STYLE, new_style as isize);
+    let _ = SetWindowLongPtrW(hwnd, GWL_EXSTYLE, new_ex_style as isize);
+
+    if let Err(e) = SetWindowPos(
+      hwnd,
+      None,
+      0,
+      0,
+      0,
+      0,
+      SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
+    ) {
+      log::error!(
+        "Failed to restore border: {:?} (best match: '{:?}', score: {:.1}%)",
         e,
         best_title,
         best_score
