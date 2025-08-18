@@ -54,7 +54,7 @@ export const useRecordingStateStore = create<RecordingState>()(
         isRecording: false,
         microphone: false,
         microphoneHasWarning: false,
-        recordingType: RecordingType.Region,
+        recordingType: RecordingType.Screen,
         region: {
           position: { x: 30, y: 30 },
           size: { height: 300, width: 300 },

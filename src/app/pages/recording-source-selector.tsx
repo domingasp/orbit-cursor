@@ -1,6 +1,12 @@
-import { LogicalSize } from "@tauri-apps/api/dpi";
+import { LogicalSize, PhysicalSize } from "@tauri-apps/api/dpi";
 import { listen } from "@tauri-apps/api/event";
 import clsx from "clsx";
+import {
+  Info,
+  PencilLine,
+  SquareBottomDashedScissors,
+  SquareDot,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
@@ -8,16 +14,23 @@ import {
   collapseRecordingSourceSelector,
   expandRecordingSourceSelector,
 } from "../../api/windows";
+import { AspectRatio } from "../../components/shared/aspect-ratio/aspect-ratio";
+import { CheckOnClickButton } from "../../components/shared/check-on-click-button/check-on-click-button";
 import {
   listMonitors,
   listWindows,
   MonitorDetails,
+  makeBorderless,
+  centerWindow,
+  restoreBorder,
+  resizeWindow,
   WindowDetails,
 } from "../../features/recording-source/api/recording-sources";
 import { MonitorSelector } from "../../features/recording-source/components/monitor-selector";
 import { RecordingSource } from "../../features/recording-source/components/recording-source";
 import { SelectorWrapper } from "../../features/recording-source/components/selector-wrapper";
 import { WindowSelector } from "../../features/recording-source/components/window-selector";
+import { getPlatform } from "../../stores/hotkeys.store";
 import {
   RecordingType,
   useRecordingStateStore,
@@ -56,10 +69,6 @@ export const RecordingSourceSelector = () => {
       setSelectedWindow(source);
     } else {
       setSelectedMonitor(source);
-    }
-    if (source !== null) {
-      setIsExpanded(false);
-      collapseRecordingSourceSelector();
     }
   };
 
@@ -155,6 +164,68 @@ export const RecordingSourceSelector = () => {
             />
           </SelectorWrapper>
         ))}
+
+      {isExpanded && recordingType === RecordingType.Window && (
+        <div className="relative w-full flex flex-col items-center gap-2">
+          <AspectRatio
+            onApply={(width, height) => {
+              if (selectedWindow === null) return;
+              resizeWindow(
+                selectedWindow.pid,
+                selectedWindow.title,
+                new PhysicalSize(width, height).toLogical(
+                  selectedWindow.scaleFactor
+                )
+              );
+            }}
+          />
+          <span className="flex flex-row items-center text-xxs text-muted gap-1 font-extralight">
+            <Info size={10} /> Apps may impose own sizing restrictions.
+          </span>
+
+          <div className="absolute left-0 top-0">
+            <CheckOnClickButton
+              size="sm"
+              variant="ghost"
+              onPress={() => {
+                if (!selectedWindow) return;
+                centerWindow(selectedWindow.pid, selectedWindow.title);
+              }}
+            >
+              <SquareDot size={14} />
+              Center
+            </CheckOnClickButton>
+          </div>
+
+          {getPlatform() === "windows" && (
+            <div className="absolute right-0 top-0 flex flex-col items-end gap-2">
+              <CheckOnClickButton
+                size="sm"
+                variant="ghost"
+                onPress={() => {
+                  if (!selectedWindow) return;
+                  makeBorderless(selectedWindow.pid, selectedWindow.title);
+                }}
+              >
+                <SquareBottomDashedScissors size={14} />
+                Borderless
+              </CheckOnClickButton>
+
+              <CheckOnClickButton
+                size="sm"
+                variant="ghost"
+                onPress={() => {
+                  if (!selectedWindow) return;
+                  restoreBorder(selectedWindow.pid, selectedWindow.title);
+                }}
+              >
+                <PencilLine size={14} />
+                Restore Border
+              </CheckOnClickButton>
+            </div>
+          )}
+        </div>
+      )}
 
       <RecordingSource onPress={onToggle} />
     </div>

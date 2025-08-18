@@ -2,22 +2,45 @@ import { Check } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { ComponentProps, useState } from "react";
 import { PressEvent } from "react-aria";
+import { VariantProps } from "tailwind-variants";
 
-import { Button } from "../../../components/button/button";
-import { cn } from "../../../lib/styling";
+import { tv } from "../../../../tailwind-merge.config";
+import { availableVariants, cn } from "../../../lib/styling";
+import { Button } from "../../button/button";
 
-type MakeDefaultButtonProps = ComponentProps<typeof Button>;
+const checkOnClickButtonVariants = tv({
+  base: "absolute inset-0 flex items-center justify-center transition-all rounded-md backdrop-blur-none",
+  compoundVariants: [
+    {
+      blur: "md",
+      class: "backdrop-blur-md",
+      isClicked: true,
+    },
+    {
+      blur: "xs",
+      class: "backdrop-blur-xs",
+      isClicked: true,
+    },
+  ],
+  variants: {
+    blur: availableVariants("md", "xs"),
+    isClicked: {
+      true: "bg-content/50",
+    },
+  },
+});
 
-// TODO when required in another place lift this into components
-// One-shot action button
+type CheckOnClickButtonProps = ComponentProps<typeof Button> &
+  VariantProps<typeof checkOnClickButtonVariants>;
 
 /** Shows a check after pressing, has no concept of success/fail. */
-export const MakeDefaultButton = ({
+export const CheckOnClickButton = ({
+  blur = "md",
   children,
   className,
   onPress,
   ...props
-}: MakeDefaultButtonProps) => {
+}: CheckOnClickButtonProps) => {
   const [isClicked, setIsClicked] = useState(false);
 
   const handlePress = (e: PressEvent) => {
@@ -37,12 +60,7 @@ export const MakeDefaultButton = ({
     >
       {children}
 
-      <div
-        className={cn(
-          "absolute inset-0 flex items-center justify-center transition-all",
-          isClicked ? "backdrop-blur-md" : "backdrop-blur-none"
-        )}
-      >
+      <div className={checkOnClickButtonVariants({ blur, isClicked })}>
         <AnimatePresence>
           {isClicked && (
             <motion.span

@@ -41,9 +41,6 @@ use tauri::{Emitter, LogicalPosition, LogicalSize};
 use uuid::Uuid;
 use xcap::Window;
 
-#[cfg(target_os = "windows")]
-use crate::recording_sources::commands::WindowMetadata;
-#[cfg(target_os = "macos")]
 use crate::recording_sources::commands::WindowMetadata;
 use crate::{constants::Events, APP_HANDLE};
 #[cfg(target_os = "macos")]
@@ -107,9 +104,7 @@ pub fn get_visible_windows(
           create_and_save_thumbnail(thumbnail_path, window_id, available_windows_for_thumbnail);
         }
 
-        if let Some(pid) = window_pid {
-          app_icon_path = get_app_icon(folder.clone(), pid);
-        }
+        app_icon_path = get_app_icon(folder.clone(), window_pid);
       }
 
       let mut details = WindowDetails::from_metadata(window, app_icon_path, thumbnail_path);
@@ -123,6 +118,11 @@ pub fn get_visible_windows(
     tauri::async_runtime::spawn(async move {
       join_all(window_detail_tasks).await;
       let mut details = windows_detail_results.lock().clone();
+      // Filter out any entries where a thumbnail path was set but the file does not exist
+      details.retain(|w| match &w.thumbnail_path {
+        Some(p) => p.exists(),
+        None => true,
+      });
       details.sort_by_key(|w| (w.app_icon_path.clone(), w.title.clone()));
       app_handle
         .emit(Events::WindowThumbnailsGenerated.as_ref(), details)
@@ -150,7 +150,10 @@ extern "C" {
 /// Many edge cases not managed, down to the user to properly position their
 /// windows.
 #[cfg(target_os = "macos")]
-fn get_window_display(shareable_displays: &Array<Display>, window_frame: cidre::ns::Rect) -> usize {
+pub fn get_window_display(
+  shareable_displays: &Array<Display>,
+  window_frame: cidre::ns::Rect,
+) -> usize {
   let mut display_index: usize = 0;
 
   let mut largest_intersection_size: f64 = 0.0;
@@ -268,7 +271,7 @@ pub fn get_os_visible_windows(monitors: &[Monitor]) -> Vec<WindowMetadata> {
         size: LogicalSize::new(frame.size.width, frame.size.height),
         position: LogicalPosition::new(frame.origin.x, frame.origin.y),
         scale_factor,
-        pid: Some(window.owning_app().unwrap().process_id()),
+        pid: window.owning_app().unwrap().process_id(),
       });
     }
   }
@@ -339,7 +342,7 @@ pub fn get_os_visible_windows() -> Vec<WindowMetadata> {
             y: rect.top as f64,
           },
           scale_factor: get_window_display_scale_factor(hwnd),
-          pid: Some(pid as i32),
+          pid: pid as i32,
         });
       }
       Target::Display(_) => continue,
@@ -499,16 +502,83 @@ fn get_app_icon(dir_path: PathBuf, pid: i32) -> Option<PathBuf> {
       return None;
     }
 
+    // BGRA -> RGBA
+    for i in 0..(bmp.bmWidth * bmp.bmHeight) as usize {
+      pixels.swap(i * 4, i * 4 + 2);
+    }
+
+    // If alpha is missing (all zeros), try to apply the monochrome mask (hbmMask)
+    let alpha_all_zero = pixels
+      .chunks_exact(4)
+      .all(|px| px.get(3).copied().unwrap_or(0) == 0);
+
+    if alpha_all_zero {
+      // Read mask bits (1bpp, top-down)
+      let mut bmp_mask: BITMAP = std::mem::zeroed();
+      let size = std::mem::size_of::<BITMAP>() as i32;
+      if GetObjectW(
+        icon_info.hbmMask,
+        size,
+        Some(&mut bmp_mask as *mut _ as *mut _),
+      ) != 0
+      {
+        // Prepare BITMAPINFO for 1bpp mask
+        let mut bmi_mask = BITMAPINFO {
+          bmiHeader: BITMAPINFOHEADER {
+            biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+            biWidth: bmp_mask.bmWidth,
+            biHeight: -bmp_mask.bmHeight, // top-down
+            biPlanes: 1,
+            biBitCount: 1,
+            biCompression: BI_RGB.0,
+            biSizeImage: 0,
+            biXPelsPerMeter: 0,
+            biYPelsPerMeter: 0,
+            biClrUsed: 0,
+            biClrImportant: 0,
+          },
+          bmiColors: [Default::default(); 1],
+        };
+
+        // Each scanline is aligned to 32 bits (4 bytes)
+        let stride = ((bmp_mask.bmWidth as u32).div_ceil(32) * 4) as usize;
+        let mut mask_bits = vec![0u8; stride * (bmp_mask.bmHeight as usize)];
+
+        let mask_lines = GetDIBits(
+          hdc,
+          icon_info.hbmMask,
+          0,
+          bmp_mask.bmHeight as u32,
+          Some(mask_bits.as_mut_ptr() as *mut c_void),
+          &mut bmi_mask,
+          DIB_RGB_COLORS,
+        );
+
+        if mask_lines != 0 {
+          let width = bmp.bmWidth as usize;
+          let height = bmp.bmHeight as usize;
+          // Apply mask: in AND mask, bit=1 => transparent; bit=0 => opaque
+          for y in 0..height {
+            for x in 0..width {
+              let byte_index = y * stride + (x / 8);
+              let bit_index = 7 - (x % 8);
+              let bit = (mask_bits[byte_index] >> bit_index) & 1;
+              let alpha = if bit == 0 { 255u8 } else { 0u8 };
+              let idx = (y * width + x) * 4 + 3;
+              if let Some(a) = pixels.get_mut(idx) {
+                *a = alpha;
+              }
+            }
+          }
+        }
+      }
+    }
+
     // Clean up
     let _ = DeleteObject(icon_info.hbmColor);
     let _ = DeleteObject(icon_info.hbmMask);
     let _ = DestroyIcon(icon);
     let _ = DeleteDC(hdc);
-
-    // Convert BGRA -> RGBA
-    for i in 0..(bmp.bmWidth * bmp.bmHeight) as usize {
-      pixels.swap(i * 4, i * 4 + 2);
-    }
 
     if let Some(img) =
       ImageBuffer::<Rgba<u8>, _>::from_raw(bmp.bmWidth as u32, bmp.bmHeight as u32, pixels)
@@ -536,12 +606,15 @@ fn create_and_save_thumbnail(
     .iter()
     .find(|w| w.id().unwrap_or_default() == window_id)
   {
-    let thumbnail = window_for_thumbnail.capture_image().unwrap();
-    let (width, height) = thumbnail.dimensions();
+    if let Ok(thumbnail) = window_for_thumbnail.capture_image() {
+      let (width, height) = thumbnail.dimensions();
 
-    let dyn_image = DynamicImage::ImageRgba8(thumbnail);
-    let resized = dyn_image.resize(width / 5, height / 5, image::imageops::FilterType::Nearest);
-    let _ = resized.save(thumbnail_path);
+      let dyn_image = DynamicImage::ImageRgba8(thumbnail);
+      let resized = dyn_image.resize(width / 5, height / 5, image::imageops::FilterType::Nearest);
+      if let Err(e) = resized.save(thumbnail_path) {
+        log::error!("Failed to save thumbnail: {e}");
+      }
+    }
   }
 }
 
@@ -559,4 +632,92 @@ fn clear_folder_contents(folder_path: &PathBuf) -> io::Result<()> {
   }
 
   Ok(())
+}
+
+#[cfg(target_os = "windows")]
+pub fn find_window_by_pid_and_title(
+  pid: i32,
+  title: &str,
+) -> Option<(windows::Win32::Foundation::HWND, String, f64)> {
+  use rapidfuzz::fuzz::ratio;
+  use scap::{get_all_targets, Target};
+  use windows::Win32::Foundation::HWND;
+  use windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId;
+
+  let mut best_hwnd: Option<HWND> = None;
+  let mut best_score: f64 = -1.0;
+  let mut best_title: Option<String> = None;
+
+  for target in get_all_targets() {
+    if let Target::Window(win) = target {
+      let hwnd = win.raw_handle.get_handle();
+
+      let mut window_pid: u32 = 0;
+      unsafe { GetWindowThreadProcessId(hwnd, Some(&mut window_pid)) };
+      if window_pid as i32 != pid {
+        continue;
+      }
+
+      if win.title.is_empty() {
+        continue;
+      }
+
+      let score = ratio(win.title.chars(), title.chars());
+      if score > best_score {
+        best_score = score;
+        best_hwnd = Some(hwnd);
+        best_title = Some(win.title);
+      }
+    }
+  }
+
+  best_hwnd.map(|hwnd| (hwnd, best_title.unwrap_or_default(), best_score))
+}
+
+#[cfg(target_os = "macos")]
+pub fn find_ax_window_by_pid_and_title(pid: i32, title: &str) -> Option<(usize, String, f64)> {
+  use rapidfuzz::fuzz::ratio;
+
+  let app = cidre::ax::UiElement::with_app_pid(pid);
+  let app_windows = match app.children() {
+    Ok(c) => c,
+    Err(e) => {
+      log::error!("Failed to get children for app with pid {pid}: {e}");
+      return None;
+    }
+  };
+
+  let mut best_idx: Option<usize> = None;
+  let mut best_score: f64 = -1.0;
+  let mut best_title: Option<String> = None;
+
+  for (idx, app_window) in app_windows.iter().enumerate() {
+    let role = app_window
+      .role()
+      .ok()
+      .map(|r| r.to_string())
+      .unwrap_or_else(|| "???".into());
+
+    if role != "AXWindow" {
+      continue;
+    }
+
+    let Ok(window_title) = app_window.attr_value(cidre::ax::attr::title()) else {
+      continue;
+    };
+
+    let title_cf_string: cidre::arc::Retained<cidre::cf::String> =
+      unsafe { cidre::cf::Type::retain(&window_title) };
+    let current_title = title_cf_string.to_string();
+
+    let score = ratio(current_title.chars(), title.chars());
+
+    if score > best_score {
+      best_score = score;
+      best_idx = Some(idx);
+      best_title = Some(current_title);
+    }
+  }
+
+  best_idx.map(|idx| (idx, best_title.unwrap_or_default(), best_score))
 }

@@ -21,6 +21,8 @@ pub struct FfmpegInputDetails {
   pub crop: Option<(PhysicalSize<f64>, PhysicalPosition<f64>)>,
   // On windows, without rate ffmpeg drops frames
   pub output_frame_rate: Option<u32>,
+  // Optional final output size after filters
+  pub output_size: Option<(u32, u32)>,
 }
 
 /// Create and spawn the camera writer ffmpeg
@@ -39,6 +41,7 @@ pub fn spawn_rawvideo_ffmpeg(
     pixel_format,
     crop,
     output_frame_rate,
+    output_size,
   } = input_details;
 
   let mut command = FfmpegCommand::new();
@@ -78,6 +81,10 @@ pub fn spawn_rawvideo_ffmpeg(
 
   if let Some(frame_rate) = output_frame_rate {
     command.rate(frame_rate as f32);
+  }
+
+  if let Some((ow, oh)) = output_size {
+    command.args(["-s", &format!("{ow}x{oh}")]);
   }
 
   command.output(file_path.to_string_lossy());

@@ -94,19 +94,19 @@ export const Toolbar = ({
             className="w-6 h-6"
             isSelected={playing}
             onPress={togglePlay}
+            variant="ghost"
             off={
               <Play
                 className="fill-content-fg stroke-content-fg"
                 size={iconSize}
               />
             }
-            on={
-              <Pause
-                className="fill-content-fg stroke-content-fg"
-                size={iconSize}
-              />
-            }
-          />
+          >
+            <Pause
+              className="fill-content-fg stroke-content-fg"
+              size={iconSize}
+            />
+          </ToggleButton>
         </HotkeyTooltip>
 
         <span className="text-lg tabular-nums font-light select-none w-[100px]">

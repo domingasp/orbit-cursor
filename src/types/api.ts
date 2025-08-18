@@ -33,4 +33,8 @@ export enum Commands {
   ExportRecording = "export_recording",
   OpenPathInFileBrowser = "open_path_in_file_browser",
   CancelExport = "cancel_export",
+  ResizeWindow = "resize_window",
+  MakeBorderless = "make_borderless",
+  RestoreBorder = "restore_border",
+  CenterWindow = "center_window",
 }

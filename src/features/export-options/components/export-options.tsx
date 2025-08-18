@@ -9,11 +9,11 @@ import { useShallow } from "zustand/react/shallow";
 
 import { Button } from "../../../components/button/button";
 import { CheckboxControlled } from "../../../components/checkbox/checkbox-controlled";
+import { CheckOnClickButton } from "../../../components/shared/check-on-click-button/check-on-click-button";
 import { useExportPreferencesStore } from "../../../stores/editor/export-preferences.store";
 import { cancelExport, exportRecording } from "../api/export";
 
 import { ExportProgressOverlay } from "./export-progress-overlay";
-import { MakeDefaultButton } from "./make-default-button";
 import { OutputPath } from "./output-path";
 
 const exportInputSchema = z.object({
@@ -153,7 +153,7 @@ export const ExportOptions = ({
 
         <div className="flex flex-col gap-2 items-center">
           <div className="flex gap-2">
-            <MakeDefaultButton
+            <CheckOnClickButton
               className="font-light"
               onPress={onMakeDefault}
               size="sm"
@@ -161,7 +161,7 @@ export const ExportOptions = ({
               variant="ghost"
             >
               Make default
-            </MakeDefaultButton>
+            </CheckOnClickButton>
 
             <Button color="info" size="sm" type="submit">
               Export
