@@ -118,6 +118,11 @@ pub fn get_visible_windows(
     tauri::async_runtime::spawn(async move {
       join_all(window_detail_tasks).await;
       let mut details = windows_detail_results.lock().clone();
+      // Filter out any entries where a thumbnail path was set but the file does not exist
+      details.retain(|w| match &w.thumbnail_path {
+        Some(p) => p.exists(),
+        None => true,
+      });
       details.sort_by_key(|w| (w.app_icon_path.clone(), w.title.clone()));
       app_handle
         .emit(Events::WindowThumbnailsGenerated.as_ref(), details)
@@ -494,16 +499,83 @@ fn get_app_icon(dir_path: PathBuf, pid: i32) -> Option<PathBuf> {
       return None;
     }
 
+    // BGRA -> RGBA
+    for i in 0..(bmp.bmWidth * bmp.bmHeight) as usize {
+      pixels.swap(i * 4, i * 4 + 2);
+    }
+
+    // If alpha is missing (all zeros), try to apply the monochrome mask (hbmMask)
+    let alpha_all_zero = pixels
+      .chunks_exact(4)
+      .all(|px| px.get(3).copied().unwrap_or(0) == 0);
+
+    if alpha_all_zero {
+      // Read mask bits (1bpp, top-down)
+      let mut bmp_mask: BITMAP = std::mem::zeroed();
+      let size = std::mem::size_of::<BITMAP>() as i32;
+      if GetObjectW(
+        icon_info.hbmMask,
+        size,
+        Some(&mut bmp_mask as *mut _ as *mut _),
+      ) != 0
+      {
+        // Prepare BITMAPINFO for 1bpp mask
+        let mut bmi_mask = BITMAPINFO {
+          bmiHeader: BITMAPINFOHEADER {
+            biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+            biWidth: bmp_mask.bmWidth,
+            biHeight: -bmp_mask.bmHeight, // top-down
+            biPlanes: 1,
+            biBitCount: 1,
+            biCompression: BI_RGB.0,
+            biSizeImage: 0,
+            biXPelsPerMeter: 0,
+            biYPelsPerMeter: 0,
+            biClrUsed: 0,
+            biClrImportant: 0,
+          },
+          bmiColors: [Default::default(); 1],
+        };
+
+        // Each scanline is aligned to 32 bits (4 bytes)
+        let stride = ((bmp_mask.bmWidth as u32).div_ceil(32) * 4) as usize;
+        let mut mask_bits = vec![0u8; stride * (bmp_mask.bmHeight as usize)];
+
+        let mask_lines = GetDIBits(
+          hdc,
+          icon_info.hbmMask,
+          0,
+          bmp_mask.bmHeight as u32,
+          Some(mask_bits.as_mut_ptr() as *mut c_void),
+          &mut bmi_mask,
+          DIB_RGB_COLORS,
+        );
+
+        if mask_lines != 0 {
+          let width = bmp.bmWidth as usize;
+          let height = bmp.bmHeight as usize;
+          // Apply mask: in AND mask, bit=1 => transparent; bit=0 => opaque
+          for y in 0..height {
+            for x in 0..width {
+              let byte_index = y * stride + (x / 8);
+              let bit_index = 7 - (x % 8);
+              let bit = (mask_bits[byte_index] >> bit_index) & 1;
+              let alpha = if bit == 0 { 255u8 } else { 0u8 };
+              let idx = (y * width + x) * 4 + 3;
+              if let Some(a) = pixels.get_mut(idx) {
+                *a = alpha;
+              }
+            }
+          }
+        }
+      }
+    }
+
     // Clean up
     let _ = DeleteObject(icon_info.hbmColor);
     let _ = DeleteObject(icon_info.hbmMask);
     let _ = DestroyIcon(icon);
     let _ = DeleteDC(hdc);
-
-    // Convert BGRA -> RGBA
-    for i in 0..(bmp.bmWidth * bmp.bmHeight) as usize {
-      pixels.swap(i * 4, i * 4 + 2);
-    }
 
     if let Some(img) =
       ImageBuffer::<Rgba<u8>, _>::from_raw(bmp.bmWidth as u32, bmp.bmHeight as u32, pixels)
@@ -536,7 +608,9 @@ fn create_and_save_thumbnail(
 
       let dyn_image = DynamicImage::ImageRgba8(thumbnail);
       let resized = dyn_image.resize(width / 5, height / 5, image::imageops::FilterType::Nearest);
-      let _ = resized.save(thumbnail_path);
+      if let Err(e) = resized.save(thumbnail_path) {
+        log::error!("Failed to save thumbnail: {e}");
+      }
     }
   }
 }
