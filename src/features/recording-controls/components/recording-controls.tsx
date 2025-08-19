@@ -12,7 +12,7 @@ import {
   hideStartRecordingDock,
   showRecordingInputOptions,
   showRegionSelector,
-  passthroughRegionSelector,
+  setRegionSelectorPassthrough,
 } from "../../../api/windows";
 import { Button } from "../../../components/button/button";
 import { Keyboard } from "../../../components/keyboard/keyboard";
@@ -115,7 +115,7 @@ export const RecordingControls = () => {
     // Keep region selector open to show user where the recording is happening
     onCancel(recordingType !== RecordingType.Region); // Closes dock
     if (recordingType === RecordingType.Region) {
-      passthroughRegionSelector(selectedMonitor.id, true);
+      setRegionSelectorPassthrough(true);
     }
 
     startRecording({

@@ -14,7 +14,9 @@ import {
   getDockBounds,
   updateDockOpacity,
   resetPanels,
-  passthroughRegionSelector,
+  setRegionSelectorPassthrough,
+  takeDisplayScreenshot,
+  setRegionSelectorOpacity,
 } from "../../../api/windows";
 import { Button } from "../../../components/button/button";
 import { cn } from "../../../lib/styling";
@@ -201,11 +203,18 @@ export const RegionSelector = () => {
         setMagnifierScreenshot(message);
       };
 
-      passthroughRegionSelector(
-        selectedMonitor.id,
-        !isEditing,
-        magnifierChannel.current
-      );
+      setRegionSelectorPassthrough(!isEditing);
+
+      // Cannot do it in one-shot rust side due to MacOS event loop. It does not
+      // allow hide, take screenshot, and show in one function
+      if (isEditing) {
+        void setRegionSelectorOpacity(0).then(() => {
+          if (magnifierChannel.current) {
+            takeDisplayScreenshot(selectedMonitor.id, magnifierChannel.current);
+            void setRegionSelectorOpacity(1);
+          }
+        });
+      }
     }
   }, [isEditing]);
 
@@ -316,6 +325,12 @@ export const RegionSelector = () => {
           activeHandle={activeResizeHandleRef}
           magnifierScreenshot={magnifierScreenshot}
           resizeDirection={resizeDirection}
+          regionRect={{
+            height: size.height,
+            width: size.width,
+            x: position.x,
+            y: position.y,
+          }}
         />
       )}
     </div>

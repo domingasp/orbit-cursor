@@ -32,8 +32,8 @@ use windows::commands::{
   hide_region_selector, hide_start_recording_dock, init_recording_input_options,
   init_recording_source_selector, init_region_selector, init_standalone_listbox,
   is_recording_input_options_open, is_start_recording_dock_open, quit_app, reset_panels,
-  show_recording_input_options, show_region_selector, show_standalone_listbox,
-  show_start_recording_dock, update_dock_opacity,
+  set_region_selector_opacity, show_recording_input_options, show_region_selector,
+  show_standalone_listbox, show_start_recording_dock, update_dock_opacity,
 };
 
 #[cfg(target_os = "macos")]
@@ -58,7 +58,9 @@ use crate::{
   models::{EditingState, GlobalState, PreviewState, RecordingState},
   recording_sources::commands::{center_window, resize_window},
   windows::{
-    commands::{init_start_recording_dock, passthrough_region_selector},
+    commands::{
+      init_start_recording_dock, set_region_selector_passthrough, take_display_screenshot,
+    },
     service::{editor_close_listener, spawn_window_close_manager},
   },
 };
@@ -120,7 +122,9 @@ pub fn run() {
     init_region_selector,
     show_region_selector,
     hide_region_selector,
-    passthrough_region_selector,
+    set_region_selector_passthrough,
+    set_region_selector_opacity,
+    take_display_screenshot,
     hide_start_recording_dock,
     init_recording_source_selector,
     expand_recording_source_selector,

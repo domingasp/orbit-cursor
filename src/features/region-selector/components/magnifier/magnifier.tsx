@@ -12,6 +12,7 @@ import { Boundary } from "./boundary";
 type MagnifierProps = {
   activeHandle: RefObject<HTMLElement | null>;
   magnifierScreenshot: ArrayBuffer;
+  regionRect: { height: number; width: number; x: number; y: number };
   resizeDirection: ResizeDirection | undefined;
   zoomFactor?: number;
 };
@@ -19,6 +20,7 @@ type MagnifierProps = {
 export const Magnifier = ({
   activeHandle,
   magnifierScreenshot,
+  regionRect,
   resizeDirection,
   zoomFactor = 5,
 }: MagnifierProps) => {
@@ -58,30 +60,44 @@ export const Magnifier = ({
     latestImageDataRef.current = imageData;
   };
 
-  const updateMagnifierPosition = () => {
+  const updateMagnifierPosition = (e?: MouseEvent) => {
     void getCurrentWindow()
       .scaleFactor()
       .then((scaleFactor) => {
-        if (activeHandle.current) {
-          const bounds = activeHandle.current.getBoundingClientRect();
-          // x, y are top left coords by default
-          const x = Math.round(bounds.x + bounds.width / 2);
-          const y = Math.round(bounds.y + bounds.height / 2);
-          setHandlePosition({
-            logical: { x, y },
-            physical: {
-              x: x * scaleFactor,
-              y: y * scaleFactor,
-            },
-          });
+        if (!activeHandle.current) return;
+        const bounds = activeHandle.current.getBoundingClientRect();
+        // Default to handle center
+        let x = Math.round(bounds.x + bounds.width / 2);
+        let y = Math.round(bounds.y + bounds.height / 2);
+
+        // Allow moving along a cardinal axis
+        if (e && resizeDirection) {
+          const dir = resizeDirection.toLowerCase();
+          if (dir === "top" || dir === "bottom") {
+            const minX = regionRect.x;
+            const maxX = regionRect.x + regionRect.width;
+            x = Math.max(minX, Math.min(e.clientX, maxX));
+          } else if (dir === "left" || dir === "right") {
+            const minY = regionRect.y;
+            const maxY = regionRect.y + regionRect.height;
+            y = Math.max(minY, Math.min(e.clientY, maxY));
+          }
         }
+
+        setHandlePosition({
+          logical: { x, y },
+          physical: {
+            x: x * scaleFactor,
+            y: y * scaleFactor,
+          },
+        });
       });
   };
 
   useEffect(() => {
     processFrame(magnifierScreenshot);
-    const updateCursor = (_e: MouseEvent) => {
-      updateMagnifierPosition();
+    const updateCursor = (e: MouseEvent) => {
+      updateMagnifierPosition(e);
     };
 
     updateMagnifierPosition();
@@ -180,7 +196,7 @@ export const Magnifier = ({
       {resizeDirection && (
         <motion.div
           animate={{ opacity: 1, scale: 1 }}
-          className="absolute pointer-events-none shadow-md rounded-sm overflow-hidden border-1 border-content-fg/10"
+          className="absolute pointer-events-none shadow-md rounded-sm overflow-hidden border-1 border-content-fg/10 select-none"
           exit={{ opacity: 0, scale: 0 }}
           initial={{ opacity: 0, scale: 0, x: "-50%", y: "-50%" }}
           style={{

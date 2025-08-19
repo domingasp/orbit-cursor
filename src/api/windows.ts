@@ -23,16 +23,20 @@ export const hideStartRecordingDock = () => {
   void invoke(Commands.HideStartRecordingDock);
 };
 
-export const passthroughRegionSelector = (
-  displayId: string,
-  passthrough: boolean = false,
-  channel?: Channel<ArrayBuffer>
-) => {
-  void invoke(Commands.PassthroughRegionSelector, {
-    channel: channel ?? new Channel<ArrayBuffer>(), // No way to have it optional rust side
-    displayId,
+export const setRegionSelectorPassthrough = (passthrough: boolean = false) => {
+  void invoke(Commands.SetRegionSelectorPassthrough, {
     passthrough,
   });
+};
+
+export const setRegionSelectorOpacity = async (opacity: number) =>
+  await invoke(Commands.SetRegionSelectorOpacity, { opacity });
+
+export const takeDisplayScreenshot = (
+  displayId: string,
+  channel: Channel<ArrayBuffer>
+) => {
+  void invoke(Commands.TakeDisplayScreenshot, { channel, displayId });
 };
 
 export const showStandaloneListBox = async (
