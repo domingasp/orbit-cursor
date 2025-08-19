@@ -121,6 +121,9 @@ export const RegionSelector = () => {
   useState<Awaited<ReturnType<typeof getDockBounds>>>();
   const [position, setPosition] = useState(region.position);
   const [size, setSize] = useState(region.size);
+  const [activeAspect, setActiveAspect] = useState<number | undefined>(
+    undefined
+  );
 
   const magnifierChannel = useRef<Channel<ArrayBuffer>>(null);
   const [magnifierScreenshot, setMagnifierScreenshot] =
@@ -244,6 +247,20 @@ export const RegionSelector = () => {
     }
   }, [isEditing]);
 
+  useEffect(() => {
+    if (!isEditing || !selectedMonitor) return;
+
+    if (!magnifierChannel.current) {
+      magnifierChannel.current = new Channel();
+      magnifierChannel.current.onmessage = (message) => {
+        setMagnifierScreenshot(message);
+      };
+    }
+
+    setMagnifierScreenshot(null);
+    takeDisplayScreenshot(selectedMonitor.id, magnifierChannel.current);
+  }, [selectedMonitor, isEditing]);
+
   if (recordingType !== RecordingType.Region) return;
 
   return (
@@ -283,6 +300,7 @@ export const RegionSelector = () => {
         // YUV420p requires even values for both size and position
         // for chroma subsampling - if any are odd, color bleeding will occur
         dragGrid={[2, 2]}
+        lockAspectRatio={activeAspect ?? false}
         onResizeStart={onResizeStart}
         onResizeStop={onResizeEnd}
         position={{ x: position.x, y: position.y }}
@@ -334,7 +352,17 @@ export const RegionSelector = () => {
             Center
           </CheckOnClickButton>
 
-          <AspectRatio height={size.height} width={size.width} />
+          <AspectRatio
+            height={size.height}
+            onRatioChange={setActiveAspect}
+            width={size.width}
+            setHeight={(value) => {
+              setSize((prev) => ({ ...prev, height: value }));
+            }}
+            setWidth={(value) => {
+              setSize((prev) => ({ ...prev, width: value }));
+            }}
+          />
 
           <Button
             color="success"

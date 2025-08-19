@@ -103,6 +103,7 @@ type AspectRatioProps = {
   height?: number;
   initialLinked?: boolean;
   onApply?: (width: number, height: number) => void;
+  onRatioChange?: (ratio: number | undefined) => void;
   setHeight?: (value: number) => void;
   setWidth?: (value: number) => void;
   width?: number;
@@ -114,6 +115,7 @@ export const AspectRatio = ({
   height,
   initialLinked = false,
   onApply,
+  onRatioChange,
   setHeight,
   setWidth,
   width,
@@ -315,6 +317,34 @@ export const AspectRatio = ({
     onApply?.(width, height);
   };
 
+  // Notify parent of the active aspect ratio to enforce in external resizers (e.g. RND)
+  const lastRatioSentRef = useRef<number | undefined>(undefined);
+  const onRatioChangeRef = useRef(onRatioChange);
+
+  useEffect(() => {
+    onRatioChangeRef.current = onRatioChange;
+  }, [onRatioChange]);
+
+  useEffect(() => {
+    let ratioNum: number | undefined = undefined;
+    const preset = parseRatioFromId(presetId);
+    if (preset) {
+      ratioNum = preset.ratioWidth / preset.ratioHeight;
+    } else if (linked) {
+      const r = getLockedRatio();
+      if (r && r.ratioHeight > 0) {
+        ratioNum = r.ratioWidth / r.ratioHeight;
+      }
+    }
+
+    if (onRatioChangeRef.current && lastRatioSentRef.current !== ratioNum) {
+      onRatioChangeRef.current(ratioNum);
+      lastRatioSentRef.current = ratioNum;
+    } else {
+      lastRatioSentRef.current = ratioNum;
+    }
+  }, [presetId, linked, widthValue, heightValue]);
+
   return (
     <div className="flex flex-row gap-1.5 items-center">
       <PlatformIcons
@@ -373,15 +403,17 @@ export const AspectRatio = ({
         </ToggleButton>
       </ToggleButtonGroup>
 
-      <CheckOnClickButton
-        blur="xs"
-        onPress={onPressApply}
-        showFocus={false}
-        size="sm"
-        variant="ghost"
-      >
-        <WandSparkles size={16} />
-      </CheckOnClickButton>
+      {onApply && (
+        <CheckOnClickButton
+          blur="xs"
+          onPress={onPressApply}
+          showFocus={false}
+          size="sm"
+          variant="ghost"
+        >
+          <WandSparkles size={16} />
+        </CheckOnClickButton>
+      )}
     </div>
   );
 };

@@ -414,7 +414,7 @@ pub fn set_region_selector_opacity(app_handle: AppHandle, opacity: f64) {
     let window = app_handle
       .get_webview_window(WindowLabel::RegionSelector.as_ref())
       .unwrap();
-    set_hwnd_opacity(HWND(window.hwnd().unwrap().0), 0.0);
+    set_hwnd_opacity(HWND(window.hwnd().unwrap().0), opacity);
   }
 }
 
@@ -478,6 +478,7 @@ pub async fn collapse_recording_source_selector(app_handle: AppHandle) {
   };
 
   animate_resize(window.clone(), target_size);
+  let _ = app_handle.emit(Events::CollapsedRecordingSourceSelector.as_ref(), ());
 }
 
 /// Reset panels to default state.
@@ -552,6 +553,7 @@ pub fn update_dock_opacity(app_handle: AppHandle, opacity: f64) {
 
   dock.set_alpha_value(opacity);
   source_selector.set_alpha_value(opacity);
+  tauri::async_runtime::spawn(collapse_recording_source_selector(app_handle));
 }
 
 #[tauri::command]
@@ -573,4 +575,6 @@ pub fn update_dock_opacity(app_handle: AppHandle, opacity: f64) {
       set_hwnd_opacity(HWND(source_selector_hwnd.0), opacity);
     }
   }
+
+  tauri::async_runtime::spawn(collapse_recording_source_selector(app_handle));
 }
