@@ -380,15 +380,11 @@ pub fn hide_region_selector(app_handle: AppHandle) {
 }
 
 #[tauri::command]
-pub fn passthrough_region_selector(
-  app_handle: AppHandle,
-  passthrough: bool,
-  display_id: String,
-  channel: Channel,
-) {
+pub fn set_region_selector_passthrough(app_handle: AppHandle, passthrough: bool) {
   let window = app_handle
     .get_webview_window(WindowLabel::RegionSelector.as_ref())
     .unwrap();
+
   let _ = window.set_ignore_cursor_events(passthrough);
 
   // Refocus so dock appears in front of Region Selector
@@ -399,22 +395,38 @@ pub fn passthrough_region_selector(
   }
   // Only when in editing mode
   if !passthrough {
-    #[cfg(target_os = "windows")] // Can't exclude windows on Windows
-    set_hwnd_opacity(HWND(window.hwnd().unwrap().0), 0.0);
-
-    let screenshot_for_magnifier = capture_display_screenshot(display_id);
-
-    channel
-      .send(tauri::ipc::InvokeResponseBody::Raw(
-        screenshot_for_magnifier,
-      ))
-      .ok();
-
-    #[cfg(target_os = "windows")]
-    set_hwnd_opacity(HWND(window.hwnd().unwrap().0), 1.0);
-
     window.set_focus().ok();
   }
+}
+
+#[tauri::command]
+pub fn set_region_selector_opacity(app_handle: AppHandle, opacity: f64) {
+  #[cfg(target_os = "macos")]
+  {
+    let window = app_handle
+      .get_webview_panel(WindowLabel::RegionSelector.as_ref())
+      .unwrap();
+    window.set_alpha_value(opacity);
+  }
+
+  #[cfg(target_os = "windows")]
+  {
+    let window = app_handle
+      .get_webview_window(WindowLabel::RegionSelector.as_ref())
+      .unwrap();
+    set_hwnd_opacity(HWND(window.hwnd().unwrap().0), opacity);
+  }
+}
+
+#[tauri::command]
+pub fn take_display_screenshot(display_id: String, channel: Channel) {
+  let screenshot_for_magnifier = capture_display_screenshot(display_id);
+
+  channel
+    .send(tauri::ipc::InvokeResponseBody::Raw(
+      screenshot_for_magnifier,
+    ))
+    .ok();
 }
 
 #[tauri::command]
@@ -466,6 +478,7 @@ pub async fn collapse_recording_source_selector(app_handle: AppHandle) {
   };
 
   animate_resize(window.clone(), target_size);
+  let _ = app_handle.emit(Events::CollapsedRecordingSourceSelector.as_ref(), ());
 }
 
 /// Reset panels to default state.
@@ -540,6 +553,7 @@ pub fn update_dock_opacity(app_handle: AppHandle, opacity: f64) {
 
   dock.set_alpha_value(opacity);
   source_selector.set_alpha_value(opacity);
+  tauri::async_runtime::spawn(collapse_recording_source_selector(app_handle));
 }
 
 #[tauri::command]
@@ -561,4 +575,6 @@ pub fn update_dock_opacity(app_handle: AppHandle, opacity: f64) {
       set_hwnd_opacity(HWND(source_selector_hwnd.0), opacity);
     }
   }
+
+  tauri::async_runtime::spawn(collapse_recording_source_selector(app_handle));
 }

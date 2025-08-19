@@ -1,3 +1,8 @@
+import {
+  SiInstagram,
+  SiTiktok,
+  SiYoutube,
+} from "@icons-pack/react-simple-icons";
 import { Link, Unlink, WandSparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Selection, ToggleButtonGroup } from "react-aria-components";
@@ -58,12 +63,47 @@ const numberFieldStyles: React.ComponentProps<typeof NumberField> = {
   variant: "line",
 };
 
+type PlatformIconsProps = {
+  onPressInstagram?: () => void;
+  onPressTiktok?: () => void;
+  onPressYoutube?: () => void;
+};
+const PlatformIcons = ({
+  onPressInstagram,
+  onPressTiktok,
+  onPressYoutube,
+}: PlatformIconsProps) => {
+  const styles: React.ComponentProps<typeof CheckOnClickButton> = {
+    blur: "xs",
+    showFocus: false,
+    size: "sm",
+    variant: "ghost",
+  };
+
+  return (
+    <div className="flex flex-row items-center">
+      <CheckOnClickButton {...styles} onPress={onPressYoutube}>
+        <SiYoutube size={20} />
+      </CheckOnClickButton>
+
+      <CheckOnClickButton {...styles} onPress={onPressInstagram}>
+        <SiInstagram size={16} />
+      </CheckOnClickButton>
+
+      <CheckOnClickButton {...styles} onPress={onPressTiktok}>
+        <SiTiktok size={14} />
+      </CheckOnClickButton>
+    </div>
+  );
+};
+
 type AspectRatioProps = {
   defaultHeight?: number;
   defaultWidth?: number;
   height?: number;
   initialLinked?: boolean;
   onApply?: (width: number, height: number) => void;
+  onRatioChange?: (ratio: number | undefined) => void;
   setHeight?: (value: number) => void;
   setWidth?: (value: number) => void;
   width?: number;
@@ -75,6 +115,7 @@ export const AspectRatio = ({
   height,
   initialLinked = false,
   onApply,
+  onRatioChange,
   setHeight,
   setWidth,
   width,
@@ -264,8 +305,60 @@ export const AspectRatio = ({
     }
   };
 
+  const onPressPlatform = (
+    width: number,
+    height: number,
+    aspectRatio: string
+  ) => {
+    setWidthValue(width);
+    setHeightValue(height);
+    setPresetId(aspectRatio);
+
+    onApply?.(width, height);
+  };
+
+  // Notify parent of the active aspect ratio to enforce in external resizers (e.g. RND)
+  const lastRatioSentRef = useRef<number | undefined>(undefined);
+  const onRatioChangeRef = useRef(onRatioChange);
+
+  useEffect(() => {
+    onRatioChangeRef.current = onRatioChange;
+  }, [onRatioChange]);
+
+  useEffect(() => {
+    let ratioNum: number | undefined = undefined;
+    const preset = parseRatioFromId(presetId);
+    if (preset) {
+      ratioNum = preset.ratioWidth / preset.ratioHeight;
+    } else if (linked) {
+      const r = getLockedRatio();
+      if (r && r.ratioHeight > 0) {
+        ratioNum = r.ratioWidth / r.ratioHeight;
+      }
+    }
+
+    if (onRatioChangeRef.current && lastRatioSentRef.current !== ratioNum) {
+      onRatioChangeRef.current(ratioNum);
+      lastRatioSentRef.current = ratioNum;
+    } else {
+      lastRatioSentRef.current = ratioNum;
+    }
+  }, [presetId, linked, widthValue, heightValue]);
+
   return (
     <div className="flex flex-row gap-1.5 items-center">
+      <PlatformIcons
+        onPressInstagram={() => {
+          onPressPlatform(1080, 1350, "4:5");
+        }}
+        onPressTiktok={() => {
+          onPressPlatform(1080, 1920, "9:16");
+        }}
+        onPressYoutube={() => {
+          onPressPlatform(1920, 1080, "16:9");
+        }}
+      />
+
       <div className="flex flex-row items-center">
         <NumberField
           {...numberFieldStyles}
@@ -302,23 +395,25 @@ export const AspectRatio = ({
         <ToggleButton id="16:9" size="sm">
           16:9
         </ToggleButton>
-        <ToggleButton id="1:1" size="sm">
-          1:1
+        <ToggleButton id="4:5" size="sm">
+          4:5
         </ToggleButton>
         <ToggleButton id="9:16" size="sm">
           9:16
         </ToggleButton>
       </ToggleButtonGroup>
 
-      <CheckOnClickButton
-        blur="xs"
-        onPress={onPressApply}
-        showFocus={false}
-        size="sm"
-        variant="ghost"
-      >
-        <WandSparkles size={16} />
-      </CheckOnClickButton>
+      {onApply && (
+        <CheckOnClickButton
+          blur="xs"
+          onPress={onPressApply}
+          showFocus={false}
+          size="sm"
+          variant="ghost"
+        >
+          <WandSparkles size={16} />
+        </CheckOnClickButton>
+      )}
     </div>
   );
 };

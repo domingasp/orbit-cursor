@@ -173,9 +173,7 @@ export const RecordingSourceSelector = () => {
               resizeWindow(
                 selectedWindow.pid,
                 selectedWindow.title,
-                new PhysicalSize(width, height).toLogical(
-                  selectedWindow.scaleFactor
-                )
+                new PhysicalSize(width, height)
               );
             }}
           />
