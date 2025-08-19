@@ -1,6 +1,5 @@
 import { Channel } from "@tauri-apps/api/core";
-import { Check } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { Check, SquareDot } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import {
   HandleClasses,
@@ -19,6 +18,8 @@ import {
   setRegionSelectorOpacity,
 } from "../../../api/windows";
 import { Button } from "../../../components/button/button";
+import { AspectRatio } from "../../../components/shared/aspect-ratio/aspect-ratio";
+import { CheckOnClickButton } from "../../../components/shared/check-on-click-button/check-on-click-button";
 import { cn } from "../../../lib/styling";
 import { getPlatform } from "../../../stores/hotkeys.store";
 import {
@@ -131,6 +132,31 @@ export const RegionSelector = () => {
     !isRecording &&
     activeResizeHandleRef.current == null &&
     !isDragging;
+
+  const centerRegion = () => {
+    if (!selectedMonitor) return;
+
+    // Center within selected monitor keeping even coordinates (YUV sub-sampling constraint)
+    const centeredXRaw = (selectedMonitor.size.width - size.width) / 2;
+    const centeredYRaw = (selectedMonitor.size.height - size.height) / 2;
+
+    let centeredX = Math.floor(centeredXRaw);
+    let centeredY = Math.floor(centeredYRaw);
+
+    if (centeredX % 2 !== 0) centeredX -= 1;
+    if (centeredY % 2 !== 0) centeredY -= 1;
+    if (centeredX < 0) centeredX = 0;
+    if (centeredY < 0) centeredY = 0;
+
+    setPosition({ x: centeredX, y: centeredY });
+    setRegion({
+      position: { x: centeredX + 1, y: centeredY + 1 },
+      size: {
+        height: Math.max(1, size.height - 2),
+        width: Math.max(1, size.width - 2),
+      },
+    });
+  };
 
   // To avoid too many storage updates we only update store at the end
   const onEnd = () => {
@@ -291,33 +317,37 @@ export const RegionSelector = () => {
 
       <div
         className={cn(
-          "absolute left-1/2 -translate-x-1/2 top-0",
+          "absolute left-1/2 -translate-x-1/2 top-0 transition-opacity opacity-0 cursor-move",
           "select-none flex items-center justify-center",
-          getPlatform() === "macos" ? "top-12" : "top-2" // Lower on Mac cause NOTCH
+          getPlatform() === "macos" ? "top-12" : "top-2", // Lower on Mac cause NOTCH
+          showActionButtons && "opacity-100 cursor-auto"
         )}
       >
-        <AnimatePresence>
-          {showActionButtons && (
-            <motion.div
-              animate={{ opacity: 1 }}
-              className="flex flex-row gap-2 p-2 bg-content rounded-md border-1 border-muted/25"
-              exit={{ opacity: 0 }}
-              initial={{ opacity: 0 }}
-            >
-              <Button
-                color="success"
-                showFocus={false}
-                size="sm"
-                onPress={() => {
-                  setIsEditing(false);
-                }}
-              >
-                <Check size={18} />
-                Finish
-              </Button>
-            </motion.div>
+        <div
+          className={cn(
+            "flex flex-row gap-2 p-2 bg-content rounded-md border-1 border-muted/25 pointer-events-none",
+            showActionButtons && "pointer-events-auto"
           )}
-        </AnimatePresence>
+        >
+          <CheckOnClickButton onPress={centerRegion} size="sm" variant="ghost">
+            <SquareDot size={14} />
+            Center
+          </CheckOnClickButton>
+
+          <AspectRatio height={size.height} width={size.width} />
+
+          <Button
+            color="success"
+            showFocus={false}
+            size="sm"
+            onPress={() => {
+              setIsEditing(false);
+            }}
+          >
+            <Check size={18} />
+            Finish
+          </Button>
+        </div>
       </div>
 
       {magnifierScreenshot && (

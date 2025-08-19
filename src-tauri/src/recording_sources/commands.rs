@@ -110,7 +110,7 @@ pub async fn list_windows(app_handle: AppHandle, generate_thumbnails: bool) {
 
 #[cfg(target_os = "macos")]
 #[tauri::command]
-pub async fn resize_window(pid: i32, title: String, size: LogicalSize<f64>) {
+pub async fn resize_window(pid: i32, title: String, size: PhysicalSize<f64>) {
   let app = cidre::ax::UiElement::with_app_pid(pid);
   let Some((idx, best_title, best_score)) = find_ax_window_by_pid_and_title(pid, &title) else {
     log::warn!("No AXWindow candidates found for pid {pid}");
@@ -147,7 +147,7 @@ pub async fn resize_window(pid: i32, title: String, size: LogicalSize<f64>) {
 
 #[cfg(target_os = "windows")]
 #[tauri::command]
-pub async fn resize_window(pid: i32, title: String, size: LogicalSize<f64>) {
+pub async fn resize_window(pid: i32, title: String, size: PhysicalSize<f64>) {
   use windows::Win32::UI::WindowsAndMessaging::{
     SetWindowPos, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOZORDER,
   };

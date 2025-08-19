@@ -36,7 +36,11 @@ export const listWindows = (generateThumbnails: boolean) => {
   void invoke(Commands.ListWindows, { generateThumbnails });
 };
 
-export const resizeWindow = (pid: number, title: string, size: LogicalSize) => {
+export const resizeWindow = (
+  pid: number,
+  title: string,
+  size: PhysicalSize
+) => {
   void invoke(Commands.ResizeWindow, { pid, size, title });
 };
 
