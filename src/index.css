@@ -97,3 +97,15 @@ html,
 body {
   overscroll-behavior: none;
 }
+
+.os-theme-orbit-cursor {
+  --os-size: 10px;
+  --os-padding-perpendicular: 2px;
+  --os-padding-axis: 2px;
+  --os-track-border-radius: 10px;
+  --os-handle-interactive-area-offset: 4px;
+  --os-handle-border-radius: 10px;
+  --os-handle-bg: var(--color-muted);
+  --os-handle-bg-hover: var(--color-content-fg);
+  --os-handle-bg-active: var(--color-content-fg);
+}

@@ -1,3 +1,5 @@
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
+
 import { cn } from "../../../lib/styling";
 
 type SelectorWrapperProps = {
@@ -10,13 +12,19 @@ export const SelectorWrapper = ({
   className,
 }: SelectorWrapperProps) => {
   return (
-    <div
+    <OverlayScrollbarsComponent
       className={cn(
-        "flex justify-center items-center w-full h-full inset-shadow-full rounded-md relative overflow-hidden",
+        "w-full h-full inset-shadow-full rounded-md relative overflow-hidden",
         className
       )}
+      options={{
+        scrollbars: { autoHide: "scroll", theme: "os-theme-orbit-cursor" },
+      }}
+      defer
     >
-      {children}
-    </div>
+      <div className="flex items-center-safe justify-center-safe w-full h-full">
+        {children}
+      </div>
+    </OverlayScrollbarsComponent>
   );
 };

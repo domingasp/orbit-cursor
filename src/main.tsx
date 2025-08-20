@@ -8,6 +8,7 @@ import {
   initStandaloneListBox,
 } from "./api/windows";
 import { App } from "./app";
+import "overlayscrollbars/styles/overlayscrollbars.css";
 import "./index.css";
 
 // Ensures backend is ready
