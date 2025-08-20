@@ -1,3 +1,4 @@
+import "overlayscrollbars/styles/overlayscrollbars.css";
 import "../src/index.css";
 import "./styles.css";
 

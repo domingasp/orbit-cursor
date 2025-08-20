@@ -28,6 +28,8 @@
     "dequal": "^2.0.3",
     "lucide-react": "^0.488.0",
     "motion": "^12.23.6",
+    "overlayscrollbars": "^2.11.5",
+    "overlayscrollbars-react": "^0.5.6",
     "react": "^19.1.0",
     "react-aria": "^3.39.0",
     "react-aria-components": "^1.8.0",
