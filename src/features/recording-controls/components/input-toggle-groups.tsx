@@ -3,12 +3,15 @@ import {
   CameraOff,
   Mic,
   MicOff,
+  MousePointer2,
   Volume2,
   VolumeOff,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
+import { ToggleButton } from "../../../components/button/toggle-button";
+import { MousePointer2Off } from "../../../components/icons/mouse-pointer-2-off";
 import { usePermissionsStore } from "../../../stores/permissions.store";
 import { useRecordingStateStore } from "../../../stores/recording-state.store";
 import {
@@ -74,6 +77,8 @@ export const InputToggleGroup = ({
     setSystemAudio,
     setCameraHasWarning,
     setMicrophoneHasWarning,
+    showSystemCursor,
+    setShowSystemCursor,
   ] = useRecordingStateStore(
     useShallow((state) => [
       state.camera,
@@ -84,6 +89,8 @@ export const InputToggleGroup = ({
       state.setSystemAudio,
       state.setCameraHasWarning,
       state.setMicrophoneHasWarning,
+      state.showSystemCursor,
+      state.setShowSystemCursor,
     ])
   );
 
@@ -165,6 +172,16 @@ export const InputToggleGroup = ({
             : WarningType.NoPermission
         }
       />
+
+      <ToggleButton
+        isSelected={showSystemCursor}
+        off={<MousePointer2Off size={16} />}
+        onChange={setShowSystemCursor}
+        size="sm"
+        variant="ghost"
+      >
+        <MousePointer2 size={16} />
+      </ToggleButton>
     </div>
   );
 };

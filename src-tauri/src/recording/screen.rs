@@ -41,6 +41,7 @@ pub fn start_screen_recorder(
   monitor_name: String,
   window_id: Option<u32>,
   region: Region,
+  show_system_cursor: bool,
   synchronization: StreamSync,
 ) -> (
   JoinHandle<()>,
@@ -58,7 +59,13 @@ pub fn start_screen_recorder(
     recording_origin,
     scale_factor,
     output_size,
-  } = create_screen_recorder(recording_type, monitor_name, window_id, region);
+  } = create_screen_recorder(
+    recording_type,
+    monitor_name,
+    window_id,
+    region,
+    show_system_cursor,
+  );
 
   let ffmpeg_input_details = FfmpegInputDetails {
     width,
@@ -111,6 +118,7 @@ fn create_screen_recorder(
   monitor_name: String,
   window_id: Option<u32>,
   region: Region,
+  show_system_cursor: bool,
 ) -> CapturerInfo {
   let (monitor_position, monitor_size, scale_factor) = get_monitor_details(&monitor_name);
 
@@ -162,7 +170,7 @@ fn create_screen_recorder(
   }
 
   CapturerInfo {
-    capturer: create_scap_capturer(target),
+    capturer: create_scap_capturer(target, show_system_cursor),
     width: width as u32,
     height: height as u32,
     crop,
@@ -264,12 +272,12 @@ fn get_window(window_id: u32) -> Option<Target> {
   })
 }
 
-fn create_scap_capturer(target: Option<Target>) -> Capturer {
+fn create_scap_capturer(target: Option<Target>, show_system_cursor: bool) -> Capturer {
   let targets_to_exclude = get_app_targets();
   let options = Options {
     fps: 60,
     target,
-    show_cursor: false,
+    show_cursor: show_system_cursor,
     show_highlight: false,
     excluded_targets: Some(targets_to_exclude),
     output_type: if cfg!(target_os = "macos") {

@@ -10,6 +10,7 @@ type StartRecordingProps = {
   monitorName: string;
   recordingType: RecordingType;
   region: { position: LogicalPosition; size: LogicalSize };
+  showSystemCursor: boolean;
   systemAudio: boolean;
   windowId: number | undefined;
 };

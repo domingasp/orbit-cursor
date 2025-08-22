@@ -52,7 +52,7 @@ export const ClearButton = ({
           if (onClear) onClear();
         }}
       >
-        <X size={size} />
+        <X className="translate-x-0" size={size} />
       </MotionAriaButton>
     </div>
   );
