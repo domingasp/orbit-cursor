@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { Selection, ToggleButtonGroup } from "react-aria-components";
 
 import { ToggleButton } from "../../base/button/toggle-button";
-import { NumberField } from "../../base/number-field/number-field";
+import { NumberField } from "../../base/input-fields/number-field";
 import { CheckOnClickButton } from "../check-on-click-button/check-on-click-button";
 
 /** Simplified whole-number aspect ratio units for width and height. */

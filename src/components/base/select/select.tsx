@@ -13,7 +13,7 @@ import {
 import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../../tailwind-merge.config";
-import { elementFocus, focusStyles } from "../../../lib/styling";
+import { elementFocusVisible, focusStyles } from "../../../lib/styling";
 import { ListBox } from "../listbox/listbox";
 
 import { ClearButton } from "./components/clear-button";
@@ -42,7 +42,7 @@ const selectVariants = tv({
   variants: {
     showFocus: {
       true: {
-        trigger: elementFocus,
+        trigger: elementFocusVisible,
       },
     },
     size: {

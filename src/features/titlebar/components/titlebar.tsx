@@ -16,7 +16,7 @@ export const Titlebar = ({ children }: TitlebarProps) => {
       className="relative flex flex-row justify-center p-1 text-sm"
       data-tauri-drag-region
     >
-      {children}
+      <div>{children}</div>
 
       {getPlatform() === "windows" && (
         <div className="absolute right-0.5 top-0.5 flex flex-row gap-1.5">

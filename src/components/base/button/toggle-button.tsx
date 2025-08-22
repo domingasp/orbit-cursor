@@ -6,7 +6,7 @@ import { VariantProps } from "tailwind-variants";
 import { tv } from "../../../../tailwind-merge.config";
 import {
   availableVariants,
-  elementFocus,
+  elementFocusVisible,
   focusStyles,
 } from "../../../lib/styling";
 
@@ -27,7 +27,7 @@ const toggleButtonVariants = tv({
       variant: "solid",
     },
     {
-      class: elementFocus,
+      class: elementFocusVisible,
       showFocus: true,
       variant: "solid",
     },

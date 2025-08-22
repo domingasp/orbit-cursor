@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Dialog } from "react-aria-components";
 import { useShallow } from "zustand/react/shallow";
 
+import { TextField } from "../../components/base/input-fields/text-field";
 import { Modal } from "../../components/base/modal/modal";
 import { useToast } from "../../components/base/toast/toast-provider";
 import { ExportOptions } from "../../features/export-options/components/export-options";
@@ -94,7 +95,15 @@ export const Editor = () => {
     <div className="text-content-fg bg-transparent relative h-dvh">
       <Titlebar>
         {!recordingManifest && "No Recording Created"}
-        {recordingManifest && name}
+        {recordingManifest && (
+          <TextField
+            defaultValue={name}
+            size="sm"
+            variant="line"
+            centered
+            compact
+          />
+        )}
       </Titlebar>
 
       {!recordingManifest && (

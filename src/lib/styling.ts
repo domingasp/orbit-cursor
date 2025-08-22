@@ -15,12 +15,17 @@ export function availableVariants<T extends readonly string[]>(
 }
 
 export const focusStyles =
-  "outline-none ring-content-fg/75 ring-offset-content";
+  "outline-none ring-content-fg/75 ring-offset-content transition-shadow";
 
-export const elementFocus =
+// Interactive elements where focus is not required on non-keyboard interaction, e.g., buttons
+export const elementFocusVisible =
   "data-[focus-visible]:ring-offset-1 data-[focus-visible]:ring-1";
 
-export const groupFocus =
+// Interactive elements where focus is required on interaction, e.g., text fields
+export const elementFocused =
+  "data-[focused]:ring-offset-1 data-[focused]:ring-1";
+
+export const groupFocusVisible =
   "group-data-[focus-visible]:ring-offset-1 group-data-[focus-visible]:ring-1";
 
 export const focusWithin =

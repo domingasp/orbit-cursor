@@ -8,12 +8,13 @@ use std::{
 use ffmpeg_sidecar::child::FfmpegChild;
 use parking_lot::Mutex;
 use rdev::Event;
+use serde::Serialize;
 use tokio::sync::broadcast::{self, Receiver, Sender};
 
 use crate::{
   audio::models::AudioStream,
   constants::WindowLabel,
-  recording::models::{RecordingManifest, StreamSync, VideoCaptureDetails},
+  recording::models::{RecordingManifest, RecordingMetadata, StreamSync, VideoCaptureDetails},
 };
 
 pub struct GlobalState {
@@ -310,4 +311,9 @@ impl EditingState {
   pub fn is_editing(&self) -> bool {
     self.is_editing
   }
+}
+
+#[derive(Debug, Serialize)]
+pub struct Metadata {
+  pub recording: RecordingMetadata,
 }

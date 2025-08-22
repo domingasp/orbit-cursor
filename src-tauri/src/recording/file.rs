@@ -6,7 +6,7 @@ use std::{
 
 use chrono::Local;
 
-use crate::recording::models::RecordingMetadata;
+use crate::{models::Metadata, recording::models::RecordingMetadata};
 
 /// Create and return current recording path
 pub fn create_recording_directory(app_data_dir: PathBuf) -> PathBuf {
@@ -19,7 +19,9 @@ pub fn create_recording_directory(app_data_dir: PathBuf) -> PathBuf {
 }
 
 pub fn write_metadata_to_file(file_path: PathBuf, metadata: RecordingMetadata) {
-  if let Ok(json) = serde_json::to_string(&metadata) {
+  if let Ok(json) = serde_json::to_string(&Metadata {
+    recording: metadata,
+  }) {
     if let Ok(mut file) = File::create(file_path) {
       let _ = file.write_all(json.as_bytes());
     }
