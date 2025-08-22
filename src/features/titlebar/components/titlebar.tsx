@@ -1,7 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Minus, Square, X } from "lucide-react";
 
-import { Button } from "../../../components/button/button";
+import { Button } from "../../../components/base/button/button";
 import { getPlatform } from "../../../stores/hotkeys.store";
 
 type TitlebarProps = {

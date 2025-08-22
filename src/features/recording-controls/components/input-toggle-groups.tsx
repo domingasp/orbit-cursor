@@ -10,7 +10,7 @@ import {
 import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { ToggleButton } from "../../../components/button/toggle-button";
+import { ToggleButton } from "../../../components/base/button/toggle-button";
 import { MousePointer2Off } from "../../../components/icons/mouse-pointer-2-off";
 import { usePermissionsStore } from "../../../stores/permissions.store";
 import { useRecordingStateStore } from "../../../stores/recording-state.store";

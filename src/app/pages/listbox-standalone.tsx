@@ -3,8 +3,8 @@ import { useLayoutEffect, useRef } from "react";
 import { Selection } from "react-aria-components";
 import { useShallow } from "zustand/react/shallow";
 
-import { ListBox } from "../../components/listbox/listbox";
-import { ListBoxItem } from "../../components/listbox-item/listbox-item";
+import { ListBox } from "../../components/base/listbox/listbox";
+import { ListBoxItem } from "../../components/base/listbox-item/listbox-item";
 import {
   Item,
   useStandaloneListBoxStore,

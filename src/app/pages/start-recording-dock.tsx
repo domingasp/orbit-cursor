@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import { isStartRecordingDockOpen } from "../../api/windows";
-import { Overlay } from "../../components/overlay/overlay";
+import { Overlay } from "../../components/base/overlay/overlay";
 import { RecordingControls } from "../../features/recording-controls/components/recording-controls";
 import { usePermissionsStore } from "../../stores/permissions.store";
 import { useRecordingStateStore } from "../../stores/recording-state.store";

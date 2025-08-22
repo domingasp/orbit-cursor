@@ -4,9 +4,9 @@ import { TooltipTrigger } from "react-aria-components";
 import { twMerge } from "tailwind-merge";
 
 import { openSystemSettings } from "../../../api/permissions";
-import { Button } from "../../../components/button/button";
-import { Sparkles } from "../../../components/sparkles/sparkles";
-import { Tooltip } from "../../../components/tooltip/tooltip";
+import { Button } from "../../../components/base/button/button";
+import { Sparkles } from "../../../components/base/sparkles/sparkles";
+import { Tooltip } from "../../../components/base/tooltip/tooltip";
 import { Permissions } from "../../../stores/permissions.store";
 import { Gradients } from "../types/gradients";
 

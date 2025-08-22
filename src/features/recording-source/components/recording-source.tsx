@@ -4,8 +4,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { Button } from "../../../components/button/button";
-import { ContentRotate } from "../../../components/content-rotate/content-rotate";
+import { Button } from "../../../components/base/button/button";
+import { ContentRotate } from "../../../components/base/content-rotate/content-rotate";
 import {
   RecordingType,
   useRecordingStateStore,

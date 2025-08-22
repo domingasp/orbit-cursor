@@ -17,8 +17,8 @@ import {
   AppWindow,
   useWindowReopenStore,
 } from "../../../stores/window-open-state.store";
-import { ListBoxItem } from "../../listbox-item/listbox-item";
-import { Select } from "../../select/select";
+import { ListBoxItem } from "../../base/listbox-item/listbox-item";
+import { Select } from "../../base/select/select";
 
 type InputSelectProps = {
   fetchItems: () => Item[] | Promise<Item[]>;

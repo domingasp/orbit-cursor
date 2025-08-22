@@ -4,8 +4,8 @@ import { Group } from "react-aria-components";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useShallow } from "zustand/react/shallow";
 
-import { Button } from "../../../components/button/button";
-import { ToggleButton } from "../../../components/button/toggle-button";
+import { Button } from "../../../components/base/button/button";
+import { ToggleButton } from "../../../components/base/button/toggle-button";
 import { HotkeyTooltip } from "../../../components/shared/hotkey-tooltip/hotkey-tooltip";
 import { cn } from "../../../lib/styling";
 import { formatTime } from "../../../lib/time";

@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { Dialog } from "react-aria-components";
 import { useShallow } from "zustand/react/shallow";
 
-import { Modal } from "../../components/modal/modal";
-import { useToast } from "../../components/toast/toast-provider";
+import { Modal } from "../../components/base/modal/modal";
+import { useToast } from "../../components/base/toast/toast-provider";
 import { ExportOptions } from "../../features/export-options/components/export-options";
 import { normalizePath } from "../../features/export-options/utils/file";
 import { PreviewPlayer } from "../../features/preview-player/components/preview-player";

@@ -1,8 +1,8 @@
 import { ArrowLeft, Command } from "lucide-react";
 import { TooltipTrigger } from "react-aria-components";
 
-import { Keyboard } from "../../keyboard/keyboard";
-import { Tooltip } from "../../tooltip/tooltip";
+import { Keyboard } from "../../base/keyboard/keyboard";
+import { Tooltip } from "../../base/tooltip/tooltip";
 
 const mapKeyToIcon = (hotkey: string) => {
   const iconSize = 14;
