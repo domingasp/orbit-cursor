@@ -40,7 +40,9 @@ type RecordingState = {
   setRegion: (region: Region) => void;
   setSelectedMonitor: (selectedMonitor: MonitorDetails) => void;
   setSelectedWindow: (selectedWindow: WindowDetails | null) => void;
+  setShowSystemCursor: (showSystemCursor: boolean) => void;
   setSystemAudio: (systemAudio: boolean) => void;
+  showSystemCursor: boolean;
   systemAudio: boolean;
 };
 
@@ -91,9 +93,13 @@ export const useRecordingStateStore = create<RecordingState>()(
         setSelectedWindow: (selectedWindow) => {
           set({ selectedWindow });
         },
+        setShowSystemCursor: (showSystemCursor) => {
+          set({ showSystemCursor });
+        },
         setSystemAudio: (systemAudio) => {
           set({ systemAudio });
         },
+        showSystemCursor: false,
         systemAudio: false,
       }),
       { name: STORE_NAME }

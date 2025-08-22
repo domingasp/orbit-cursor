@@ -42,6 +42,7 @@ pub struct StartRecordingOptions {
   pub monitor_name: String,
   pub window_id: Option<u32>,
   pub region: Region,
+  pub show_system_cursor: bool,
 }
 
 #[tauri::command]
@@ -137,6 +138,7 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
         options.monitor_name,
         options.window_id,
         options.region,
+        options.show_system_cursor,
         synchronization.clone(),
       );
     log::info!("Screen recorder ready");

@@ -133,7 +133,7 @@ export const Toast = ({
         slot="close"
         variant="ghost"
       >
-        <X size={16} />
+        <X className="translate-x-0" size={16} />
       </Button>
     </div>
   );

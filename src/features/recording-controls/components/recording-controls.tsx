@@ -65,6 +65,7 @@ export const RecordingControls = () => {
     camera,
     microphoneHasWarning,
     cameraHasWarning,
+    showSystemCursor,
   ] = useRecordingStateStore(
     useShallow((state) => [
       state.recordingType,
@@ -76,6 +77,7 @@ export const RecordingControls = () => {
       state.camera,
       state.microphoneHasWarning,
       state.cameraHasWarning,
+      state.showSystemCursor,
     ])
   );
 
@@ -136,6 +138,7 @@ export const RecordingControls = () => {
         position: new LogicalPosition({ ...region.position }),
         size: new LogicalSize({ ...region.size }),
       },
+      showSystemCursor,
       systemAudio,
       windowId: selectedWindow?.id,
     });
