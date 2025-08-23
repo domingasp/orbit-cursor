@@ -23,8 +23,10 @@ use rdev::listen;
 use recording::commands::start_recording;
 use recording_sources::commands::{list_monitors, list_windows};
 use serde_json::{json, Value};
+use sqlx::{migrate::MigrateDatabase, sqlite::SqlitePoolOptions, Pool, Sqlite};
 use system_tray::service::init_system_tray;
 use tauri::{App, AppHandle, Manager, Wry};
+use tauri_plugin_sql::{Migration, MigrationKind};
 use tauri_plugin_store::{Store, StoreExt};
 use tokio::sync::broadcast;
 use windows::commands::{
@@ -96,6 +98,39 @@ async fn setup_store(app: &App) -> Arc<Store<Wry>> {
   store
 }
 
+async fn setup_db(app: &App) -> Pool<sqlx::Sqlite> {
+  let mut path = app
+    .path()
+    .app_data_dir()
+    .expect("Failed to get app_data_dir");
+
+  match std::fs::create_dir_all(path.clone()) {
+    Ok(_) => (),
+    Err(e) => {
+      panic!("Error creating directory: {e}");
+    }
+  }
+
+  path.push("orbit-cursor.db");
+
+  Sqlite::create_database(
+    format!(
+      "sqlite:{}",
+      path.to_str().expect("Path should have a value")
+    )
+    .as_str(),
+  )
+  .await
+  .expect("Failed to create database");
+
+  let db = SqlitePoolOptions::new()
+    .connect(path.to_str().unwrap())
+    .await
+    .unwrap();
+
+  db
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   ffmpeg_sidecar::download::auto_download().unwrap();
@@ -162,8 +197,29 @@ pub fn run() {
     .manage(Mutex::new(RecordingState::new()))
     .manage(Mutex::new(EditingState::new()));
 
+  // Database
+  let migrations = vec![
+    Migration {
+      version: 1,
+      description: "create_recordings_table",
+      sql: include_str!("../migrations/20250823121450_create_recordings_table.up.sql"),
+      kind: MigrationKind::Up,
+    },
+    Migration {
+      version: 1,
+      description: "create_recordings_table",
+      sql: include_str!("../migrations/20250823121450_create_recordings_table.down.sql"),
+      kind: MigrationKind::Down,
+    },
+  ];
+
   // Plugins
   app_builder = app_builder
+    .plugin(
+      tauri_plugin_sql::Builder::default()
+        .add_migrations("sqlite:orbit-cursor.db", migrations)
+        .build(),
+    )
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_os::init())
     .plugin(tauri_plugin_shell::init())
@@ -190,6 +246,10 @@ pub fn run() {
   let app = app_builder
     .setup(|app: &mut App| {
       let store = tauri::async_runtime::block_on(setup_store(app));
+      tauri::async_runtime::block_on(async {
+        let db = setup_db(app).await;
+        app.manage(db);
+      });
 
       let app_handle = app.handle().clone();
 

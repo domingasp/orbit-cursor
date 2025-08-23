@@ -134,5 +134,9 @@
       "entitlements": "entitlements.plist"
     }
   },
-  "plugins": {}
+  "plugins": {
+    "sql": {
+      "preload": ["sqlite:orbit-cursor.db"]
+    }
+  }
 }

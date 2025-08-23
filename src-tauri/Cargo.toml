@@ -22,7 +22,7 @@ tauri = { version = "2.5.0", features = [
     "protocol-asset",
     "tray-icon",
     "macos-private-api",
-    "image-ico"
+    "image-ico",
 ] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
@@ -54,6 +54,8 @@ log = "0.4"
 rayon = "1.10.0"
 parking_lot = { version = "0.12.4", features = ["deadlock_detection"] }
 rapidfuzz = "0.5"
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio"] }
 
 [dependencies.nokhwa]
 git = "https://github.com/l1npengtul/nokhwa.git"
@@ -80,7 +82,7 @@ windows = { version = "0.58.0", features = [
     "Win32_System_ProcessStatus",
     "Win32_Foundation",
     "Win32_UI_Shell",
-    "Win32_UI_WindowsAndMessaging"
+    "Win32_UI_WindowsAndMessaging",
 ] }
 winreg = "0.10"
 edid-rs = "0.1"
