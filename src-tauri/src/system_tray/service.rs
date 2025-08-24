@@ -29,7 +29,7 @@ pub fn init_system_tray(app_handle: AppHandle) -> tauri::Result<()> {
 
         if recording_state.lock().is_recording() {
           if recording_state.lock().is_paused() {
-            tauri::async_runtime::spawn(resume_recording(app_handle.clone()));
+            tauri::async_runtime::block_on(resume_recording(app_handle.clone()));
           } else {
             pause_recording(tray.app_handle().clone(), recording_state.clone());
           }
@@ -54,7 +54,7 @@ pub fn init_system_tray(app_handle: AppHandle) -> tauri::Result<()> {
       {
         let recording_state: State<'_, Mutex<RecordingState>> = tray.app_handle().state();
         if recording_state.lock().is_recording() {
-          tauri::async_runtime::spawn(stop_recording(tray.app_handle().clone()));
+          tauri::async_runtime::block_on(stop_recording(tray.app_handle().clone()));
         }
       }
     }

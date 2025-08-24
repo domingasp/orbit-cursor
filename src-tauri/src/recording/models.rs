@@ -1,5 +1,4 @@
 use std::{
-  path::PathBuf,
   process::ChildStdin,
   sync::{atomic::AtomicBool, Arc, Barrier},
 };
@@ -35,12 +34,6 @@ pub enum RecordingType {
   Region,
   Window,
   Screen,
-}
-
-#[derive(Debug, Serialize)]
-pub struct RecordingMetadata {
-  pub recording_origin: LogicalPosition<f64>,
-  pub scale_factor: f64,
 }
 
 #[derive(EnumString, AsRefStr, Display, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
@@ -84,37 +77,6 @@ impl RecordingFile {
     let uuid = Uuid::new_v4();
 
     format!("{prefix}-{uuid}.{ext}")
-  }
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RecordingManifest {
-  pub directory: PathBuf,
-  pub files: RecordingFileSet,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RecordingFileSet {
-  pub screen: RecordingFile,
-  pub metadata: RecordingFile,
-  pub mouse_events: RecordingFile,
-  pub system_audio: Option<RecordingFile>,
-  pub camera: Option<RecordingFile>,
-  pub microphone: Option<RecordingFile>,
-}
-
-impl Default for RecordingFileSet {
-  fn default() -> Self {
-    Self {
-      screen: RecordingFile::Screen,
-      metadata: RecordingFile::Metadata,
-      mouse_events: RecordingFile::MouseEvents,
-      system_audio: None,
-      camera: None,
-      microphone: None,
-    }
   }
 }
 

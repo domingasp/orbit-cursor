@@ -5,12 +5,6 @@
 
 # sqlx setup
 
-To automate creation of empty migration files install `sqlx-cli`:
-
-```shell
-cargo install sqlx-cli
-```
-
 For the first migration run:
 
 ```shell
@@ -28,5 +22,9 @@ Make sure to rename the prefix to the same version as in the migrations object i
 Use the following command (in `src-tauri`) to revert migrations, I got the url by printing the db setup path in code:
 
 ```shell
-sqlx migrate revert --database-url="/Users/YOUR_USER/Library/Application Support/com.your-bundle-name.app/your-db-name.db"
+sqlx migrate revert --database-url="/Users/YOUR_USER/Library/Application Support/com.orbit-cursor.app/orbit-cursor.db"
 ```
+
+## `.env`
+
+Copy across the `.env.example` as `.env`, update the relevant path for your system.

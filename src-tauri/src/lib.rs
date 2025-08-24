@@ -1,6 +1,7 @@
 mod audio;
 mod camera;
 mod constants;
+mod db;
 mod export;
 mod global_inputs;
 mod models;
@@ -209,6 +210,18 @@ pub fn run() {
       version: 1,
       description: "create_recordings_table",
       sql: include_str!("../migrations/20250823121450_create_recordings_table.down.sql"),
+      kind: MigrationKind::Down,
+    },
+    Migration {
+      version: 2,
+      description: "track_camera_and_audio_in_recording",
+      sql: include_str!("../migrations/20250823214909_track_system_cursor_in_recording.up.sql"),
+      kind: MigrationKind::Up,
+    },
+    Migration {
+      version: 2,
+      description: "track_camera_and_audio_in_recording",
+      sql: include_str!("../migrations/20250823214909_track_system_cursor_in_recording.down.sql"),
       kind: MigrationKind::Down,
     },
   ];
