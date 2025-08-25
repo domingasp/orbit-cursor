@@ -1,6 +1,9 @@
 use std::path::PathBuf;
 
+use serde::Serialize;
 use sqlx::SqlitePool;
+
+use crate::recording::models::RecordingFile;
 
 pub struct NewRecording<'a> {
   pub recording_directory: &'a str,
@@ -63,4 +66,49 @@ pub async fn get_recording_directory(
   .await?;
 
   Ok(PathBuf::from(record.recording_directory))
+}
+
+#[derive(Debug, Serialize)]
+pub struct RecordingDetails {
+  pub id: i64,
+  pub screen: PathBuf,
+  pub camera: Option<PathBuf>,
+  pub system_audio: Option<PathBuf>,
+  pub microphone: Option<PathBuf>,
+}
+
+pub async fn get_recording_details(
+  pool: &SqlitePool,
+  recording_id: i64,
+) -> sqlx::Result<RecordingDetails> {
+  let record = sqlx::query!(
+    r#"
+    SELECT id, recording_directory, has_camera, has_system_audio, has_microphone
+    FROM recordings
+    WHERE id = ?
+    "#,
+    recording_id
+  )
+  .fetch_one(pool)
+  .await?;
+
+  Ok(RecordingDetails {
+    id: record.id,
+    screen: RecordingFile::Screen.complete_path(&record.recording_directory),
+    camera: if record.has_camera != 0 {
+      Some(RecordingFile::Camera.complete_path(&record.recording_directory))
+    } else {
+      None
+    },
+    system_audio: if record.has_system_audio != 0 {
+      Some(RecordingFile::SystemAudio.complete_path(&record.recording_directory))
+    } else {
+      None
+    },
+    microphone: if record.has_microphone != 0 {
+      Some(RecordingFile::Microphone.complete_path(&record.recording_directory))
+    } else {
+      None
+    },
+  })
 }

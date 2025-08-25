@@ -1,9 +1,11 @@
+import { useQuery } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 import { CircleSlash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Dialog } from "react-aria-components";
 import { useShallow } from "zustand/react/shallow";
 
+import { getRecordingDetails } from "../../api/recording-management";
 import { TextField } from "../../components/base/input-fields/text-field";
 import { Modal } from "../../components/base/modal/modal";
 import { useToast } from "../../components/base/toast/toast-provider";
@@ -16,18 +18,6 @@ import { usePlaybackStore } from "../../stores/editor/playback.store";
 import { useRecordingStateStore } from "../../stores/recording-state.store";
 import { Events } from "../../types/events";
 
-type RecordingManifest = {
-  directory: string;
-  files: {
-    camera: string | null;
-    metadata: string;
-    microphone: string | null;
-    mouseEvents: string;
-    screen: string;
-    systemAudio: string | null;
-  };
-};
-
 export const Editor = () => {
   // top level background color
   document.documentElement.classList.add(
@@ -38,9 +28,13 @@ export const Editor = () => {
   );
 
   const toasts = useToast();
-  const [recordingManifest, setRecordingManifest] = useState<
-    RecordingManifest | undefined
-  >();
+
+  const [recordingId, setRecordingId] = useState<number | null>(null);
+  const { data: recordingDetails } = useQuery({
+    enabled: recordingId !== null,
+    queryFn: () => getRecordingDetails(recordingId as number),
+    queryKey: ["recordingDetails", recordingId],
+  });
 
   const [pause, seek] = usePlaybackStore(
     useShallow((state) => [state.pause, state.seek])
@@ -52,13 +46,13 @@ export const Editor = () => {
 
   const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
   const name =
-    normalizePath(recordingManifest?.directory ?? "")
+    normalizePath(recordingDetails?.screen ?? "")
       .split("/")
-      .at(-1) ?? "";
+      .at(-2) ?? "";
 
   useEffect(() => {
     const unlisten = listen(Events.RecordingComplete, (data) => {
-      setRecordingManifest(data.payload as RecordingManifest);
+      setRecordingId(data.payload as number);
 
       // Recording dock clean up
       setIsFinalizing(false);
@@ -70,11 +64,6 @@ export const Editor = () => {
       });
     };
   }, []);
-
-  const createPath = (file: string | null): string | undefined => {
-    if (!recordingManifest || !file) return undefined;
-    return recordingManifest.directory + "/" + file;
-  };
 
   useEffect(() => {
     const unlisten = listen(Events.ClosedEditor, () => {
@@ -94,8 +83,8 @@ export const Editor = () => {
   return (
     <div className="text-content-fg bg-transparent relative h-dvh">
       <Titlebar>
-        {!recordingManifest && "No Recording Created"}
-        {recordingManifest && (
+        {!recordingDetails && "No Recording"}
+        {recordingDetails && (
           <TextField
             defaultValue={name}
             size="sm"
@@ -106,19 +95,19 @@ export const Editor = () => {
         )}
       </Titlebar>
 
-      {!recordingManifest && (
+      {!recordingDetails && (
         <div className="text-content-fg font-bold text-2xl flex items-center justify-center absolute -z-1 inset-0">
           <CircleSlash2 size={64} />
         </div>
       )}
 
-      {recordingManifest && (
+      {recordingDetails && (
         <>
           <PreviewPlayer
-            cameraPath={createPath(recordingManifest.files.camera)}
-            microphonePath={createPath(recordingManifest.files.microphone)}
-            screenPath={createPath(recordingManifest.files.screen) ?? ""}
-            systemAudioPath={createPath(recordingManifest.files.systemAudio)}
+            cameraPath={recordingDetails.camera}
+            microphonePath={recordingDetails.microphone}
+            screenPath={recordingDetails.screen}
+            systemAudioPath={recordingDetails.systemAudio}
           />
 
           <Toolbar
@@ -136,11 +125,14 @@ export const Editor = () => {
             <Dialog className="outline-none">
               <ExportOptions
                 defaultFilename={name}
-                hasCamera={recordingManifest.files.camera !== null}
-                recordingDirectory={recordingManifest.directory}
+                hasCamera={recordingDetails.camera !== null}
                 onCancel={() => {
                   setIsExportOptionsOpen(false);
                 }}
+                recordingDirectory={normalizePath(recordingDetails.screen)
+                  .split("/")
+                  .slice(0, -1)
+                  .join("/")}
               />
             </Dialog>
           </Modal>

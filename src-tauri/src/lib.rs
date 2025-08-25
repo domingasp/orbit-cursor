@@ -8,6 +8,7 @@ mod models;
 #[cfg(target_os = "macos")]
 mod permissions;
 mod recording;
+mod recording_management;
 mod recording_sources;
 mod screen_capture;
 mod system_tray;
@@ -59,6 +60,7 @@ use crate::windows::commands::init_editor;
 use crate::{
   export::commands::{cancel_export, export_recording, open_path_in_file_browser, path_exists},
   models::{EditingState, GlobalState, PreviewState, RecordingState},
+  recording_management::commands::get_recording_details,
   recording_sources::commands::{center_window, resize_window},
   windows::{
     commands::{
@@ -188,7 +190,8 @@ pub fn run() {
     make_borderless,
     #[cfg(target_os = "windows")]
     restore_border,
-    center_window
+    center_window,
+    get_recording_details
   ]);
 
   // State

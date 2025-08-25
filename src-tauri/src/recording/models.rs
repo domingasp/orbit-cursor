@@ -1,4 +1,5 @@
 use std::{
+  path::PathBuf,
   process::ChildStdin,
   sync::{atomic::AtomicBool, Arc, Barrier},
 };
@@ -77,6 +78,11 @@ impl RecordingFile {
     let uuid = Uuid::new_v4();
 
     format!("{prefix}-{uuid}.{ext}")
+  }
+
+  /// Generate full path for RecordingFile for given directory
+  pub fn complete_path(&self, dir: &str) -> PathBuf {
+    format!("{dir}/{}", self.as_ref()).into()
   }
 }
 
