@@ -7,7 +7,7 @@ import {
 import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../../tailwind-merge.config";
-import { focusStyles, groupFocus } from "../../../lib/styling";
+import { focusStyles, groupFocusVisible } from "../../../lib/styling";
 
 const switchVariants = tv({
   defaultVariants: {
@@ -19,7 +19,7 @@ const switchVariants = tv({
     container: [
       "relative flex cursor-default rounded-full shadow-inner bg-neutral transition-colors items-center border-1 border-neutral/5 transition-all",
       focusStyles,
-      groupFocus,
+      groupFocusVisible,
     ],
     innerLabel:
       "absolute text-black font-black opacity-0 group-data-[selected]:opacity-20 transition-all",
