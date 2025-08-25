@@ -8,6 +8,18 @@ export const inputFieldVariants = tv({
     { class: { input: "py-1.5" }, size: "md", variant: "line" },
     { class: { input: "py-1.5" }, size: "sm", variant: "line" },
     { class: { inputWrapper: "px-1" }, variant: "line" },
+    {
+      class: {
+        field: "border border-error focus-within:border-error ring-error/75",
+      },
+      isInvalid: true,
+      variant: "solid",
+    },
+    {
+      class: { line: "shadow-error group-data-[focus-within]:shadow-error" },
+      isInvalid: true,
+      variant: "line",
+    },
   ],
   defaultVariants: {
     size: "md",
@@ -27,6 +39,7 @@ export const inputFieldVariants = tv({
   },
   variants: {
     centered: { true: { input: "text-center" } },
+    isInvalid: { true: "" },
     size: {
       md: {
         input: "text-sm py-2",

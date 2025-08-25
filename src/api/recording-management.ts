@@ -4,6 +4,7 @@ export type RecordingDetails = {
   camera: string | null;
   id: number;
   microphone: string | null;
+  name: string;
   screen: string;
   systemAudio: string | null;
 };

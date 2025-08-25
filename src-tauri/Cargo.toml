@@ -58,6 +58,7 @@ parking_lot = { version = "0.12.4", features = ["deadlock_detection"] }
 rapidfuzz = "0.5"
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio"] }
+fancy-regex = "0.16.1"
 
 [dependencies.nokhwa]
 git = "https://github.com/l1npengtul/nokhwa.git"

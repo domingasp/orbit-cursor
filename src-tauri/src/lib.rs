@@ -60,7 +60,7 @@ use crate::windows::commands::init_editor;
 use crate::{
   export::commands::{cancel_export, export_recording, open_path_in_file_browser, path_exists},
   models::{EditingState, GlobalState, PreviewState, RecordingState},
-  recording_management::commands::get_recording_details,
+  recording_management::commands::{get_recording_details, update_recording_name},
   recording_sources::commands::{center_window, resize_window},
   windows::{
     commands::{
@@ -191,7 +191,8 @@ pub fn run() {
     #[cfg(target_os = "windows")]
     restore_border,
     center_window,
-    get_recording_details
+    get_recording_details,
+    update_recording_name
   ]);
 
   // State
@@ -203,28 +204,41 @@ pub fn run() {
 
   // Database
   let migrations = vec![
+    // Version number must match filename prefix
     Migration {
       version: 1,
       description: "create_recordings_table",
-      sql: include_str!("../migrations/20250823121450_create_recordings_table.up.sql"),
+      sql: include_str!("../migrations/1_create_recordings_table.up.sql"),
       kind: MigrationKind::Up,
     },
     Migration {
       version: 1,
       description: "create_recordings_table",
-      sql: include_str!("../migrations/20250823121450_create_recordings_table.down.sql"),
+      sql: include_str!("../migrations/1_create_recordings_table.down.sql"),
       kind: MigrationKind::Down,
     },
     Migration {
       version: 2,
       description: "track_camera_and_audio_in_recording",
-      sql: include_str!("../migrations/20250823214909_track_system_cursor_in_recording.up.sql"),
+      sql: include_str!("../migrations/2_track_system_cursor_in_recording.up.sql"),
       kind: MigrationKind::Up,
     },
     Migration {
       version: 2,
       description: "track_camera_and_audio_in_recording",
-      sql: include_str!("../migrations/20250823214909_track_system_cursor_in_recording.down.sql"),
+      sql: include_str!("../migrations/2_track_system_cursor_in_recording.down.sql"),
+      kind: MigrationKind::Down,
+    },
+    Migration {
+      version: 3,
+      description: "add_recording_name",
+      sql: include_str!("../migrations/3_add_recording_name.up.sql"),
+      kind: MigrationKind::Up,
+    },
+    Migration {
+      version: 3,
+      description: "add_recording_name",
+      sql: include_str!("../migrations/3_add_recording_name.down.sql"),
       kind: MigrationKind::Down,
     },
   ];

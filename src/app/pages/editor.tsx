@@ -6,12 +6,12 @@ import { Dialog } from "react-aria-components";
 import { useShallow } from "zustand/react/shallow";
 
 import { getRecordingDetails } from "../../api/recording-management";
-import { TextField } from "../../components/base/input-fields/text-field";
 import { Modal } from "../../components/base/modal/modal";
 import { useToast } from "../../components/base/toast/toast-provider";
 import { ExportOptions } from "../../features/export-options/components/export-options";
 import { normalizePath } from "../../features/export-options/utils/file";
 import { PreviewPlayer } from "../../features/preview-player/components/preview-player";
+import { RecordingName } from "../../features/recording-name/components/recording-name";
 import { Titlebar } from "../../features/titlebar/components/titlebar";
 import { Toolbar } from "../../features/toolbar/components/toolbar";
 import { usePlaybackStore } from "../../stores/editor/playback.store";
@@ -45,10 +45,6 @@ export const Editor = () => {
   );
 
   const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
-  const name =
-    normalizePath(recordingDetails?.screen ?? "")
-      .split("/")
-      .at(-2) ?? "";
 
   useEffect(() => {
     const unlisten = listen(Events.RecordingComplete, (data) => {
@@ -85,12 +81,9 @@ export const Editor = () => {
       <Titlebar>
         {!recordingDetails && "No Recording"}
         {recordingDetails && (
-          <TextField
-            defaultValue={name}
-            size="sm"
-            variant="line"
-            centered
-            compact
+          <RecordingName
+            name={recordingDetails.name}
+            recordingId={recordingDetails.id}
           />
         )}
       </Titlebar>
@@ -124,7 +117,7 @@ export const Editor = () => {
           >
             <Dialog className="outline-none">
               <ExportOptions
-                defaultFilename={name}
+                defaultFilename={recordingDetails.name}
                 hasCamera={recordingDetails.camera !== null}
                 onCancel={() => {
                   setIsExportOptionsOpen(false);

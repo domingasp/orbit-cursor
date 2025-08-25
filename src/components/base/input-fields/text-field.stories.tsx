@@ -96,3 +96,13 @@ export const Sections: Story = {
   },
   parameters: { controls: { include: ["showSteppers", "variant"] } },
 };
+
+export const Invalid: Story = {
+  args: {
+    isInvalid: true,
+    variant: "solid",
+  },
+  parameters: {
+    controls: { include: ["variant"] },
+  },
+};

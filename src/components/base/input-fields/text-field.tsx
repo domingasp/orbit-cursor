@@ -49,7 +49,13 @@ export const TextField = ({
     inputWrapper,
     label: _label,
     line,
-  } = textFieldVariants({ centered, compact, size, variant });
+  } = textFieldVariants({
+    centered,
+    compact,
+    isInvalid: props.isInvalid,
+    size,
+    variant,
+  });
 
   return (
     <AriaTextField {...props} className={base({ className })}>

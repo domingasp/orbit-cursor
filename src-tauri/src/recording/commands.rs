@@ -170,6 +170,11 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
         has_system_audio: options.system_audio,
         has_microphone: options.microphone_name.is_some(),
         has_system_cursor: options.show_system_cursor,
+        name: recording_dir
+          .file_stem()
+          .unwrap()
+          .to_string_lossy()
+          .to_string(),
       },
     ))
     .unwrap();

@@ -22,7 +22,7 @@ Make sure to rename the prefix to the same version as in the migrations object i
 Use the following command (in `src-tauri`) to revert migrations, I got the url by printing the db setup path in code:
 
 ```shell
-sqlx migrate revert --database-url="/Users/YOUR_USER/Library/Application Support/com.orbit-cursor.app/orbit-cursor.db"
+sqlx migrate revert --database-url="sqlite:/Users/YOUR_USER/Library/Application Support/com.orbit-cursor/orbit-cursor.db"
 ```
 
 ## `.env`
