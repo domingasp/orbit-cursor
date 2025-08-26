@@ -3,10 +3,10 @@ import { Camera, FolderOpen, FolderX } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { Button } from "../../../components/button/button";
-import { CircularProgressBar } from "../../../components/circular-progress-bar/circular-progress-bar";
-import { Overlay } from "../../../components/overlay/overlay";
-import { useToast } from "../../../components/toast/toast-provider";
+import { Button } from "../../../components/base/button/button";
+import { CircularProgressBar } from "../../../components/base/circular-progress-bar/circular-progress-bar";
+import { Overlay } from "../../../components/base/overlay/overlay";
+import { useToast } from "../../../components/base/toast/toast-provider";
 import { usePlaybackStore } from "../../../stores/editor/playback.store";
 import { Events } from "../../../types/events";
 import { openPathInFileBrowser } from "../api/export";

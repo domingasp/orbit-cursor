@@ -39,4 +39,6 @@ export enum Commands {
   MakeBorderless = "make_borderless",
   RestoreBorder = "restore_border",
   CenterWindow = "center_window",
+  GetRecordingDetails = "get_recording_details",
+  UpdateRecordingName = "update_recording_name",
 }

@@ -36,6 +36,22 @@ jobs:
         with:
           components: clippy, rustfmt
 
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --no-default-features --features sqlite
+
+      - name: Create SQLite database
+        working-directory: src-tauri
+        env:
+          DATABASE_URL: sqlite:${{ runner.temp }}/sanity.db
+        run: |
+          echo "DATABASE_URL=$DATABASE_URL"
+          sqlx database create
+          sqlx migrate run
+
+      - name: Write .env with DATABASE_PATH for build scripts
+        working-directory: src-tauri
+        run: echo "DATABASE_PATH=\"${{ runner.temp }}/sanity.db\"" > .env && cat .env
+
       - name: clippy
         working-directory: src-tauri
         run: cargo clippy --all-targets --all-features -- -D warnings

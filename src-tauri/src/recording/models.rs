@@ -37,12 +37,6 @@ pub enum RecordingType {
   Screen,
 }
 
-#[derive(Debug, Serialize)]
-pub struct RecordingMetadata {
-  pub recording_origin: LogicalPosition<f64>,
-  pub scale_factor: f64,
-}
-
 #[derive(EnumString, AsRefStr, Display, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum RecordingFile {
   #[strum(serialize = "screen.mp4")]
@@ -85,36 +79,10 @@ impl RecordingFile {
 
     format!("{prefix}-{uuid}.{ext}")
   }
-}
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RecordingManifest {
-  pub directory: PathBuf,
-  pub files: RecordingFileSet,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RecordingFileSet {
-  pub screen: RecordingFile,
-  pub metadata: RecordingFile,
-  pub mouse_events: RecordingFile,
-  pub system_audio: Option<RecordingFile>,
-  pub camera: Option<RecordingFile>,
-  pub microphone: Option<RecordingFile>,
-}
-
-impl Default for RecordingFileSet {
-  fn default() -> Self {
-    Self {
-      screen: RecordingFile::Screen,
-      metadata: RecordingFile::Metadata,
-      mouse_events: RecordingFile::MouseEvents,
-      system_audio: None,
-      camera: None,
-      microphone: None,
-    }
+  /// Generate full path for RecordingFile for given directory
+  pub fn complete_path(&self, dir: &str) -> PathBuf {
+    format!("{dir}/{}", self.as_ref()).into()
   }
 }
 

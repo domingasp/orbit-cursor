@@ -17,7 +17,7 @@ import {
   takeDisplayScreenshot,
   setRegionSelectorOpacity,
 } from "../../../api/windows";
-import { Button } from "../../../components/button/button";
+import { Button } from "../../../components/base/button/button";
 import { AspectRatio } from "../../../components/shared/aspect-ratio/aspect-ratio";
 import { CheckOnClickButton } from "../../../components/shared/check-on-click-button/check-on-click-button";
 import { cn } from "../../../lib/styling";

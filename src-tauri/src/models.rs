@@ -13,7 +13,7 @@ use tokio::sync::broadcast::{self, Receiver, Sender};
 use crate::{
   audio::models::AudioStream,
   constants::WindowLabel,
-  recording::models::{RecordingManifest, StreamSync, VideoCaptureDetails},
+  recording::models::{StreamSync, VideoCaptureDetails},
 };
 
 pub struct GlobalState {
@@ -99,23 +99,26 @@ impl PreviewState {
   }
 }
 
+pub type ThreadHandle = Arc<Mutex<Option<JoinHandle<()>>>>;
+
 pub struct StoppedRecording {
-  pub manifest: Option<RecordingManifest>,
-  pub stream_handles: Option<Vec<JoinHandle<()>>>,
-  pub screen_handle: Option<JoinHandle<()>>,
+  pub recording_id: Option<i64>,
+  pub stream_handles: Option<Vec<ThreadHandle>>,
+  pub screen_handle: Option<ThreadHandle>,
   pub screen_files: Option<Vec<PathBuf>>,
-  pub camera_handle: Option<JoinHandle<()>>,
+  pub camera_handle: Option<ThreadHandle>,
   pub camera_files: Option<Vec<PathBuf>>,
 }
 
+#[derive(Debug, Clone)]
 pub struct VideoTrackDetails {
   pub capture_details: Option<VideoCaptureDetails>,
   pub files: Option<Vec<PathBuf>>,
-  pub stream_handle: Option<JoinHandle<()>>,
+  pub stream_handle: Option<ThreadHandle>,
 }
 
 impl VideoTrackDetails {
-  pub fn add_segment(&mut self, handle: Option<JoinHandle<()>>, file: Option<PathBuf>) {
+  pub fn add_segment(&mut self, handle: Option<ThreadHandle>, file: Option<PathBuf>) {
     self.stream_handle = handle;
     if let Some(files) = &mut self.files {
       if let Some(file) = file {
@@ -126,11 +129,11 @@ impl VideoTrackDetails {
 }
 
 trait TakeStreamAndFiles {
-  fn take_stream_and_files(&mut self) -> (Option<JoinHandle<()>>, Option<Vec<PathBuf>>);
+  fn take_stream_and_files(&mut self) -> (Option<ThreadHandle>, Option<Vec<PathBuf>>);
 }
 
 impl TakeStreamAndFiles for Option<VideoTrackDetails> {
-  fn take_stream_and_files(&mut self) -> (Option<JoinHandle<()>>, Option<Vec<PathBuf>>) {
+  fn take_stream_and_files(&mut self) -> (Option<ThreadHandle>, Option<Vec<PathBuf>>) {
     if let Some(details) = self.take() {
       (details.stream_handle, details.files)
     } else {
@@ -142,16 +145,16 @@ impl TakeStreamAndFiles for Option<VideoTrackDetails> {
 pub struct RecordingState {
   pub is_recording: bool,
   pub is_paused: bool,
-  pub recording_manifest: Option<RecordingManifest>,
+  pub recording_id: Option<i64>,
   pub stream_sync: Option<StreamSync>,
-  pub stream_handles: Option<Vec<JoinHandle<()>>>,
+  pub stream_handles: Option<Vec<ThreadHandle>>,
   pub screen_capture_details: Option<VideoTrackDetails>,
   pub camera_capture_details: Option<VideoTrackDetails>,
 }
 
 pub struct VideoTrackStartDetails {
   pub path: PathBuf,
-  pub handle: JoinHandle<()>,
+  pub handle: ThreadHandle,
   pub capture_details: VideoCaptureDetails,
 }
 
@@ -170,7 +173,7 @@ impl RecordingState {
     RecordingState {
       is_recording: false,
       is_paused: false,
-      recording_manifest: None,
+      recording_id: None,
       stream_sync: None,
       stream_handles: None,
       screen_capture_details: None,
@@ -180,16 +183,16 @@ impl RecordingState {
 
   pub fn recording_started(
     &mut self,
-    recording_manifest: RecordingManifest,
+    recording_id: i64,
     stream_sync: StreamSync,
-    stream_handles: Vec<JoinHandle<()>>,
+    stream_handles: Vec<ThreadHandle>,
     screen_recorder: VideoTrackStartDetails,
     camera_recorder: Option<VideoTrackStartDetails>,
   ) {
     self.is_recording = true;
     self.is_paused = false;
 
-    self.recording_manifest = Some(recording_manifest);
+    self.recording_id = Some(recording_id);
     self.stream_sync = Some(stream_sync);
     self.stream_handles = Some(stream_handles);
 
@@ -220,7 +223,7 @@ impl RecordingState {
     let (camera_handle, camera_files) = self.camera_capture_details.take_stream_and_files();
 
     StoppedRecording {
-      manifest: self.recording_manifest.take(),
+      recording_id: self.recording_id.take(),
       stream_handles: self.stream_handles.take(),
       screen_handle,
       screen_files,
@@ -247,9 +250,9 @@ impl RecordingState {
 
   pub fn resume_recording(
     &mut self,
-    screen_stream_handle: JoinHandle<()>,
+    screen_stream_handle: ThreadHandle,
     screen_file: PathBuf,
-    camera_stream_handle: Option<JoinHandle<()>>,
+    camera_stream_handle: Option<ThreadHandle>,
     camera_file: Option<PathBuf>,
   ) {
     if let Some(screen_capture_details) = &mut self.screen_capture_details {

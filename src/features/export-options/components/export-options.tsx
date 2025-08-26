@@ -7,8 +7,8 @@ import { SubmitHandler, useForm } from "react-hook-form";
 import { z } from "zod";
 import { useShallow } from "zustand/react/shallow";
 
-import { Button } from "../../../components/button/button";
-import { CheckboxControlled } from "../../../components/checkbox/checkbox-controlled";
+import { Button } from "../../../components/base/button/button";
+import { CheckboxControlled } from "../../../components/base/checkbox/checkbox-controlled";
 import { CheckOnClickButton } from "../../../components/shared/check-on-click-button/check-on-click-button";
 import { useExportPreferencesStore } from "../../../stores/editor/export-preferences.store";
 import { cancelExport, exportRecording } from "../api/export";

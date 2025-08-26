@@ -2,7 +2,7 @@ import { Disc, Mic, PersonStanding, Video } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 
 import { quitApp, requestPermissions } from "../../../api/permissions";
-import { Button } from "../../../components/button/button";
+import { Button } from "../../../components/base/button/button";
 import { PermissionRow } from "../../../features/permissions/components/permission-row";
 import { Gradients } from "../../../features/permissions/types/gradients";
 import {

@@ -5,10 +5,10 @@ import { useShallow } from "zustand/react/shallow";
 import { usePlaybackStore } from "../../../stores/editor/playback.store";
 
 type PreviewPlayerProps = {
+  cameraPath: string | null;
+  microphonePath: string | null;
   screenPath: string;
-  cameraPath?: string;
-  microphonePath?: string;
-  systemAudioPath?: string;
+  systemAudioPath: string | null;
 };
 
 export const PreviewPlayer = ({

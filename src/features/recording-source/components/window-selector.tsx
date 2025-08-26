@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { CircleSlash2, LoaderCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { Button } from "../../../components/button/button";
+import { Button } from "../../../components/base/button/button";
 import { Events } from "../../../types/events";
 import { listWindows, WindowDetails } from "../api/recording-sources";
 

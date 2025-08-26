@@ -1,8 +1,8 @@
 import { Meta, StoryObj } from "@storybook/react";
 import { Rabbit, Snail } from "lucide-react";
 
-import { Keyboard } from "../../../components/keyboard/keyboard";
-import { RadioGroup } from "../../../components/radio-group/radio-group";
+import { Keyboard } from "../../../components/base/keyboard/keyboard";
+import { RadioGroup } from "../../../components/base/radio-group/radio-group";
 
 import { IconRadio } from "./icon-radio";
 

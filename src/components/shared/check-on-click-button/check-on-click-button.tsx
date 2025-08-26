@@ -6,7 +6,7 @@ import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../../tailwind-merge.config";
 import { availableVariants, cn } from "../../../lib/styling";
-import { Button } from "../../button/button";
+import { Button } from "../../base/button/button";
 
 const checkOnClickButtonVariants = tv({
   base: "absolute inset-0 flex items-center justify-center transition-all rounded-md backdrop-blur-none",

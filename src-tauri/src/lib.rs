@@ -1,12 +1,14 @@
 mod audio;
 mod camera;
 mod constants;
+mod db;
 mod export;
 mod global_inputs;
 mod models;
 #[cfg(target_os = "macos")]
 mod permissions;
 mod recording;
+mod recording_management;
 mod recording_sources;
 mod screen_capture;
 mod system_tray;
@@ -23,8 +25,10 @@ use rdev::listen;
 use recording::commands::start_recording;
 use recording_sources::commands::{list_monitors, list_windows};
 use serde_json::{json, Value};
+use sqlx::{migrate::MigrateDatabase, sqlite::SqlitePoolOptions, Pool, Sqlite};
 use system_tray::service::init_system_tray;
 use tauri::{App, AppHandle, Manager, Wry};
+use tauri_plugin_sql::{Migration, MigrationKind};
 use tauri_plugin_store::{Store, StoreExt};
 use tokio::sync::broadcast;
 use windows::commands::{
@@ -56,6 +60,7 @@ use crate::windows::commands::init_editor;
 use crate::{
   export::commands::{cancel_export, export_recording, open_path_in_file_browser, path_exists},
   models::{EditingState, GlobalState, PreviewState, RecordingState},
+  recording_management::commands::{get_recording_details, update_recording_name},
   recording_sources::commands::{center_window, resize_window},
   windows::{
     commands::{
@@ -94,6 +99,39 @@ async fn setup_store(app: &App) -> Arc<Store<Wry>> {
   }
 
   store
+}
+
+async fn setup_db(app: &App) -> Pool<sqlx::Sqlite> {
+  let mut path = app
+    .path()
+    .app_data_dir()
+    .expect("Failed to get app_data_dir");
+
+  match std::fs::create_dir_all(path.clone()) {
+    Ok(_) => (),
+    Err(e) => {
+      panic!("Error creating directory: {e}");
+    }
+  }
+
+  path.push("orbit-cursor.db");
+
+  Sqlite::create_database(
+    format!(
+      "sqlite:{}",
+      path.to_str().expect("Path should have a value")
+    )
+    .as_str(),
+  )
+  .await
+  .expect("Failed to create database");
+
+  let db = SqlitePoolOptions::new()
+    .connect(path.to_str().unwrap())
+    .await
+    .unwrap();
+
+  db
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -152,7 +190,9 @@ pub fn run() {
     make_borderless,
     #[cfg(target_os = "windows")]
     restore_border,
-    center_window
+    center_window,
+    get_recording_details,
+    update_recording_name
   ]);
 
   // State
@@ -162,8 +202,54 @@ pub fn run() {
     .manage(Mutex::new(RecordingState::new()))
     .manage(Mutex::new(EditingState::new()));
 
+  // Database
+  let migrations = vec![
+    // Version number must match filename prefix
+    Migration {
+      version: 1,
+      description: "create_recordings_table",
+      sql: include_str!("../migrations/1_create_recordings_table.up.sql"),
+      kind: MigrationKind::Up,
+    },
+    Migration {
+      version: 1,
+      description: "create_recordings_table",
+      sql: include_str!("../migrations/1_create_recordings_table.down.sql"),
+      kind: MigrationKind::Down,
+    },
+    Migration {
+      version: 2,
+      description: "track_camera_and_audio_in_recording",
+      sql: include_str!("../migrations/2_track_system_cursor_in_recording.up.sql"),
+      kind: MigrationKind::Up,
+    },
+    Migration {
+      version: 2,
+      description: "track_camera_and_audio_in_recording",
+      sql: include_str!("../migrations/2_track_system_cursor_in_recording.down.sql"),
+      kind: MigrationKind::Down,
+    },
+    Migration {
+      version: 3,
+      description: "add_recording_name",
+      sql: include_str!("../migrations/3_add_recording_name.up.sql"),
+      kind: MigrationKind::Up,
+    },
+    Migration {
+      version: 3,
+      description: "add_recording_name",
+      sql: include_str!("../migrations/3_add_recording_name.down.sql"),
+      kind: MigrationKind::Down,
+    },
+  ];
+
   // Plugins
   app_builder = app_builder
+    .plugin(
+      tauri_plugin_sql::Builder::default()
+        .add_migrations("sqlite:orbit-cursor.db", migrations)
+        .build(),
+    )
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_os::init())
     .plugin(tauri_plugin_shell::init())
@@ -190,6 +276,10 @@ pub fn run() {
   let app = app_builder
     .setup(|app: &mut App| {
       let store = tauri::async_runtime::block_on(setup_store(app));
+      tauri::async_runtime::block_on(async {
+        let db = setup_db(app).await;
+        app.manage(db);
+      });
 
       let app_handle = app.handle().clone();
 

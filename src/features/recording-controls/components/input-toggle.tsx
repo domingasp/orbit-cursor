@@ -1,7 +1,7 @@
 import { CircleOff, Lock, TriangleAlert } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 
-import { ToggleButton } from "../../../components/button/toggle-button";
+import { ToggleButton } from "../../../components/base/button/toggle-button";
 import { cn } from "../../../lib/styling";
 import { PermissionStatus } from "../../../stores/permissions.store";
 

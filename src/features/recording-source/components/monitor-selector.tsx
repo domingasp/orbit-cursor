@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { Button } from "../../../components/button/button";
+import { Button } from "../../../components/base/button/button";
 import { listMonitors, MonitorDetails } from "../api/recording-sources";
 
 type MonitorSelectorProps = {

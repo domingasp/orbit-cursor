@@ -2,8 +2,8 @@ import { AppWindowMac, Monitor, SquareDashed } from "lucide-react";
 import { ComponentProps } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { Keyboard } from "../../../components/keyboard/keyboard";
-import { RadioGroup } from "../../../components/radio-group/radio-group";
+import { Keyboard } from "../../../components/base/keyboard/keyboard";
+import { RadioGroup } from "../../../components/base/radio-group/radio-group";
 import {
   RecordingType,
   useRecordingStateStore,

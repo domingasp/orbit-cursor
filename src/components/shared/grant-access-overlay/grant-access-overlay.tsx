@@ -6,8 +6,8 @@ import {
   PermissionStatus,
   PermissionType,
 } from "../../../stores/permissions.store";
-import { Button } from "../../button/button";
-import { Overlay } from "../../overlay/overlay";
+import { Button } from "../../base/button/button";
+import { Overlay } from "../../base/overlay/overlay";
 
 type GrantAccessProps = {
   permission: PermissionStatus | undefined;

@@ -1,0 +1,146 @@
+use std::path::PathBuf;
+
+use fancy_regex::Regex;
+use serde::Serialize;
+use sqlx::SqlitePool;
+
+use crate::recording::models::RecordingFile;
+
+pub struct NewRecording<'a> {
+  pub recording_directory: &'a str,
+  pub origin_x: f64,
+  pub origin_y: f64,
+  pub scale_factor: f64,
+  pub name: String,
+  pub has_camera: bool,
+  pub has_system_audio: bool,
+  pub has_microphone: bool,
+  pub has_system_cursor: bool,
+}
+
+pub async fn insert_recording(pool: &SqlitePool, new: &NewRecording<'_>) -> sqlx::Result<i64> {
+  let has_camera = new.has_camera as i32;
+  let has_system_audio = new.has_system_audio as i32;
+  let has_microphone = new.has_microphone as i32;
+  let has_system_cursor = new.has_system_cursor as i32;
+
+  let result = sqlx::query!(
+    r#"
+    INSERT INTO recordings (
+      recording_directory,
+      origin_x,
+      origin_y,
+      scale_factor,
+      has_camera,
+      has_system_audio,
+      has_microphone,
+      has_system_cursor,
+      name
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    "#,
+    new.recording_directory,
+    new.origin_x,
+    new.origin_y,
+    new.scale_factor,
+    has_camera,
+    has_system_audio,
+    has_microphone,
+    has_system_cursor,
+    new.name
+  )
+  .execute(pool)
+  .await?;
+
+  Ok(result.last_insert_rowid())
+}
+
+pub async fn get_recording_directory(
+  pool: &SqlitePool,
+  recording_id: i64,
+) -> sqlx::Result<PathBuf> {
+  let record = sqlx::query!(
+    r#"
+    SELECT recording_directory
+    FROM recordings
+    WHERE id = ?
+    "#,
+    recording_id
+  )
+  .fetch_one(pool)
+  .await?;
+
+  Ok(PathBuf::from(record.recording_directory))
+}
+
+#[derive(Debug, Serialize)]
+pub struct RecordingDetails {
+  pub id: i64,
+  pub name: String,
+  pub screen: PathBuf,
+  pub camera: Option<PathBuf>,
+  pub system_audio: Option<PathBuf>,
+  pub microphone: Option<PathBuf>,
+}
+
+pub async fn get_recording_details(
+  pool: &SqlitePool,
+  recording_id: i64,
+) -> sqlx::Result<RecordingDetails> {
+  let record = sqlx::query!(
+    r#"
+    SELECT id, name, recording_directory, has_camera, has_system_audio, has_microphone
+    FROM recordings
+    WHERE id = ?
+    "#,
+    recording_id
+  )
+  .fetch_one(pool)
+  .await?;
+
+  Ok(RecordingDetails {
+    id: record.id,
+    name: record.name,
+    screen: RecordingFile::Screen.complete_path(&record.recording_directory),
+    camera: if record.has_camera != 0 {
+      Some(RecordingFile::Camera.complete_path(&record.recording_directory))
+    } else {
+      None
+    },
+    system_audio: if record.has_system_audio != 0 {
+      Some(RecordingFile::SystemAudio.complete_path(&record.recording_directory))
+    } else {
+      None
+    },
+    microphone: if record.has_microphone != 0 {
+      Some(RecordingFile::Microphone.complete_path(&record.recording_directory))
+    } else {
+      None
+    },
+  })
+}
+
+pub async fn update_recording_name(
+  pool: &SqlitePool,
+  recording_id: i64,
+  new_name: &str,
+) -> sqlx::Result<()> {
+  let file_name_re = Regex::new(r#"(?i)^(?!\s)(?!^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$)[^<>:"/\\|?*\x00-\x1F]{1,255}(?<!\s)$"#)
+    .expect("Valid recording name regex");
+  if !file_name_re.is_match(new_name).unwrap_or(false) {
+    return Ok(());
+  }
+
+  sqlx::query!(
+    r#"
+    UPDATE recordings
+    SET name = ?
+    WHERE id = ?
+    "#,
+    new_name,
+    recording_id
+  )
+  .execute(pool)
+  .await?;
+
+  Ok(())
+}

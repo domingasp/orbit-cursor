@@ -4,7 +4,7 @@ import { Volume2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { Switch } from "../../../../components/switch/switch";
+import { Switch } from "../../../../components/base/switch/switch";
 import { cn } from "../../../../lib/styling";
 import { useRecordingStateStore } from "../../../../stores/recording-state.store";
 import {

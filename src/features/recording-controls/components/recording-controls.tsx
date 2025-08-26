@@ -14,10 +14,10 @@ import {
   showRegionSelector,
   setRegionSelectorPassthrough,
 } from "../../../api/windows";
-import { Button } from "../../../components/button/button";
-import { Keyboard } from "../../../components/keyboard/keyboard";
-import { Separator } from "../../../components/separator/separator";
-import { Sparkles } from "../../../components/sparkles/sparkles";
+import { Button } from "../../../components/base/button/button";
+import { Keyboard } from "../../../components/base/keyboard/keyboard";
+import { Separator } from "../../../components/base/separator/separator";
+import { Sparkles } from "../../../components/base/sparkles/sparkles";
 import { clearInteractionAttributes } from "../../../lib/styling";
 import { usePermissionsStore } from "../../../stores/permissions.store";
 import {
