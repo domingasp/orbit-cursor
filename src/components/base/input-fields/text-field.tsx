@@ -28,6 +28,7 @@ export type TextFieldProps = AriaTextFieldProps &
     className?: string;
     label?: string;
     leftSection?: React.ReactNode;
+    lineClassName?: string;
     rightSection?: React.ReactNode;
   };
 
@@ -37,6 +38,7 @@ export const TextField = ({
   compact,
   label,
   leftSection,
+  lineClassName,
   rightSection,
   size,
   variant,
@@ -70,7 +72,9 @@ export const TextField = ({
           {rightSection}
         </div>
 
-        {variant === "line" && <div className={line()} />}
+        {variant === "line" && (
+          <div className={line({ className: lineClassName })} />
+        )}
       </Group>
     </AriaTextField>
   );

@@ -6,7 +6,6 @@ import { RecordingDetails } from "../../../api/recording-management";
 import { TextField } from "../../../components/base/input-fields/text-field";
 import { updateRecordingName } from "../api/recording-name";
 
-// Regex provided for validating recording names. Built via constructor to avoid linter complaining about control chars.
 const recordingNameRegex = new RegExp(
   String.raw`^(?!\s)(?!^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$)[^<>:"/\\|?*\u0000-\u001F]{1,255}(?<!\s)$`,
   "i"
@@ -112,6 +111,7 @@ export const RecordingName = ({ name, recordingId }: RecordingNameProps) => {
     <TextField
       aria-label="Recording name"
       isInvalid={isInvalid}
+      lineClassName="-bottom-0.5 shadow-content-fg/50"
       onBlur={handleBlur}
       onChange={onChange}
       size="sm"
