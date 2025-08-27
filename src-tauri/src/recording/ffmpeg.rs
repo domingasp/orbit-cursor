@@ -2,10 +2,10 @@ use std::{
   fs::File,
   io::{BufRead, BufReader},
   path::{Path, PathBuf},
-  process::{ChildStderr, ChildStdin},
+  process::{ChildStderr, ChildStdin, Command},
 };
 
-use ffmpeg_sidecar::{child::FfmpegChild, command::FfmpegCommand};
+use ffmpeg_sidecar::{child::FfmpegChild, command::FfmpegCommand, ffprobe::ffprobe_path};
 use tauri::{PhysicalPosition, PhysicalSize};
 use uuid::Uuid;
 
@@ -189,4 +189,36 @@ pub fn log_ffmpeg_output(stderr: ChildStderr, tag: String) {
       log::debug!("[ffmpeg]{tag}{line}");
     }
   });
+}
+
+/// From a list of video paths, return the length of the shortest video
+pub fn shortest_video_length(segments: Vec<PathBuf>) -> Option<u64> {
+  let mut shortest: Option<u64> = None;
+
+  for segment in segments {
+    let output = Command::new(ffprobe_path())
+      .args([
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        segment.to_string_lossy().as_ref(),
+      ])
+      .output()
+      .ok()?;
+
+    if !output.status.success() {
+      continue;
+    }
+
+    let stdout = str::from_utf8(&output.stdout).ok()?;
+    if let Ok(seconds) = stdout.trim().parse::<f64>() {
+      let ms = (seconds * 1000.0).round() as u64;
+      shortest = Some(shortest.map_or(ms, |curr| curr.min(ms)));
+    }
+  }
+
+  shortest
 }

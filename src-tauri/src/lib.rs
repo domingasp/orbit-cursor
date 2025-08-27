@@ -241,6 +241,18 @@ pub fn run() {
       sql: include_str!("../migrations/3_add_recording_name.down.sql"),
       kind: MigrationKind::Down,
     },
+    Migration {
+      version: 4,
+      description: "recording_metadata",
+      sql: include_str!("../migrations/4_recording_metadata.up.sql"),
+      kind: MigrationKind::Up,
+    },
+    Migration {
+      version: 4,
+      description: "recording_metadata",
+      sql: include_str!("../migrations/4_recording_metadata.down.sql"),
+      kind: MigrationKind::Down,
+    },
   ];
 
   // Plugins

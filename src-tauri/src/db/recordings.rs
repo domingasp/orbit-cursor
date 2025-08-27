@@ -4,7 +4,7 @@ use fancy_regex::Regex;
 use serde::Serialize;
 use sqlx::SqlitePool;
 
-use crate::recording::models::RecordingFile;
+use crate::recording::models::{RecordingFile, RecordingType};
 
 pub struct NewRecording<'a> {
   pub recording_directory: &'a str,
@@ -16,6 +16,7 @@ pub struct NewRecording<'a> {
   pub has_system_audio: bool,
   pub has_microphone: bool,
   pub has_system_cursor: bool,
+  pub r#type: &'a RecordingType,
 }
 
 pub async fn insert_recording(pool: &SqlitePool, new: &NewRecording<'_>) -> sqlx::Result<i64> {
@@ -23,6 +24,7 @@ pub async fn insert_recording(pool: &SqlitePool, new: &NewRecording<'_>) -> sqlx
   let has_system_audio = new.has_system_audio as i32;
   let has_microphone = new.has_microphone as i32;
   let has_system_cursor = new.has_system_cursor as i32;
+  let r#type = new.r#type.to_string();
 
   let result = sqlx::query!(
     r#"
@@ -35,8 +37,9 @@ pub async fn insert_recording(pool: &SqlitePool, new: &NewRecording<'_>) -> sqlx
       has_system_audio,
       has_microphone,
       has_system_cursor,
-      name
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      name,
+      type
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     "#,
     new.recording_directory,
     new.origin_x,
@@ -46,12 +49,38 @@ pub async fn insert_recording(pool: &SqlitePool, new: &NewRecording<'_>) -> sqlx
     has_system_audio,
     has_microphone,
     has_system_cursor,
-    new.name
+    new.name,
+    r#type
   )
   .execute(pool)
   .await?;
 
   Ok(result.last_insert_rowid())
+}
+
+pub async fn set_recording_metadata(
+  pool: &SqlitePool,
+  recording_id: i64,
+  bytes: u64,
+  milliseconds: Option<u64>,
+) -> sqlx::Result<()> {
+  let size = bytes as i64;
+  let length = milliseconds.map(|ms| ms as i64);
+
+  sqlx::query!(
+    r#"
+    UPDATE recordings
+    SET size = ?, length = ?
+    WHERE id = ?
+    "#,
+    size,
+    length,
+    recording_id
+  )
+  .execute(pool)
+  .await?;
+
+  Ok(())
 }
 
 pub async fn get_recording_directory(
