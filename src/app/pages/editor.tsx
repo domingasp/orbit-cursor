@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
-import { CircleSlash2 } from "lucide-react";
+import { Orbit, TvMinimalPlay } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Dialog } from "react-aria-components";
+import { Dialog, Text } from "react-aria-components";
 import { useShallow } from "zustand/react/shallow";
 
 import { getRecordingDetails } from "../../api/recording-management";
+import { Button } from "../../components/base/button/button";
 import { Modal } from "../../components/base/modal/modal";
 import { useToast } from "../../components/base/toast/toast-provider";
 import { ExportOptions } from "../../features/export-options/components/export-options";
@@ -77,9 +78,9 @@ export const Editor = () => {
   }, []);
 
   return (
-    <div className="text-content-fg bg-transparent relative h-dvh">
+    <div className="text-content-fg bg-transparent relative h-dvh select-none">
       <Titlebar>
-        {!recordingDetails && "No Recording"}
+        {!recordingDetails && "Orbit Cursor"}
         {recordingDetails && (
           <RecordingName
             name={recordingDetails.name}
@@ -89,8 +90,19 @@ export const Editor = () => {
       </Titlebar>
 
       {!recordingDetails && (
-        <div className="text-content-fg font-bold text-2xl flex items-center justify-center absolute -z-1 inset-0">
-          <CircleSlash2 size={64} />
+        <div className="text-content-fg font-bold text-2xl flex items-center justify-center absolute inset-3 gap-8">
+          <Orbit
+            className="animate-[spin_80s_linear_infinite_reverse] text-muted"
+            size={128}
+          />
+
+          <div className="flex flex-col items-center gap-2">
+            <Text>No Recording Open</Text>
+            <Button className="w-full justify-center" shiny>
+              <TvMinimalPlay size={16} />
+              Recordings
+            </Button>
+          </div>
         </div>
       )}
 

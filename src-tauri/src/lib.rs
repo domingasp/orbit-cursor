@@ -301,7 +301,7 @@ pub fn run() {
             open_permissions(app.handle()).await;
           } else if matches!(store.get(FIRST_RUN), Some(Value::Bool(true))) {
             store.set(FIRST_RUN, json!(false));
-            show_start_recording_dock(app.handle().clone(), app.state(), app.state(), app.state());
+            show_start_recording_dock(app.handle().clone(), app.state(), app.state());
           }
 
           if has_required {

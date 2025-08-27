@@ -11,10 +11,10 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::broadcast;
 
 use crate::{
-  constants::{Events, WindowLabel},
+  constants::Events,
   db::{self, recordings::NewRecording},
   models::{
-    EditingState, GlobalState, RecordingState, StoppedRecording, ThreadHandle, VideoTrackDetails,
+    GlobalState, RecordingState, StoppedRecording, ThreadHandle, VideoTrackDetails,
     VideoTrackStartDetails,
   },
   recording::{
@@ -28,7 +28,7 @@ use crate::{
     video::resume_video_recording,
   },
   system_tray::service::update_system_tray_icon,
-  windows::commands::hide_region_selector,
+  windows::commands::{hide_region_selector, show_and_focus_editor},
 };
 
 #[derive(Debug, Clone, Deserialize)]
@@ -270,16 +270,7 @@ pub async fn stop_recording(app_handle: AppHandle) {
     crate::system_tray::service::SystemTrayIcon::Default,
   );
 
-  {
-    let editing_state: State<'_, Mutex<EditingState>> = app_handle.state();
-    editing_state.lock().editing_started();
-  }
-
-  let editor = app_handle
-    .get_webview_window(WindowLabel::Editor.as_ref())
-    .unwrap();
-  let _ = editor.show();
-  let _ = editor.set_focus();
+  show_and_focus_editor(app_handle.clone(), app_handle.state());
 
   #[cfg(target_os = "macos")] // Shows dock icon, allows editor to go fullscreen
   let _ = app_handle.set_activation_policy(tauri::ActivationPolicy::Regular);

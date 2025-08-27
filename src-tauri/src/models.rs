@@ -282,14 +282,12 @@ impl RecordingState {
 }
 
 pub struct EditingState {
-  pub is_editing: bool,
   pub export_process: Option<Arc<Mutex<FfmpegChild>>>,
 }
 
 impl EditingState {
   pub fn new() -> Self {
     EditingState {
-      is_editing: false,
       export_process: None,
     }
   }
@@ -300,17 +298,5 @@ impl EditingState {
 
   pub fn take_export_process(&mut self) -> Option<Arc<Mutex<FfmpegChild>>> {
     self.export_process.take()
-  }
-
-  pub fn editing_started(&mut self) {
-    self.is_editing = true;
-  }
-
-  pub fn editing_stopped(&mut self) {
-    self.is_editing = false;
-  }
-
-  pub fn is_editing(&self) -> bool {
-    self.is_editing
   }
 }

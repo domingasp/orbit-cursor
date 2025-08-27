@@ -45,7 +45,7 @@ use objc::{class, msg_send, sel, sel_impl};
 
 use crate::{
   constants::{Events, WindowLabel},
-  models::{EditingState, GlobalState},
+  models::GlobalState,
   windows::commands::collapse_recording_source_selector,
   APP_HANDLE,
 };
@@ -65,11 +65,6 @@ pub fn editor_close_listener(app_handle: &AppHandle) {
   editor.on_window_event(move |event| {
     if let WindowEvent::CloseRequested { api, .. } = event {
       api.prevent_close();
-
-      {
-        let editing_state: State<'_, Mutex<EditingState>> = app_handle_for_listener.state();
-        editing_state.lock().editing_stopped();
-      }
 
       let _ = editor_clone.hide();
       let _ = app_handle_for_listener.emit(Events::ClosedEditor.as_ref(), ());

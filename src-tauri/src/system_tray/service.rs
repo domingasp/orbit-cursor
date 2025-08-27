@@ -1,7 +1,7 @@
 use parking_lot::Mutex;
 use strum_macros::Display;
 use tauri::image::Image;
-use tauri::menu::{Menu, MenuItem};
+use tauri::menu::{Menu, MenuBuilder, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconEvent};
 use tauri::{AppHandle, Manager, State};
 
@@ -36,13 +36,7 @@ pub fn init_system_tray(app_handle: AppHandle) -> tauri::Result<()> {
         } else {
           // These decide if to show accordingly, needed to do this as state
           // is not available when setting up the tray causing a panic
-          show_start_recording_dock(
-            app_handle.clone(),
-            app_handle.state(),
-            app_handle.state(),
-            app_handle.state(),
-          );
-          show_and_focus_editor(app_handle.clone(), app_handle.state(), app_handle.state());
+          show_start_recording_dock(app_handle.clone(), app_handle.state(), app_handle.state());
         }
       }
 
@@ -64,10 +58,29 @@ pub fn init_system_tray(app_handle: AppHandle) -> tauri::Result<()> {
 }
 
 fn add_tray_menu(app_handle: AppHandle, tray: &TrayIcon) {
+  let open_editor = MenuItem::with_id(
+    &app_handle,
+    "open_editor",
+    "Open Editor",
+    true,
+    None::<&str>,
+  )
+  .unwrap();
+
   let quit_i =
     MenuItem::with_id(&app_handle, "quit", "Quit Orbit Cursor", true, None::<&str>).unwrap();
-  let menu = Menu::with_items(&app_handle, &[&quit_i]).unwrap();
+
+  let menu = MenuBuilder::new(&app_handle)
+    .item(&open_editor)
+    .separator()
+    .item(&quit_i)
+    .build()
+    .unwrap();
+
   tray.on_menu_event(|app, event| match event.id.as_ref() {
+    "open_editor" => {
+      show_and_focus_editor(app.clone(), app.state());
+    }
     "quit" => {
       app.exit(0);
     }
