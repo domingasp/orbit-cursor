@@ -4485,6 +4485,7 @@ dependencies = [
  "tauri-plugin-shell",
  "tauri-plugin-sql",
  "tauri-plugin-store",
+ "time",
  "tokio",
  "uuid",
  "windows 0.58.0",

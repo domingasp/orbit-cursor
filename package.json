@@ -27,7 +27,7 @@
     "add": "^2.0.6",
     "clsx": "^2.1.1",
     "dequal": "^2.0.3",
-    "lucide-react": "^0.488.0",
+    "lucide-react": "^0.542.0",
     "motion": "^12.23.6",
     "overlayscrollbars": "^2.11.5",
     "overlayscrollbars-react": "^0.5.6",

@@ -1,12 +1,17 @@
+import {
+  OverlayScrollbarsComponent,
+  OverlayScrollbarsComponentRef,
+} from "overlayscrollbars-react";
 import { useEffect, useRef } from "react";
 import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../../tailwind-merge.config";
+import { availableVariants, cn } from "../../../lib/styling";
 
 const overflowShadowVariants = tv({
   compoundSlots: [
     {
-      class: "absolute z-100 rounded-xs from-content-fg/25 to-transparent",
+      class: "absolute z-100 from-content-fg/25 to-transparent",
       slots: ["end", "start"],
     },
     {
@@ -20,23 +25,57 @@ const overflowShadowVariants = tv({
       slots: ["end", "start"],
     },
   ],
+  compoundVariants: [
+    {
+      class: {
+        end: "rounded-r-md",
+        start: "rounded-l-md",
+      },
+      orientation: "horizontal",
+      shadowRadius: "md",
+    },
+    {
+      class: {
+        end: "rounded-r-sm",
+        start: "rounded-l-sm",
+      },
+      orientation: "horizontal",
+      shadowRadius: "sm",
+    },
+    {
+      class: {
+        end: "rounded-b-md",
+        start: "rounded-t-md",
+      },
+      orientation: "vertical",
+      shadowRadius: "md",
+    },
+    {
+      class: {
+        end: "rounded-b-sm",
+        start: "rounded-t-sm",
+      },
+      orientation: "vertical",
+      shadowRadius: "sm",
+    },
+  ],
   defaultVariants: {
     orientation: "vertical",
+    shadowRadius: "sm",
   },
   slots: {
-    content: "overflow-scroll h-full p-2 overscroll-none",
-    end: "",
-    start: "",
+    end: "pointer-events-none",
+    os: "w-full h-full relative overflow-hidden",
+    start: "pointer-events-none",
   },
   variants: {
-    noScrollbar: {
+    insetShadow: {
       true: {
-        content: "scrollbar-hidden",
+        os: "inset-shadow-full",
       },
     },
     orientation: {
       horizontal: {
-        content: "text-nowrap",
         end: "right-0 bg-gradient-to-l",
         start: "left-0 bg-gradient-to-r",
       },
@@ -45,32 +84,48 @@ const overflowShadowVariants = tv({
         start: "top-0 bg-gradient-to-b",
       },
     },
+    shadowRadius: {
+      md: {
+        os: "rounded-md",
+      },
+      sm: {
+        os: "rounded-sm",
+      },
+    },
   },
 });
 
 type OverflowShadowProps = VariantProps<typeof overflowShadowVariants> & {
   children?: React.ReactNode;
   className?: string;
+  hideScrollbar?: boolean;
   startAtEnd?: boolean;
 };
 
 export const OverflowShadow = ({
   children,
   className,
-  noScrollbar,
+  hideScrollbar,
+  insetShadow,
   orientation,
+  shadowRadius,
   startAtEnd,
 }: OverflowShadowProps) => {
-  const { content, end, start } = overflowShadowVariants({
-    noScrollbar,
+  const { end, os, start } = overflowShadowVariants({
+    insetShadow,
     orientation,
+    shadowRadius,
   });
+
+  const osRef = useRef<OverlayScrollbarsComponentRef>(null);
   const startRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
+
+  const scrollElRef = useRef<HTMLElement | null>(null);
 
   const updateShadows = () => {
-    if (!contentRef.current || !startRef.current || !endRef.current) return;
+    const scrollEl = scrollElRef.current;
+    if (!scrollEl || !startRef.current || !endRef.current) return;
 
     const {
       clientHeight,
@@ -79,7 +134,7 @@ export const OverflowShadow = ({
       scrollLeft,
       scrollTop,
       scrollWidth,
-    } = contentRef.current;
+    } = scrollEl;
 
     const scrollPosition = orientation === "vertical" ? scrollTop : scrollLeft;
     const scrollSize = orientation === "vertical" ? scrollHeight : scrollWidth;
@@ -98,36 +153,83 @@ export const OverflowShadow = ({
     }
   };
 
-  useEffect(() => {
-    if (!contentRef.current) return;
+  const createShadowNode = (startShadow: boolean) => {
+    const shadow = document.createElement("div");
+    shadow.className = startShadow ? start() : end();
+    shadow.style.opacity = startShadow ? "0" : "1";
+    return shadow;
+  };
 
-    contentRef.current.addEventListener("scroll", updateShadows);
+  // Must manually append to scroll parent, OverlayScrollbars children
+  // go inside internal viewport
+  const initializeShadows = (scrollEl: HTMLElement) => {
+    if (!startRef.current) {
+      startRef.current = createShadowNode(true);
+      scrollEl.parentElement?.appendChild(startRef.current);
+    }
+
+    if (!endRef.current) {
+      endRef.current = createShadowNode(false);
+      scrollEl.parentElement?.appendChild(endRef.current);
+    }
+  };
+
+  const handleInitialized = () => {
+    const scrollEl = osRef.current?.osInstance()?.elements().viewport;
+    if (!scrollEl) return;
+
+    scrollElRef.current = scrollEl;
+
+    scrollEl.addEventListener("scroll", updateShadows);
     window.addEventListener("resize", updateShadows);
 
     if (startAtEnd) {
       if (orientation === "vertical") {
-        contentRef.current.scrollTop = contentRef.current.scrollHeight;
+        scrollEl.scrollTop = scrollEl.scrollHeight;
       } else {
-        contentRef.current.scrollLeft = contentRef.current.scrollWidth;
+        scrollEl.scrollLeft = scrollEl.scrollWidth;
       }
     }
 
-    updateShadows(); // Initial call to set opacity
+    initializeShadows(scrollEl);
+    updateShadows();
+  };
 
+  useEffect(() => {
     return () => {
-      contentRef.current?.removeEventListener("scroll", updateShadows);
-      window.removeEventListener("resize", updateShadows);
+      const scrollEl = scrollElRef.current;
+      if (scrollEl) {
+        scrollEl.removeEventListener("scroll", updateShadows);
+        window.removeEventListener("resize", updateShadows);
+      }
     };
-  }, [orientation, children]);
+  }, []);
 
   return (
-    <>
-      <div ref={startRef} className={start()} style={{ opacity: "0" }} />
-      <div ref={endRef} className={end()} style={{ opacity: "1" }} />
-
-      <div ref={contentRef} className={content({ className })}>
+    <OverlayScrollbarsComponent
+      ref={osRef}
+      className={os()}
+      events={{
+        updated: handleInitialized,
+      }}
+      options={{
+        overflow: {
+          x: orientation === "horizontal" ? "scroll" : "hidden",
+          y: orientation === "vertical" ? "scroll" : "hidden",
+        },
+        scrollbars: {
+          autoHide: "scroll",
+          theme: "os-theme-orbit-cursor",
+          visibility: hideScrollbar ? "hidden" : "visible",
+        },
+      }}
+      defer
+    >
+      <div
+        className={cn(orientation === "horizontal" && "text-nowrap", className)}
+      >
         {children}
       </div>
-    </>
+    </OverlayScrollbarsComponent>
   );
 };

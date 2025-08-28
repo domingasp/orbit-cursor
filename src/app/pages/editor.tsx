@@ -13,6 +13,7 @@ import { ExportOptions } from "../../features/export-options/components/export-o
 import { normalizePath } from "../../features/export-options/utils/file";
 import { PreviewPlayer } from "../../features/preview-player/components/preview-player";
 import { RecordingName } from "../../features/recording-name/components/recording-name";
+import { RecordingsList } from "../../features/recordings-list/components/recordings-list";
 import { Titlebar } from "../../features/titlebar/components/titlebar";
 import { Toolbar } from "../../features/toolbar/components/toolbar";
 import { usePlaybackStore } from "../../stores/editor/playback.store";
@@ -45,6 +46,7 @@ export const Editor = () => {
     useShallow((state) => state.setIsFinalizing)
   );
 
+  const [isRecordingsOpen, setIsRecordingsOpen] = useState(false);
   const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
 
   useEffect(() => {
@@ -79,7 +81,11 @@ export const Editor = () => {
 
   return (
     <div className="text-content-fg bg-transparent relative h-dvh select-none">
-      <Titlebar>
+      <Titlebar
+        onPressRecordings={() => {
+          setIsRecordingsOpen(true);
+        }}
+      >
         {!recordingDetails && "Orbit Cursor"}
         {recordingDetails && (
           <RecordingName
@@ -98,7 +104,13 @@ export const Editor = () => {
 
           <div className="flex flex-col items-center gap-2">
             <Text>No Recording Open</Text>
-            <Button className="w-full justify-center" shiny>
+            <Button
+              className="w-full justify-center"
+              onPress={() => {
+                setIsRecordingsOpen(true);
+              }}
+              shiny
+            >
               <TvMinimalPlay size={16} />
               Recordings
             </Button>
@@ -143,6 +155,23 @@ export const Editor = () => {
           </Modal>
         </>
       )}
+
+      <Modal
+        className="max-w-3xl h-[75vh] max-h-125 p-0"
+        isOpen={isRecordingsOpen}
+        onOpenChange={setIsRecordingsOpen}
+        isDismissable
+      >
+        <Dialog
+          aria-label="Recordings list"
+          className="outline-none flex w-full h-full"
+        >
+          <div className="flex-5 border-r-1 border-content-fg/10 shadow-[0_0_20px] shadow-content-fg/5 z-1">
+            <RecordingsList />
+          </div>
+          <div className="flex-6 bg-content"></div>
+        </Dialog>
+      </Modal>
     </div>
   );
 };

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use fancy_regex::Regex;
 use serde::Serialize;
-use sqlx::SqlitePool;
+use sqlx::{types::time::OffsetDateTime, SqlitePool};
 
 use crate::recording::models::{RecordingFile, RecordingType};
 
@@ -99,6 +99,44 @@ pub async fn get_recording_directory(
   .await?;
 
   Ok(PathBuf::from(record.recording_directory))
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecordingMetadata {
+  pub id: i64,
+  pub name: String,
+  #[serde(with = "time::serde::iso8601")]
+  pub created_at: OffsetDateTime,
+  pub size_bytes: Option<i64>,
+  pub length_ms: Option<i64>,
+  pub r#type: Option<RecordingType>,
+}
+
+pub async fn list_recordings(pool: &SqlitePool) -> sqlx::Result<Vec<RecordingMetadata>> {
+  let records = sqlx::query!(
+    r#"
+    SELECT id, name, created_at, size, length, type
+    FROM recordings
+    ORDER BY created_at DESC
+    "#
+  )
+  .fetch_all(pool)
+  .await?;
+
+  Ok(
+    records
+      .into_iter()
+      .map(|record| RecordingMetadata {
+        id: record.id,
+        name: record.name,
+        created_at: record.created_at,
+        size_bytes: record.size,
+        length_ms: record.length,
+        r#type: record.r#type.and_then(|s| s.parse().ok()),
+      })
+      .collect(),
+  )
 }
 
 #[derive(Debug, Serialize)]

@@ -7,14 +7,15 @@ import { getPlatform } from "../../../stores/hotkeys.store";
 
 type TitlebarProps = {
   children?: React.ReactNode;
+  onPressRecordings?: () => void;
 };
 
-export const Titlebar = ({ children }: TitlebarProps) => {
+export const Titlebar = ({ children, onPressRecordings }: TitlebarProps) => {
   const appWindow = getCurrentWindow();
 
   return (
     <div
-      className="relative flex flex-row justify-center items-center p-1 text-sm"
+      className="relative flex flex-row justify-center items-center p-1 text-sm z-1"
       data-tauri-drag-region
     >
       <div
@@ -23,7 +24,12 @@ export const Titlebar = ({ children }: TitlebarProps) => {
           getPlatform() === "macos" && "left-17.5"
         )}
       >
-        <Button className="font-light" size="sm" variant="ghost">
+        <Button
+          className="font-light"
+          onPress={onPressRecordings}
+          size="sm"
+          variant="ghost"
+        >
           <TvMinimalPlay size={12} />
           Recordings
         </Button>

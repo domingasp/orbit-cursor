@@ -1,7 +1,16 @@
 use sqlx::{Pool, Sqlite};
 use tauri::State;
 
-use crate::db::recordings::RecordingDetails;
+use crate::db::recordings::{RecordingDetails, RecordingMetadata};
+
+#[tauri::command]
+pub async fn list_recordings(
+  pool: State<'_, Pool<Sqlite>>,
+) -> Result<Vec<RecordingMetadata>, String> {
+  crate::db::recordings::list_recordings(&pool)
+    .await
+    .map_err(|e| e.to_string())
+}
 
 #[tauri::command]
 pub async fn get_recording_details(
