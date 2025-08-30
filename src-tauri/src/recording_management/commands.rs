@@ -7,6 +7,8 @@ use crate::db::recordings::{RecordingDetails, RecordingMetadata};
 pub async fn list_recordings(
   pool: State<'_, Pool<Sqlite>>,
 ) -> Result<Vec<RecordingMetadata>, String> {
+  automated_hard_delete_recordings(pool.clone()).await; // Clean up old recordings on each listing
+
   crate::db::recordings::list_recordings(&pool)
     .await
     .map_err(|e| e.to_string())
@@ -59,6 +61,23 @@ pub async fn hard_delete_recordings(
   }
 
   Ok(())
+}
+
+pub async fn automated_hard_delete_recordings(pool: State<'_, Pool<Sqlite>>) {
+  let recording_ids = crate::db::recordings::get_recordings_to_hard_delete(&pool)
+    .await
+    .unwrap_or_default();
+
+  println!(
+    "Automated hard delete check: found {} recordings to delete",
+    recording_ids.len()
+  );
+
+  if !recording_ids.is_empty() {
+    if let Err(e) = hard_delete_recordings(pool, recording_ids).await {
+      eprintln!("Error during scheduled hard delete: {e}");
+    }
+  }
 }
 
 #[tauri::command]

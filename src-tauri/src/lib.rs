@@ -31,6 +31,7 @@ use tauri::{App, AppHandle, Manager, Wry};
 use tauri_plugin_sql::{Migration, MigrationKind};
 use tauri_plugin_store::{Store, StoreExt};
 use tokio::sync::broadcast;
+use tokio_cron_scheduler::{Job, JobScheduler};
 use windows::commands::{
   collapse_recording_source_selector, expand_recording_source_selector, get_dock_bounds,
   hide_region_selector, hide_start_recording_dock, init_recording_input_options,
@@ -61,8 +62,8 @@ use crate::{
   export::commands::{cancel_export, export_recording, open_path_in_file_browser, path_exists},
   models::{EditingState, GlobalState, PreviewState, RecordingState},
   recording_management::commands::{
-    get_recording_details, hard_delete_recordings, list_recordings, restore_recordings,
-    soft_delete_recordings, update_recording_name,
+    automated_hard_delete_recordings, get_recording_details, hard_delete_recordings,
+    list_recordings, restore_recordings, soft_delete_recordings, update_recording_name,
   },
   recording_sources::commands::{center_window, resize_window},
   windows::{
@@ -355,6 +356,28 @@ pub fn run() {
           global_inputs::service::global_input_event_handler(e, input_event_tx.clone());
         }) {
           eprintln!("Failed to listen: {error:?}")
+        }
+      });
+
+      tauri::async_runtime::spawn(async move {
+        let mut scheduler = JobScheduler::new().await;
+
+        if let Ok(scheduler) = &mut scheduler {
+          // Daily job at 5am to hard delete old recordings
+          scheduler
+            .add(
+              Job::new_async("0 0 5 * * *", |_uuid, _l| {
+                Box::pin(async move {
+                  let app_handle = APP_HANDLE.get().unwrap();
+                  automated_hard_delete_recordings(app_handle.state()).await;
+                })
+              })
+              .unwrap(),
+            )
+            .await
+            .ok();
+        } else if let Err(e) = scheduler {
+          eprintln!("Failed to start scheduler: {e}");
         }
       });
 

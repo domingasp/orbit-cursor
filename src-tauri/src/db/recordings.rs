@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use chrono::{Duration, Utc};
 use fancy_regex::Regex;
 use serde::Serialize;
 use sqlx::{types::time::OffsetDateTime, Row, SqlitePool};
@@ -290,6 +291,25 @@ pub async fn hard_delete_recordings(
     .collect();
 
   Ok(dirs)
+}
+
+pub async fn get_recordings_to_hard_delete(pool: &SqlitePool) -> sqlx::Result<Vec<i64>> {
+  let cutoff = Utc::now() - Duration::days(30); // Retention period of 30 days
+  let cutoff_str = cutoff.to_rfc3339();
+
+  let ids: Vec<i64> = sqlx::query_scalar!(
+    r#"
+        SELECT id
+        FROM recordings
+        WHERE deleted_at IS NOT NULL
+          AND deleted_at < ?
+        "#,
+    cutoff_str
+  )
+  .fetch_all(pool)
+  .await?;
+
+  Ok(ids)
 }
 
 pub async fn restore_recordings(pool: &SqlitePool, recording_ids: Vec<i64>) -> sqlx::Result<()> {
