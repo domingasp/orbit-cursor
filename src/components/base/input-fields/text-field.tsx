@@ -29,6 +29,7 @@ export type TextFieldProps = AriaTextFieldProps &
     label?: string;
     leftSection?: React.ReactNode;
     lineClassName?: string;
+    placeholder?: string;
     rightSection?: React.ReactNode;
   };
 
@@ -39,6 +40,7 @@ export const TextField = ({
   label,
   leftSection,
   lineClassName,
+  placeholder,
   rightSection,
   size,
   variant,
@@ -67,7 +69,7 @@ export const TextField = ({
         <div className={inputWrapper()}>
           {leftSection}
 
-          <Input className={input()} />
+          <Input className={input()} placeholder={placeholder} />
 
           {rightSection}
         </div>

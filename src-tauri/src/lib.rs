@@ -60,7 +60,10 @@ use crate::windows::commands::init_editor;
 use crate::{
   export::commands::{cancel_export, export_recording, open_path_in_file_browser, path_exists},
   models::{EditingState, GlobalState, PreviewState, RecordingState},
-  recording_management::commands::{get_recording_details, list_recordings, update_recording_name},
+  recording_management::commands::{
+    get_recording_details, hard_delete_recordings, list_recordings, restore_recordings,
+    soft_delete_recordings, update_recording_name,
+  },
   recording_sources::commands::{center_window, resize_window},
   windows::{
     commands::{
@@ -193,7 +196,10 @@ pub fn run() {
     center_window,
     get_recording_details,
     update_recording_name,
-    list_recordings
+    list_recordings,
+    soft_delete_recordings,
+    restore_recordings,
+    hard_delete_recordings
   ]);
 
   // State

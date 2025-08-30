@@ -31,19 +31,37 @@ const toggleButtonVariants = tv({
       showFocus: true,
       variant: "solid",
     },
+    {
+      class: [
+        "border-muted/30",
+        "data-[hovered]:bg-neutral/50 data-[pressed]:bg-neutral/80 data-[selected]:bg-neutral",
+      ],
+      color: "neutral",
+      variant: "solid",
+    },
+    {
+      class: [
+        "border-muted/30",
+        "data-[hovered]:bg-error/10 data-[pressed]:bg-error/15 data-[selected]:bg-error/33 data-[selected]:border-error/50",
+      ],
+      color: "error",
+      variant: "solid",
+    },
   ],
-  defaultVariants: { showFocus: true, size: "md", variant: "solid" },
+  defaultVariants: {
+    color: "neutral",
+    showFocus: true,
+    size: "md",
+    variant: "solid",
+  },
   variants: {
+    color: availableVariants("neutral", "error"),
     showFocus: availableVariants("true"),
     size: { md: "text-md", sm: "text-xs" },
     variant: {
       ghost:
         "p-1 transition-transform transform data-[hovered]:scale-110 data-[pressed]:scale-105",
-      solid: [
-        "border-1 border-muted/30 rounded-md",
-        "data-[hovered]:bg-neutral/50 data-[pressed]:bg-neutral/80 data-[selected]:bg-neutral",
-        focusStyles,
-      ],
+      solid: ["border-1 rounded-md", focusStyles],
     },
   },
 });
@@ -58,6 +76,7 @@ type ToggleButtonProps = AriaToggleButtonProps &
 export const ToggleButton = ({
   children,
   className,
+  color,
   off,
   size,
   variant = "solid",
@@ -72,7 +91,7 @@ export const ToggleButton = ({
   return (
     <AriaToggleButton
       {...props}
-      className={toggleButtonVariants({ className, size, variant })}
+      className={toggleButtonVariants({ className, color, size, variant })}
     >
       {({ isSelected }) => (
         <>
@@ -87,7 +106,7 @@ export const ToggleButton = ({
                   <motion.div
                     key="selected"
                     {...animationProps}
-                    className="absolute inset-0 flex items-center justify-center"
+                    className="absolute inset-0 flex items-center justify-center text-content-fg"
                   >
                     {children}
                   </motion.div>

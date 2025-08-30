@@ -13,6 +13,21 @@ const RecordingMetadataSchema = z.object({
       message: "Invalid date string",
     })
     .transform((val) => new Date(val)),
+  deletedAt: z
+    .string()
+    .nullable()
+    .optional()
+    .refine(
+      (val) => val === null || val === undefined || !isNaN(Date.parse(val)),
+      {
+        message: "Invalid date string",
+      }
+    )
+    .transform((val) => (val ? new Date(val) : null)),
+  hasCamera: z.boolean(),
+  hasMicrophone: z.boolean(),
+  hasSystemAudio: z.boolean(),
+  hasSystemCursor: z.boolean(),
   id: z.number(),
   lengthMs: z.number().nullable().optional(),
   name: z.string(),

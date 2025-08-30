@@ -18,7 +18,7 @@ import { Button } from "../button/button";
 const toastVariants = tv({
   slots: {
     base: [
-      "bg-content text-content-fg rounded-md p-2 outline-none border-1 border-neutral shadow-md",
+      "bg-content text-content-fg rounded-md p-2 pl-2 pr-3 outline-none border-1 border-neutral shadow-md",
       "flex grow gap-6 items-center transition-shadow max-w-85",
       elementFocusVisible,
       focusStyles,
@@ -40,8 +40,9 @@ const toastVariants = tv({
 });
 
 export type ToastContent = {
-  title: string;
+  title: React.ReactNode;
   description?: string;
+  hasClose?: boolean;
   leftSection?: React.ReactNode;
 };
 
@@ -103,7 +104,7 @@ export const Toast = ({
           (expanded || forwardedRef !== undefined) &&
           ref.current?.hasAttribute("data-motion-pop-id")
             ? width
-            : // If closing all it should keep the animated width UNLESS it is
+            : // If closing all, it should keep the animated width UNLESS it is
               // the top toast
               undefined,
       }}
@@ -126,15 +127,18 @@ export const Toast = ({
           </span>
         </div>
       </div>
-      <Button
-        {...closeButtonProps}
-        className={closeButton()}
-        size="sm"
-        slot="close"
-        variant="ghost"
-      >
-        <X className="translate-x-0" size={16} />
-      </Button>
+
+      {(props.toast.content.hasClose ?? true) && (
+        <Button
+          {...closeButtonProps}
+          className={closeButton()}
+          size="sm"
+          slot="close"
+          variant="ghost"
+        >
+          <X className="translate-x-0" size={16} />
+        </Button>
+      )}
     </div>
   );
 };

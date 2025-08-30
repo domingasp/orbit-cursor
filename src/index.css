@@ -56,7 +56,7 @@
 
   --color-success: var(--color-green-600);
   --color-info: var(--color-sky-600);
-  --color-warning: var(--color-yellow-600);
+  --color-warning: var(--color-yellow-500);
   --color-warning-100: var(--color-orange-400);
   --color-error: var(--color-red-500);
 
@@ -78,16 +78,6 @@
     --color-error: var(--color-red-500);
 
     --color-muted: var(--color-neutral-400);
-  }
-}
-
-@utility scrollbar-hidden {
-  /* Firefox */
-  scrollbar-width: none;
-
-  /* Safari and Chrome */
-  &::-webkit-scrollbar {
-    display: none;
   }
 }
 

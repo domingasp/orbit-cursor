@@ -15,7 +15,7 @@ export function availableVariants<T extends readonly string[]>(
 }
 
 export const focusStyles =
-  "outline-none ring-content-fg/75 ring-offset-content transition-[box-shadow,background-color]";
+  "outline-none ring-content-fg/75 ring-offset-content transition-[box-shadow,background-color,color,border-color]";
 
 // Interactive elements where focus is not required on non-keyboard interaction, e.g., buttons
 export const elementFocusVisible =

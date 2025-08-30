@@ -38,7 +38,7 @@ export const Titlebar = ({ children, onPressRecordings }: TitlebarProps) => {
       <div>{children}</div>
 
       {getPlatform() === "windows" && (
-        <div className="absolute right-0.5 top-0.5 flex flex-row gap-1.5">
+        <div className="absolute right-1 top-1 flex flex-row gap-1.5">
           <Button
             color="muted"
             size="sm"

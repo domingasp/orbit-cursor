@@ -5,20 +5,21 @@ import { useEffect, useState } from "react";
 import { Dialog, Text } from "react-aria-components";
 import { useShallow } from "zustand/react/shallow";
 
-import { getRecordingDetails } from "../../api/recording-management";
-import { Button } from "../../components/base/button/button";
-import { Modal } from "../../components/base/modal/modal";
-import { useToast } from "../../components/base/toast/toast-provider";
-import { ExportOptions } from "../../features/export-options/components/export-options";
-import { normalizePath } from "../../features/export-options/utils/file";
-import { PreviewPlayer } from "../../features/preview-player/components/preview-player";
-import { RecordingName } from "../../features/recording-name/components/recording-name";
-import { RecordingsList } from "../../features/recordings-list/components/recordings-list";
-import { Titlebar } from "../../features/titlebar/components/titlebar";
-import { Toolbar } from "../../features/toolbar/components/toolbar";
-import { usePlaybackStore } from "../../stores/editor/playback.store";
-import { useRecordingStateStore } from "../../stores/recording-state.store";
-import { Events } from "../../types/events";
+import { getRecordingDetails } from "../../../api/recording-management";
+import { Button } from "../../../components/base/button/button";
+import { Modal } from "../../../components/base/modal/modal";
+import { useToast } from "../../../components/base/toast/toast-provider";
+import { ExportOptions } from "../../../features/export-options/components/export-options";
+import { normalizePath } from "../../../features/export-options/utils/file";
+import { PreviewPlayer } from "../../../features/preview-player/components/preview-player";
+import { RecordingName } from "../../../features/recording-name/components/recording-name";
+import { Titlebar } from "../../../features/titlebar/components/titlebar";
+import { Toolbar } from "../../../features/toolbar/components/toolbar";
+import { usePlaybackStore } from "../../../stores/editor/playback.store";
+import { useRecordingStateStore } from "../../../stores/recording-state.store";
+import { Events } from "../../../types/events";
+
+import { RecordingListModal } from "./recording-list-modal";
 
 export const Editor = () => {
   // top level background color
@@ -31,11 +32,13 @@ export const Editor = () => {
 
   const toasts = useToast();
 
-  const [recordingId, setRecordingId] = useState<number | null>(null);
+  const [currentRecordingId, setCurrenRecordingId] = useState<number | null>(
+    null
+  );
   const { data: recordingDetails } = useQuery({
-    enabled: recordingId !== null,
-    queryFn: () => getRecordingDetails(recordingId as number),
-    queryKey: ["recordingDetails", recordingId],
+    enabled: currentRecordingId !== null,
+    queryFn: () => getRecordingDetails(currentRecordingId as number),
+    queryKey: ["recordingDetails", currentRecordingId],
   });
 
   const [pause, seek] = usePlaybackStore(
@@ -49,9 +52,19 @@ export const Editor = () => {
   const [isRecordingsOpen, setIsRecordingsOpen] = useState(false);
   const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
 
+  const resetPreview = (closeModals = true) => {
+    pause();
+    seek(0);
+    if (closeModals) {
+      setIsExportOptionsOpen(false);
+      setIsRecordingsOpen(false);
+    }
+    toasts.closeAll();
+  };
+
   useEffect(() => {
     const unlisten = listen(Events.RecordingComplete, (data) => {
-      setRecordingId(data.payload as number);
+      setCurrenRecordingId(data.payload as number);
 
       // Recording dock clean up
       setIsFinalizing(false);
@@ -66,10 +79,7 @@ export const Editor = () => {
 
   useEffect(() => {
     const unlisten = listen(Events.ClosedEditor, () => {
-      pause();
-      seek(0);
-      setIsExportOptionsOpen(false);
-      toasts.closeAll();
+      resetPreview();
     });
 
     return () => {
@@ -78,6 +88,10 @@ export const Editor = () => {
       });
     };
   }, []);
+
+  useEffect(() => {
+    resetPreview(false);
+  }, [currentRecordingId]);
 
   return (
     <div className="text-content-fg bg-transparent relative h-dvh select-none">
@@ -156,22 +170,12 @@ export const Editor = () => {
         </>
       )}
 
-      <Modal
-        className="max-w-3xl h-[75vh] max-h-125 p-0"
-        isOpen={isRecordingsOpen}
-        onOpenChange={setIsRecordingsOpen}
-        isDismissable
-      >
-        <Dialog
-          aria-label="Recordings list"
-          className="outline-none flex w-full h-full"
-        >
-          <div className="flex-5 border-r-1 border-content-fg/10 shadow-[0_0_20px] shadow-content-fg/5 z-1">
-            <RecordingsList />
-          </div>
-          <div className="flex-6 bg-content"></div>
-        </Dialog>
-      </Modal>
+      <RecordingListModal
+        currentRecordingId={currentRecordingId}
+        isRecordingsOpen={isRecordingsOpen}
+        setCurrentRecordingId={setCurrenRecordingId}
+        setIsRecordingsOpen={setIsRecordingsOpen}
+      />
     </div>
   );
 };

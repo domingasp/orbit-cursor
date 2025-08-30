@@ -181,7 +181,7 @@ export const CameraSelect = () => {
   return (
     <div
       className={cn(
-        "relative flex flex-col gap-2 items-center rounded-md",
+        "relative flex flex-col gap-2 overflow-hidden rounded-md",
         !permission.hasAccess && "bg-content"
       )}
     >

@@ -33,7 +33,7 @@ const buttonVariants = tv({
     },
     {
       class: [
-        "text-muted",
+        "text-error",
         "data-[hovered]:bg-error/30",
         "data-[pressed]:bg-error/20",
       ],
@@ -57,6 +57,9 @@ const buttonVariants = tv({
     { class: "justify-center h-10 w-10 p-1.5", icon: true, size: "lg" },
     { class: "justify-center h-9 w-9 p-1.5", icon: true, size: "md" },
     { class: "justify-center h-6 w-6 p-1", icon: true, size: "sm" },
+    { class: "justify-center h-4 w-4 p-0.5", icon: true, size: "xs" },
+    { class: "text-muted bg-neutral/33", isDisabled: true, variant: "soft" },
+    { class: "text-muted", isDisabled: true, variant: "ghost" },
   ],
   defaultVariants: {
     color: "neutral",
@@ -85,6 +88,7 @@ const buttonVariants = tv({
       ],
     },
     icon: { true: [] },
+    isDisabled: { true: "cursor-not-allowed!" },
     shiny: {
       true: [
         "relative",
@@ -96,6 +100,7 @@ const buttonVariants = tv({
       lg: "text-md px-4 py-2",
       md: "text-sm px-3 py-2",
       sm: "text-xs px-2 py-1",
+      xs: "text-xxs px-1 py-0.5",
     },
     variant: {
       ghost: [
@@ -154,6 +159,7 @@ export const Button = ({
         className,
         color,
         icon,
+        isDisabled: props.isDisabled,
         shiny,
         showFocus,
         size,

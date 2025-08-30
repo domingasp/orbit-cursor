@@ -12,7 +12,7 @@ const meta = {
   },
   component: Separator,
   parameters: {
-    controls: { exclude: ["className"] },
+    controls: { exclude: ["className", "children"] },
     layout: "centered",
   },
   title: "Separator",
@@ -47,6 +47,31 @@ export const Vertical: Story = {
       Hello
       <Separator className="h-[20px]" orientation="vertical" />
       World!
+    </div>
+  ),
+};
+
+export const WithChildren: Story = {
+  args: {
+    orientation: "horizontal",
+  },
+  render: () => (
+    <div className="flex items-center gap-4">
+      <div className="text-content-fg text-center">
+        Hello
+        <Separator>
+          <span className="text-xs bg-content px-1">or</span>
+        </Separator>
+        World!
+      </div>
+
+      <div className="text-content-fg text-center flex items-center">
+        Hello
+        <Separator className="h-[30px] mx-4" orientation="vertical">
+          <span className="text-xs bg-content px-1">or</span>
+        </Separator>
+        World!
+      </div>
     </div>
   ),
 };

@@ -42,4 +42,7 @@ export enum Commands {
   GetRecordingDetails = "get_recording_details",
   UpdateRecordingName = "update_recording_name",
   ListRecordings = "list_recordings",
+  SoftDeleteRecordings = "soft_delete_recordings",
+  RestoreRecordings = "restore_recordings",
+  HardDeleteRecordings = "hard_delete_recordings",
 }

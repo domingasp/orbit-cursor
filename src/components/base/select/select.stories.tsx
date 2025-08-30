@@ -12,6 +12,7 @@ const sizes: React.ComponentProps<typeof Select>["size"][] = [
 const variants: React.ComponentProps<typeof Select>["variant"][] = [
   "solid",
   "ghost",
+  "line",
 ] as const;
 
 const meta = {
@@ -97,5 +98,18 @@ export const LongValue: Story = {
       </>
     ),
     leftSection: <Volume2 size={14} />,
+  },
+};
+
+export const DefaultValue: Story = {
+  args: {
+    children: (
+      <>
+        <ListBoxItem id="Chocolate">Chocolate</ListBoxItem>
+        <ListBoxItem id="Vanilla">Vanilla</ListBoxItem>
+      </>
+    ),
+    clearable: false,
+    selectedKey: "Vanilla",
   },
 };

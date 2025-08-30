@@ -101,7 +101,7 @@
         "url": "/editor",
         "width": 800,
         "height": 600,
-        "minHeight": 480,
+        "minHeight": 600,
         "minWidth": 800,
         "visible": false,
         "hiddenTitle": true,
