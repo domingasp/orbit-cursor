@@ -36,6 +36,16 @@ pub async fn update_recording_name(
 }
 
 #[tauri::command]
+pub async fn recording_opened(
+  pool: State<'_, Pool<Sqlite>>,
+  recording_id: i64,
+) -> Result<(), String> {
+  crate::db::recordings::recording_opened(&pool, recording_id)
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn soft_delete_recordings(
   pool: State<'_, Pool<Sqlite>>,
   recording_ids: Vec<i64>,

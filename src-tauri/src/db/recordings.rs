@@ -225,6 +225,21 @@ pub async fn update_recording_name(
   Ok(())
 }
 
+pub async fn recording_opened(pool: &SqlitePool, recording_id: i64) -> sqlx::Result<()> {
+  sqlx::query!(
+    r#"
+    UPDATE recordings
+    SET last_opened_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+    "#,
+    recording_id
+  )
+  .execute(pool)
+  .await?;
+
+  Ok(())
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeletedAtResponse {

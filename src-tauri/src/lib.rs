@@ -63,7 +63,8 @@ use crate::{
   models::{EditingState, GlobalState, PreviewState, RecordingState},
   recording_management::commands::{
     automated_hard_delete_recordings, get_recording_details, hard_delete_recordings,
-    list_recordings, restore_recordings, soft_delete_recordings, update_recording_name,
+    list_recordings, recording_opened, restore_recordings, soft_delete_recordings,
+    update_recording_name,
   },
   recording_sources::commands::{center_window, resize_window},
   windows::{
@@ -200,7 +201,8 @@ pub fn run() {
     list_recordings,
     soft_delete_recordings,
     restore_recordings,
-    hard_delete_recordings
+    hard_delete_recordings,
+    recording_opened
   ]);
 
   // State

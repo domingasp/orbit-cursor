@@ -5,7 +5,10 @@ import { useEffect, useState } from "react";
 import { Dialog, Text } from "react-aria-components";
 import { useShallow } from "zustand/react/shallow";
 
-import { getRecordingDetails } from "../../../api/recording-management";
+import {
+  getRecordingDetails,
+  recordingOpened,
+} from "../../../api/recording-management";
 import { Button } from "../../../components/base/button/button";
 import { Modal } from "../../../components/base/modal/modal";
 import { useToast } from "../../../components/base/toast/toast-provider";
@@ -91,6 +94,9 @@ export const Editor = () => {
 
   useEffect(() => {
     resetPreview(false);
+    if (currentRecordingId !== null) {
+      recordingOpened(currentRecordingId);
+    }
   }, [currentRecordingId]);
 
   return (

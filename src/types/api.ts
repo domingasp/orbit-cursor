@@ -45,4 +45,5 @@ export enum Commands {
   SoftDeleteRecordings = "soft_delete_recordings",
   RestoreRecordings = "restore_recordings",
   HardDeleteRecordings = "hard_delete_recordings",
+  RecordingOpened = "recording_opened",
 }
