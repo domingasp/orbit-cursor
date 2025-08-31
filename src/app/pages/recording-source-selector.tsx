@@ -1,6 +1,5 @@
 import { LogicalSize, PhysicalSize } from "@tauri-apps/api/dpi";
 import { listen } from "@tauri-apps/api/event";
-import clsx from "clsx";
 import {
   Info,
   PencilLine,
@@ -29,6 +28,7 @@ import {
 import { MonitorSelector } from "../../features/recording-source/components/monitor-selector";
 import { RecordingSource } from "../../features/recording-source/components/recording-source";
 import { WindowSelector } from "../../features/recording-source/components/window-selector";
+import { cn } from "../../lib/styling";
 import { getPlatform } from "../../stores/hotkeys.store";
 import {
   recordingType as recordingTypeOptions,
@@ -140,7 +140,7 @@ export const RecordingSourceSelector = () => {
 
   return (
     <div
-      className={clsx(
+      className={cn(
         "flex flex-col p-2 h-[100vh] w-full items-center justify-end",
         isExpanded && "gap-2"
       )}

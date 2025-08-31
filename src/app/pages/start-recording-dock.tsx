@@ -1,5 +1,4 @@
 import { listen } from "@tauri-apps/api/event";
-import clsx from "clsx";
 import { Lock } from "lucide-react";
 import { useEffect } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -7,6 +6,7 @@ import { useShallow } from "zustand/react/shallow";
 import { isStartRecordingDockOpen } from "../../api/windows";
 import { Overlay } from "../../components/base/overlay/overlay";
 import { RecordingControls } from "../../features/recording-controls/components/recording-controls";
+import { cn } from "../../lib/styling";
 import { usePermissionsStore } from "../../stores/permissions.store";
 import { useRecordingStateStore } from "../../stores/recording-state.store";
 import {
@@ -61,7 +61,7 @@ export const StartRecordingDock = () => {
 
   return (
     <div
-      className={clsx(
+      className={cn(
         "p-2 w-full flex flex-col gap-2 rounded-lg",
         noPermissions && "bg-content"
       )}

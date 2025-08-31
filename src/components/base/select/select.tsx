@@ -1,4 +1,3 @@
-import clsx from "clsx";
 import { ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import React, { Ref } from "react";
@@ -15,6 +14,7 @@ import { VariantProps } from "tailwind-variants";
 import { tv } from "../../../../tailwind-merge.config";
 import {
   availableVariants,
+  cn,
   elementFocusVisible,
   focusStyles,
 } from "../../../lib/styling";
@@ -194,7 +194,7 @@ export const Select = <T extends object>({
             // Standalone still needs listbox to be rendered to show a display value
             isOpen={standalone ? false : undefined}
             className={({ placement }) =>
-              clsx(
+              cn(
                 isOpen ? "animate-in fade-in" : "animate-out fade-out",
                 isOpen
                   ? placement === "bottom"

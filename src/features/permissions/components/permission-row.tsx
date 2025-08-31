@@ -1,7 +1,6 @@
 import { Check, Sparkle } from "lucide-react";
 import { ComponentProps } from "react";
 import { TooltipTrigger } from "react-aria-components";
-import { twMerge } from "tailwind-merge";
 
 import { openSystemSettings } from "../../../api/permissions";
 import { Button } from "../../../components/base/button/button";
@@ -57,7 +56,7 @@ export const PermissionRow = ({
       {status && (
         <>
           {status.hasAccess && (
-            <div className={twMerge("flex justify-center w-[62px]")}>
+            <div className={cn("flex justify-center w-[62px]")}>
               <Sparkles {...sparkles}>
                 <Check className="text-success" size={32} />
               </Sparkles>

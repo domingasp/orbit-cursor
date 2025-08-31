@@ -1,4 +1,3 @@
-import { clsx } from "clsx";
 import {
   Tooltip as AriaTooltip,
   TooltipProps as AriaTooltipProps,
@@ -7,6 +6,7 @@ import {
 import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../../tailwind-merge.config";
+import { cn } from "../../../lib/styling";
 
 const tooltipVariants = tv({
   base: [
@@ -47,7 +47,7 @@ export const Tooltip = ({
             height={8}
             viewBox="0 0 8 8"
             width={8}
-            className={clsx(
+            className={cn(
               "fill-content-fg",
               (props.placement?.startsWith("left") ||
                 props.placement?.startsWith("start")) &&
