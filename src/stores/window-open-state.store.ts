@@ -1,10 +1,12 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 
-export enum AppWindow {
-  StartRecordingDock = "start-recording-dock",
-  RecordingInputOptions = "recording-input-options",
-}
+export const appWindow = {
+  RECORDING_INPUT_OPTIONS: "recording-input-options",
+  START_RECORDING_DOCK: "start-recording-dock",
+} as const;
+
+export type AppWindow = (typeof appWindow)[keyof typeof appWindow];
 
 const STORE_NAME = "windowOpenState";
 

@@ -99,7 +99,10 @@ type OverflowShadowProps = VariantProps<typeof overflowShadowVariants> & {
   children?: React.ReactNode;
   className?: string;
   hideScrollbar?: boolean;
+  osClassName?: string;
   startAtEnd?: boolean;
+  style?: React.CSSProperties | undefined;
+  viewportClassName?: string;
 };
 
 export const OverflowShadow = ({
@@ -110,6 +113,8 @@ export const OverflowShadow = ({
   orientation,
   shadowRadius,
   startAtEnd,
+  style,
+  viewportClassName,
 }: OverflowShadowProps) => {
   const { end, os, start } = overflowShadowVariants({
     insetShadow,
@@ -175,6 +180,15 @@ export const OverflowShadow = ({
   };
 
   const handleInitialized = () => {
+    const viewport = document.querySelector(
+      "[data-overlayscrollbars-contents]"
+    );
+
+    // Style viewport wrapper - no way to access via props
+    if (viewport && viewportClassName) {
+      viewport.className = viewportClassName;
+    }
+
     const scrollEl = osRef.current?.osInstance()?.elements().viewport;
     if (!scrollEl) return;
 
@@ -227,6 +241,7 @@ export const OverflowShadow = ({
     >
       <div
         className={cn(orientation === "horizontal" && "text-nowrap", className)}
+        style={style}
       >
         {children}
       </div>

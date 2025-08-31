@@ -9,21 +9,21 @@ import { GrantAccessOverlay } from "../../../components/shared/grant-access-over
 import { InputSelect } from "../../../components/shared/input-select/input-select";
 import { cn } from "../../../lib/styling";
 import {
-  PermissionType,
+  permissionType,
   usePermissionsStore,
 } from "../../../stores/permissions.store";
 import { useRecordingStateStore } from "../../../stores/recording-state.store";
 import {
   Item,
   selectedItem,
-  StandaloneListBoxes,
+  standaloneListBoxes,
   useStandaloneListBoxStore,
 } from "../../../stores/standalone-listbox.store";
 import {
-  AppWindow,
+  appWindow,
   useWindowReopenStore,
 } from "../../../stores/window-open-state.store";
-import { Events } from "../../../types/events";
+import { events } from "../../../types/events";
 import {
   listCameras,
   startCameraStream,
@@ -33,7 +33,7 @@ import {
 export const CameraSelect = () => {
   const permission = usePermissionsStore((state) => state.permissions.camera);
   const recordingInputOptionsOpened = useWindowReopenStore(
-    useShallow((state) => state.windows[AppWindow.RecordingInputOptions])
+    useShallow((state) => state.windows[appWindow.RECORDING_INPUT_OPTIONS])
   );
   const cameraHasWarning = useRecordingStateStore(
     useShallow((state) => state.cameraHasWarning)
@@ -143,7 +143,7 @@ export const CameraSelect = () => {
 
   useEffect(() => {
     const unlistenStandaloneListBox = listen(
-      Events.ClosedStandaloneListBox,
+      events.CLOSED_STANDALONE_LIST_BOX,
       () => {
         closeListBox();
       }
@@ -188,7 +188,7 @@ export const CameraSelect = () => {
       <GrantAccessOverlay
         icon={<Camera size={12} />}
         permission={permission}
-        type={PermissionType.Camera}
+        type={permissionType.CAMERA}
       />
 
       <div className="w-40 aspect-video relative bg-content-fg/10 text-muted flex justify-center items-center rounded-md overflow-hidden shadow-sm">
@@ -217,7 +217,7 @@ export const CameraSelect = () => {
       <InputSelect
         fetchItems={fetchItems}
         icon={<Camera size={14} />}
-        id={StandaloneListBoxes.Camera}
+        id={standaloneListBoxes.CAMERA}
         label="Camera"
         onChange={onChange}
         placeholder="No camera"

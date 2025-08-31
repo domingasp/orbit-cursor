@@ -10,10 +10,10 @@ import { RecordingControls } from "../../features/recording-controls/components/
 import { usePermissionsStore } from "../../stores/permissions.store";
 import { useRecordingStateStore } from "../../stores/recording-state.store";
 import {
-  AppWindow,
+  appWindow,
   useWindowReopenStore,
 } from "../../stores/window-open-state.store";
-import { Events } from "../../types/events";
+import { events } from "../../types/events";
 
 export const StartRecordingDock = () => {
   // top level overflow hidden
@@ -39,12 +39,15 @@ export const StartRecordingDock = () => {
     setIsFinalizing(false);
 
     const addWindowToStore = async () => {
-      addWindow(AppWindow.StartRecordingDock, await isStartRecordingDockOpen());
+      addWindow(
+        appWindow.START_RECORDING_DOCK,
+        await isStartRecordingDockOpen()
+      );
     };
     void addWindowToStore();
 
-    const unlisten = listen(Events.StartRecordingDockOpened, () => {
-      setWindowOpenState(AppWindow.StartRecordingDock, true);
+    const unlisten = listen(events.START_RECORDING_DOCK_OPENED, () => {
+      setWindowOpenState(appWindow.START_RECORDING_DOCK, true);
       setIsRecording(false);
       setIsFinalizing(false);
     });

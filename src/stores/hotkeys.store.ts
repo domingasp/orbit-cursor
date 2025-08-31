@@ -17,22 +17,25 @@ type ActionMetadata = {
   description: string;
 };
 
-export enum AvailableActions {
-  EditorTogglePlay = "editor.togglePlay",
-  EditorBackToStart = "editor.backToStart",
-  EditorExport = "editor.export",
-}
+export const availableActions = {
+  EDITOR_BACK_TO_START: "editor.backToStart",
+  EDITOR_EXPORT: "editor.export",
+  EDITOR_TOGGLE_PLAY: "editor.togglePlay",
+} as const;
+
+export type AvailableActions =
+  (typeof availableActions)[keyof typeof availableActions];
 
 export const ActionsMetadata: Record<AvailableActions, ActionMetadata> = {
-  [AvailableActions.EditorBackToStart]: {
+  [availableActions.EDITOR_BACK_TO_START]: {
     defaultHotkey: { macos: "meta+left", windows: "ctrl+left" },
     description: "Sets the play head to the beginning of the recording.",
   },
-  [AvailableActions.EditorTogglePlay]: {
+  [availableActions.EDITOR_TOGGLE_PLAY]: {
     defaultHotkey: { macos: "space", windows: "space" },
     description: "Toggles the pause/play state of the video.",
   },
-  [AvailableActions.EditorExport]: {
+  [availableActions.EDITOR_EXPORT]: {
     defaultHotkey: { macos: "meta+e", windows: "ctrl+e" },
     description: "Open the Export modal.",
   },

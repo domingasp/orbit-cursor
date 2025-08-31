@@ -28,22 +28,21 @@ import {
 } from "../../features/recording-source/api/recording-sources";
 import { MonitorSelector } from "../../features/recording-source/components/monitor-selector";
 import { RecordingSource } from "../../features/recording-source/components/recording-source";
-import { SelectorWrapper } from "../../features/recording-source/components/selector-wrapper";
 import { WindowSelector } from "../../features/recording-source/components/window-selector";
 import { getPlatform } from "../../stores/hotkeys.store";
 import {
-  RecordingType,
+  recordingType as recordingTypeOptions,
   useRecordingStateStore,
 } from "../../stores/recording-state.store";
 import {
-  AppWindow,
+  appWindow,
   useWindowReopenStore,
 } from "../../stores/window-open-state.store";
-import { Events } from "../../types/events";
+import { events } from "../../types/events";
 
 export const RecordingSourceSelector = () => {
   const startRecordingDockOpened = useWindowReopenStore(
-    useShallow((state) => state.windows[AppWindow.StartRecordingDock])
+    useShallow((state) => state.windows[appWindow.START_RECORDING_DOCK])
   );
   const [
     selectedMonitor,
@@ -77,7 +76,7 @@ export const RecordingSourceSelector = () => {
     if (isExpanded) collapseRecordingSourceSelector();
     else
       expandRecordingSourceSelector(
-        recordingType === RecordingType.Window
+        recordingType === recordingTypeOptions.WINDOW
           ? new LogicalSize(750, 500)
           : undefined
       );
@@ -103,7 +102,7 @@ export const RecordingSourceSelector = () => {
   }, [startRecordingDockOpened]);
 
   useEffect(() => {
-    const unlisten = listen(Events.WindowThumbnailsGenerated, (result) => {
+    const unlisten = listen(events.WINDOW_THUMBNAILS_GENERATED, (result) => {
       // Fetching here due to conditional rendering, we need to verify
       // window still exists on reloading
       const windowResults = result.payload as WindowDetails[];
@@ -124,7 +123,7 @@ export const RecordingSourceSelector = () => {
   }, []);
 
   useEffect(() => {
-    const unlisten = listen(Events.CollapsedRecordingSourceSelector, () => {
+    const unlisten = listen(events.COLLAPSED_RECORDING_SOURCE_SELECTOR, () => {
       setIsExpanded(false);
     });
 
@@ -147,25 +146,21 @@ export const RecordingSourceSelector = () => {
       )}
     >
       {isExpanded &&
-        (recordingType === RecordingType.Window ? (
-          <SelectorWrapper className="overflow-auto items-start">
-            <WindowSelector
-              isExpanded={isExpanded}
-              onSelect={onSelect}
-              selectedWindow={selectedWindow}
-              windows={windows}
-            />
-          </SelectorWrapper>
+        (recordingType === recordingTypeOptions.WINDOW ? (
+          <WindowSelector
+            isExpanded={isExpanded}
+            onSelect={onSelect}
+            selectedWindow={selectedWindow}
+            windows={windows}
+          />
         ) : (
-          <SelectorWrapper>
-            <MonitorSelector
-              onSelect={onSelect}
-              selectedMonitor={selectedMonitor}
-            />
-          </SelectorWrapper>
+          <MonitorSelector
+            onSelect={onSelect}
+            selectedMonitor={selectedMonitor}
+          />
         ))}
 
-      {isExpanded && recordingType === RecordingType.Window && (
+      {isExpanded && recordingType === recordingTypeOptions.WINDOW && (
         <div className="relative w-full flex flex-col items-center gap-2">
           <AspectRatio
             onApply={(width, height) => {

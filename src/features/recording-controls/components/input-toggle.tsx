@@ -5,7 +5,7 @@ import { ToggleButton } from "../../../components/base/button/toggle-button";
 import { cn } from "../../../lib/styling";
 import { PermissionStatus } from "../../../stores/permissions.store";
 
-import { WarningType } from "./input-toggle-groups";
+import { warningType, WarningType } from "./input-toggle-groups";
 
 type InputToggleProps = {
   offIcon: React.ReactNode;
@@ -27,7 +27,7 @@ export const InputToggle = ({
   warning,
 }: InputToggleProps) => {
   const onToggle = () => {
-    if (permission.hasAccess && warning !== WarningType.Disconnected)
+    if (permission.hasAccess && warning !== warningType.DISCONNECTED)
       setValue(!value);
     else void openRecordingInputOptions();
   };
@@ -36,25 +36,25 @@ export const InputToggle = ({
     <div className="relative flex justify-center">
       <AnimatePresence>
         {warning &&
-          (warning === WarningType.NoPermission ||
-            (warning === WarningType.Empty && value) ||
-            warning === WarningType.Disconnected) && (
+          (warning === warningType.NO_PERMISSION ||
+            (warning === warningType.EMPTY && value) ||
+            warning === warningType.DISCONNECTED) && (
             <motion.div
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -5 }}
               initial={{ opacity: 0, y: -5 }}
               className={cn(
                 "absolute -top-3",
-                warning === WarningType.NoPermission
+                warning === warningType.NO_PERMISSION
                   ? "text-muted"
                   : "text-warning"
               )}
             >
-              {warning === WarningType.NoPermission && <Lock size={12} />}
-              {warning === WarningType.Disconnected && (
+              {warning === warningType.NO_PERMISSION && <Lock size={12} />}
+              {warning === warningType.DISCONNECTED && (
                 <TriangleAlert size={12} />
               )}
-              {warning === WarningType.Empty && <CircleOff size={12} />}
+              {warning === warningType.EMPTY && <CircleOff size={12} />}
             </motion.div>
           )}
       </AnimatePresence>

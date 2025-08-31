@@ -1,7 +1,7 @@
 import { faker } from "@faker-js/faker";
 import { Meta, StoryObj } from "@storybook/react";
 
-import { RecordingType } from "../../../stores/recording-state.store";
+import { recordingType } from "../../../stores/recording-state.store";
 import { RecordingMetadata } from "../api/recordings";
 
 import { RecordingItem } from "./recording-item";
@@ -17,7 +17,7 @@ const defaultRecording: RecordingMetadata = {
   lengthMs: faker.number.int({ max: 1000 * 60 * 10, min: 1000 }),
   name: faker.word.words({ count: { max: 8, min: 1 } }),
   sizeBytes: faker.number.int({ max: 1024 ** 3.1, min: 1024 }),
-  type: faker.helpers.enumValue(RecordingType),
+  type: faker.helpers.enumValue(recordingType),
 };
 
 const meta: Meta<typeof RecordingItem> = {

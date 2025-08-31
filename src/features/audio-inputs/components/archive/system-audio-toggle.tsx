@@ -8,12 +8,12 @@ import { Switch } from "../../../../components/base/switch/switch";
 import { cn } from "../../../../lib/styling";
 import { useRecordingStateStore } from "../../../../stores/recording-state.store";
 import {
-  AppWindow,
+  appWindow,
   useWindowReopenStore,
 } from "../../../../stores/window-open-state.store";
-import { Events } from "../../../../types/events";
+import { events } from "../../../../types/events";
 import {
-  AudioStream,
+  audioStream,
   AudioStreamChannel,
   startAudioListener,
   stopAudioListener,
@@ -24,7 +24,7 @@ import { AudioMeter } from "../audio-meter";
 export const SystemAudioToggle = () => {
   const channel = useRef<Channel<AudioStreamChannel>>(null);
   const startRecordingDockOpened = useWindowReopenStore(
-    useShallow((state) => state.windows[AppWindow.StartRecordingDock])
+    useShallow((state) => state.windows[appWindow.START_RECORDING_DOCK])
   );
 
   const [systemAudio, setSystemAudio] = useRecordingStateStore(
@@ -36,7 +36,7 @@ export const SystemAudioToggle = () => {
 
   useEffect(() => {
     const unlistenSystemAudioStreamError = listen(
-      Events.SystemAudioStreamError,
+      events.SYSTEM_AUDIO_STREAM_ERROR,
       () => {
         setSystemAudio(false);
       }
@@ -56,9 +56,9 @@ export const SystemAudioToggle = () => {
         setDecibels(message.data.decibels);
       };
 
-      startAudioListener(AudioStream.System, channel.current);
+      startAudioListener(audioStream.SYSTEM, channel.current);
     } else {
-      void stopAudioListener(AudioStream.System);
+      void stopAudioListener(audioStream.SYSTEM);
       setDecibels(undefined);
     }
   }, [systemAudio, startRecordingDockOpened]);

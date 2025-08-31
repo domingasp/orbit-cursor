@@ -8,11 +8,13 @@ import {
 
 const STORE_NAME = "recordingState";
 
-export enum RecordingType {
-  Region = "region",
-  Window = "window",
-  Screen = "screen",
-}
+export const recordingType = {
+  REGION: "region",
+  SCREEN: "screen",
+  WINDOW: "window",
+} as const;
+
+export type RecordingType = (typeof recordingType)[keyof typeof recordingType];
 
 export type Region = {
   position: { x: number; y: number };
@@ -56,7 +58,7 @@ export const useRecordingStateStore = create<RecordingState>()(
         isRecording: false,
         microphone: false,
         microphoneHasWarning: false,
-        recordingType: RecordingType.Screen,
+        recordingType: recordingType.SCREEN,
         region: {
           position: { x: 30, y: 30 },
           size: { height: 300, width: 300 },

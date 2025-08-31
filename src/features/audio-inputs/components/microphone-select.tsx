@@ -8,18 +8,18 @@ import { GrantAccessOverlay } from "../../../components/shared/grant-access-over
 import { InputSelect } from "../../../components/shared/input-select/input-select";
 import { cn } from "../../../lib/styling";
 import {
-  PermissionType,
+  permissionType,
   usePermissionsStore,
 } from "../../../stores/permissions.store";
 import {
   Item,
   selectedItem,
-  StandaloneListBoxes,
+  standaloneListBoxes,
   useStandaloneListBoxStore,
 } from "../../../stores/standalone-listbox.store";
-import { Events } from "../../../types/events";
+import { events } from "../../../types/events";
 import {
-  AudioStream,
+  audioStream,
   AudioStreamChannel,
   listAudioInputs,
   startAudioListener,
@@ -50,7 +50,7 @@ export const MicrophoneSelect = () => {
   };
 
   const onChange = async (selectedItems: Item[], isDockOpen: boolean) => {
-    await stopAudioListener(AudioStream.Microphone);
+    await stopAudioListener(audioStream.MICROPHONE);
     setDecibels(undefined);
     if (!isDockOpen) return;
 
@@ -63,7 +63,7 @@ export const MicrophoneSelect = () => {
       };
 
       startAudioListener(
-        AudioStream.Microphone,
+        audioStream.MICROPHONE,
         channel.current,
         selectedDevice.toString()
       );
@@ -75,9 +75,9 @@ export const MicrophoneSelect = () => {
 
   useEffect(() => {
     const unlistenInputAudioStreamError = listen(
-      Events.MicrophoneStreamError,
+      events.MICROPHONE_STREAM_ERROR,
       () => {
-        setSelectedItems(StandaloneListBoxes.MicrophoneAudio, []);
+        setSelectedItems(standaloneListBoxes.MICROPHONE_AUDIO, []);
       }
     );
 
@@ -98,13 +98,13 @@ export const MicrophoneSelect = () => {
       <GrantAccessOverlay
         icon={<Mic size={12} />}
         permission={permission}
-        type={PermissionType.Microphone}
+        type={permissionType.MICROPHONE}
       />
 
       <InputSelect
         fetchItems={fetchItems}
         icon={<Mic size={14} />}
-        id={StandaloneListBoxes.MicrophoneAudio}
+        id={standaloneListBoxes.MICROPHONE_AUDIO}
         label="Microphone"
         onChange={onChange}
         placeholder="No microphone"

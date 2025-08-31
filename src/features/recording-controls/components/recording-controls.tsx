@@ -21,16 +21,16 @@ import { Sparkles } from "../../../components/base/sparkles/sparkles";
 import { clearInteractionAttributes } from "../../../lib/styling";
 import { usePermissionsStore } from "../../../stores/permissions.store";
 import {
-  RecordingType,
+  recordingType as recordingTypeOptions,
   useRecordingStateStore,
 } from "../../../stores/recording-state.store";
 import {
   selectedItem,
-  StandaloneListBoxes,
+  standaloneListBoxes,
   useStandaloneListBoxStore,
 } from "../../../stores/standalone-listbox.store";
 import {
-  AppWindow,
+  appWindow,
   useWindowReopenStore,
 } from "../../../stores/window-open-state.store";
 import { startRecording } from "../api/recording-state";
@@ -47,7 +47,7 @@ export const RecordingControls = () => {
   const optionsButtonRef = useRef<HTMLButtonElement>(null);
   const [startRecordingDockOpened, setWindowOpenState] = useWindowReopenStore(
     useShallow((state) => [
-      state.windows[AppWindow.StartRecordingDock],
+      state.windows[appWindow.START_RECORDING_DOCK],
       state.setWindowOpenState,
     ])
   );
@@ -83,14 +83,14 @@ export const RecordingControls = () => {
 
   const [microphoneListBox, cameraListBox] = useStandaloneListBoxStore(
     useShallow((state) => [
-      state.getListBox(StandaloneListBoxes.MicrophoneAudio),
-      state.getListBox(StandaloneListBoxes.Camera),
+      state.getListBox(standaloneListBoxes.MICROPHONE_AUDIO),
+      state.getListBox(standaloneListBoxes.CAMERA),
     ])
   );
 
   const onCancel = (closeRegionSelector: boolean = true) => {
     clearInteractionAttributes();
-    setWindowOpenState(AppWindow.StartRecordingDock, false);
+    setWindowOpenState(appWindow.START_RECORDING_DOCK, false);
     hideStartRecordingDock();
 
     if (closeRegionSelector) {
@@ -115,8 +115,8 @@ export const RecordingControls = () => {
     if (!selectedMonitor) return;
 
     // Keep region selector open to show user where the recording is happening
-    onCancel(recordingType !== RecordingType.Region); // Closes dock
-    if (recordingType === RecordingType.Region) {
+    onCancel(recordingType !== recordingTypeOptions.REGION); // Closes dock
+    if (recordingType === recordingTypeOptions.REGION) {
       setRegionSelectorPassthrough(true);
     }
 
@@ -148,7 +148,7 @@ export const RecordingControls = () => {
     if (
       startRecordingDockOpened &&
       selectedMonitor &&
-      recordingType === RecordingType.Region &&
+      recordingType === recordingTypeOptions.REGION &&
       hasRequiredPermissions()
     ) {
       showRegionSelector(selectedMonitor.position, selectedMonitor.size);
@@ -156,7 +156,7 @@ export const RecordingControls = () => {
   }, [recordingType, startRecordingDockOpened, selectedMonitor]);
 
   useEffect(() => {
-    if (recordingType !== RecordingType.Region) hideRegionSelector();
+    if (recordingType !== recordingTypeOptions.REGION) hideRegionSelector();
   }, [recordingType]);
 
   return (

@@ -24,7 +24,7 @@ import { cn } from "../../../lib/styling";
 import { getPlatform } from "../../../stores/hotkeys.store";
 import {
   useRecordingStateStore,
-  RecordingType,
+  recordingType as recordingTypeOptions,
 } from "../../../stores/recording-state.store";
 import { useRegionSelectorStore } from "../../../stores/region-selector.store";
 import { ResizeDirection } from "../types";
@@ -261,7 +261,7 @@ export const RegionSelector = () => {
     takeDisplayScreenshot(selectedMonitor.id, magnifierChannel.current);
   }, [selectedMonitor, isEditing]);
 
-  if (recordingType !== RecordingType.Region) return;
+  if (recordingType !== recordingTypeOptions.REGION) return;
 
   return (
     <div

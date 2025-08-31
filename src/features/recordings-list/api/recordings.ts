@@ -1,10 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import z from "zod";
 
-import { Commands } from "../../../types/api";
-
-// TODO remove and generalise - separate ticket to refactor enum use
-const RecordingTypeSchema = z.enum(["screen", "region", "window"]);
+import { recordingType } from "../../../stores/recording-state.store";
+import { commands } from "../../../types/api";
 
 const RecordingMetadataSchema = z.object({
   createdAt: z
@@ -32,7 +30,7 @@ const RecordingMetadataSchema = z.object({
   lengthMs: z.number().nullable().optional(),
   name: z.string(),
   sizeBytes: z.number().nullable().optional(),
-  type: RecordingTypeSchema.nullable().optional(),
+  type: z.enum(recordingType).nullable().optional(),
 });
 
 const RecordingMetadataArraySchema = z.array(RecordingMetadataSchema);
@@ -40,6 +38,6 @@ const RecordingMetadataArraySchema = z.array(RecordingMetadataSchema);
 export type RecordingMetadata = z.infer<typeof RecordingMetadataSchema>;
 
 export const listRecordings = async (): Promise<RecordingMetadata[]> => {
-  const data = await invoke(Commands.ListRecordings);
+  const data = await invoke(commands.LIST_RECORDINGS);
   return RecordingMetadataArraySchema.parse(data);
 };

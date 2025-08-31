@@ -5,12 +5,15 @@ import { devtools } from "zustand/middleware";
 
 import { getPlatform } from "./hotkeys.store";
 
-export enum PermissionType {
-  Accessibility = "accessibility",
-  Screen = "screen",
-  Microphone = "microphone",
-  Camera = "camera",
-}
+export const permissionType = {
+  ACCESSIBILITY: "accessibility",
+  CAMERA: "camera",
+  MICROPHONE: "microphone",
+  SCREEN: "screen",
+} as const;
+
+export type PermissionType =
+  (typeof permissionType)[keyof typeof permissionType];
 
 const PermissionStatusSchema = z.object({
   canRequest: z.boolean(),
@@ -18,7 +21,7 @@ const PermissionStatusSchema = z.object({
 });
 
 export const PermissionsSchema = z.record(
-  z.enum(PermissionType),
+  z.enum(permissionType),
   PermissionStatusSchema
 );
 
@@ -44,19 +47,19 @@ export const usePermissionsStore = create<PermissionsState>()(
           : get().permissions.screen.hasAccess &&
             get().permissions.accessibility.hasAccess,
       permissions: {
-        [PermissionType.Accessibility]: {
+        [permissionType.ACCESSIBILITY]: {
           canRequest: true,
           hasAccess: getPlatform() !== "macos",
         },
-        [PermissionType.Screen]: {
+        [permissionType.SCREEN]: {
           canRequest: true,
           hasAccess: getPlatform() !== "macos",
         },
-        [PermissionType.Microphone]: {
+        [permissionType.MICROPHONE]: {
           canRequest: true,
           hasAccess: getPlatform() !== "macos",
         },
-        [PermissionType.Camera]: {
+        [permissionType.CAMERA]: {
           canRequest: true,
           hasAccess: getPlatform() !== "macos",
         },

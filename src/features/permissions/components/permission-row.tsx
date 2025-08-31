@@ -7,8 +7,8 @@ import { openSystemSettings } from "../../../api/permissions";
 import { Button } from "../../../components/base/button/button";
 import { Sparkles } from "../../../components/base/sparkles/sparkles";
 import { Tooltip } from "../../../components/base/tooltip/tooltip";
+import { cn } from "../../../lib/styling";
 import { Permissions } from "../../../stores/permissions.store";
-import { Gradients } from "../types/gradients";
 
 const sparkles = {
   colors: ["#FFFFFF"],
@@ -23,15 +23,15 @@ const sparkles = {
 type PermissionProps = {
   icon: React.ReactNode;
   title: string;
-  color?: Gradients | string;
   description?: string;
+  gradient?: string;
   onClick?: () => void;
   status?: Permissions[keyof Permissions];
 };
 
 export const PermissionRow = ({
-  color = Gradients.Gray,
   description,
+  gradient,
   icon,
   onClick,
   status,
@@ -40,9 +40,9 @@ export const PermissionRow = ({
   return (
     <div className="flex flex-row items-center gap-4">
       <div
-        className={twMerge(
+        className={cn(
           "w-16 h-16 text-white rounded-2xl items-center justify-center flex",
-          color
+          gradient
         )}
       >
         {icon}

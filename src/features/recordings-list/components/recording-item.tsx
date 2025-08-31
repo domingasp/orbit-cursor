@@ -20,7 +20,10 @@ import {
   oneGB,
   retentionTag,
 } from "../../../lib/format";
-import { RecordingType } from "../../../stores/recording-state.store";
+import {
+  recordingType,
+  RecordingType,
+} from "../../../stores/recording-state.store";
 import { RecordingMetadata } from "../api/recordings";
 
 const RetentionBadge = ({
@@ -44,9 +47,9 @@ const RetentionBadge = ({
 };
 
 const recordingTypeIcons: Record<RecordingType, React.ReactNode> = {
-  [RecordingType.Screen]: <Monitor size={18} />,
-  [RecordingType.Region]: <SquareDashed size={18} />,
-  [RecordingType.Window]: <AppWindowMac size={18} />,
+  [recordingType.SCREEN]: <Monitor size={18} />,
+  [recordingType.REGION]: <SquareDashed size={18} />,
+  [recordingType.WINDOW]: <AppWindowMac size={18} />,
 };
 
 const recordingItemVariants = tv({

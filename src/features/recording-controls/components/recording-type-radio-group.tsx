@@ -6,6 +6,7 @@ import { Keyboard } from "../../../components/base/keyboard/keyboard";
 import { RadioGroup } from "../../../components/base/radio-group/radio-group";
 import {
   RecordingType,
+  recordingType as recordingTypeOptions,
   useRecordingStateStore,
 } from "../../../stores/recording-state.store";
 
@@ -36,7 +37,7 @@ export const RecordingTypeRadioGroup = () => {
         icon={<Monitor size={30} />}
         shortcut={<Keyboard {...KEYBOARD_STYLE}>1</Keyboard>}
         subtext="Screen"
-        value={RecordingType.Screen}
+        value={recordingTypeOptions.SCREEN}
       />
 
       <IconRadio
@@ -44,7 +45,7 @@ export const RecordingTypeRadioGroup = () => {
         icon={<SquareDashed size={30} />}
         shortcut={<Keyboard {...KEYBOARD_STYLE}>2</Keyboard>}
         subtext="Region"
-        value={RecordingType.Region}
+        value={recordingTypeOptions.REGION}
       />
 
       <IconRadio
@@ -52,7 +53,7 @@ export const RecordingTypeRadioGroup = () => {
         icon={<AppWindowMac size={30} />}
         shortcut={<Keyboard {...KEYBOARD_STYLE}>3</Keyboard>}
         subtext="Window"
-        value={RecordingType.Window}
+        value={recordingTypeOptions.WINDOW}
       />
     </RadioGroup>
   );

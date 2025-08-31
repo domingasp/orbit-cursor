@@ -16,11 +16,11 @@ import { usePermissionsStore } from "../../../stores/permissions.store";
 import { useRecordingStateStore } from "../../../stores/recording-state.store";
 import {
   selectedItem,
-  StandaloneListBoxes,
+  standaloneListBoxes,
   useStandaloneListBoxStore,
 } from "../../../stores/standalone-listbox.store";
 import {
-  AppWindow,
+  appWindow,
   useWindowReopenStore,
 } from "../../../stores/window-open-state.store";
 import { listAudioInputs } from "../../audio-inputs/api/audio-listeners";
@@ -28,11 +28,13 @@ import { listCameras } from "../../camera-select/api/camera";
 
 import { InputToggle } from "./input-toggle";
 
-export enum WarningType {
-  Empty = "empty",
-  Disconnected = "disconnected",
-  NoPermission = "noPermission",
-}
+export const warningType = {
+  DISCONNECTED: "disconnected",
+  EMPTY: "empty",
+  NO_PERMISSION: "noPermission",
+} as const;
+
+export type WarningType = (typeof warningType)[keyof typeof warningType];
 
 type InputToggleGroupProps = {
   openRecordingInputOptions: () => Promise<void>;
@@ -45,8 +47,8 @@ export const InputToggleGroup = ({
   const [startRecordingDockOpened, recordingInputOptionsOpened] =
     useWindowReopenStore(
       useShallow((state) => [
-        state.windows[AppWindow.StartRecordingDock],
-        state.windows[AppWindow.RecordingInputOptions],
+        state.windows[appWindow.START_RECORDING_DOCK],
+        state.windows[appWindow.RECORDING_INPUT_OPTIONS],
       ])
     );
 
@@ -59,11 +61,11 @@ export const InputToggleGroup = ({
   const [selectedMicrophone, selectedCamera] = useStandaloneListBoxStore(
     useShallow((state) => [
       selectedItem(
-        state.getListBox(StandaloneListBoxes.MicrophoneAudio)?.selectedItems ??
+        state.getListBox(standaloneListBoxes.MICROPHONE_AUDIO)?.selectedItems ??
           []
       ),
       selectedItem(
-        state.getListBox(StandaloneListBoxes.Camera)?.selectedItems ?? []
+        state.getListBox(standaloneListBoxes.CAMERA)?.selectedItems ?? []
       ),
     ])
   );
@@ -98,9 +100,9 @@ export const InputToggleGroup = ({
     if (permissions.microphone.hasAccess) {
       void listAudioInputs().then((microphones) => {
         if (selectedMicrophone === null || selectedMicrophone.id === null) {
-          setMicrophoneWarning(WarningType.Empty);
+          setMicrophoneWarning(warningType.EMPTY);
         } else if (!microphones.includes(selectedMicrophone.id.toString())) {
-          setMicrophoneWarning(WarningType.Disconnected);
+          setMicrophoneWarning(warningType.DISCONNECTED);
         } else {
           setMicrophoneWarning(undefined);
         }
@@ -116,9 +118,9 @@ export const InputToggleGroup = ({
     if (permissions.camera.hasAccess) {
       void listCameras().then((cameras) => {
         if (selectedCamera === null || selectedCamera.id === null) {
-          setCameraWarning(WarningType.Empty);
+          setCameraWarning(warningType.EMPTY);
         } else if (!cameras.includes(selectedCamera.id.toString())) {
-          setCameraWarning(WarningType.Disconnected);
+          setCameraWarning(warningType.DISCONNECTED);
         } else {
           setCameraWarning(undefined);
         }
@@ -155,7 +157,7 @@ export const InputToggleGroup = ({
         warning={
           permissions.microphone.hasAccess
             ? microphoneWarning
-            : WarningType.NoPermission
+            : warningType.NO_PERMISSION
         }
       />
 
@@ -169,7 +171,7 @@ export const InputToggleGroup = ({
         warning={
           permissions.camera.hasAccess
             ? cameraWarning
-            : WarningType.NoPermission
+            : warningType.NO_PERMISSION
         }
       />
 

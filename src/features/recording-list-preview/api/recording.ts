@@ -1,11 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 
-import { Commands } from "../../../types/api";
+import { commands } from "../../../types/api";
 
 export const softDeleteRecordings = async (
   recordingIds: number[]
 ): Promise<Date> => {
-  const response = await invoke(Commands.SoftDeleteRecordings, {
+  const response = await invoke(commands.SOFT_DELETE_RECORDINGS, {
     recordingIds,
   });
 
@@ -13,11 +13,11 @@ export const softDeleteRecordings = async (
 };
 
 export const hardDeleteRecordings = (recordingIds: number[]) =>
-  invoke(Commands.HardDeleteRecordings, {
+  invoke(commands.HARD_DELETE_RECORDINGS, {
     recordingIds,
   });
 
 export const restoreRecordings = (recordingIds: number[]) =>
-  invoke(Commands.RestoreRecordings, {
+  invoke(commands.RESTORE_RECORDINGS, {
     recordingIds,
   });

@@ -4,9 +4,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { quitApp, requestPermissions } from "../../../api/permissions";
 import { Button } from "../../../components/base/button/button";
 import { PermissionRow } from "../../../features/permissions/components/permission-row";
-import { Gradients } from "../../../features/permissions/types/gradients";
 import {
-  PermissionType,
+  permissionType,
   usePermissionsStore,
 } from "../../../stores/permissions.store";
 
@@ -41,40 +40,40 @@ export const RequestPermissions = () => {
 
       <div className="flex flex-col gap-4">
         <PermissionRow
-          color={Gradients.Blue}
           description="For capturing cursor events."
+          gradient="bg-gradient-blue"
           icon={<PersonStanding size={ICON_SIZE} />}
           status={permissions.accessibility}
           title="Accessibility"
           onClick={() => {
-            requestPermissions(PermissionType.Accessibility);
+            requestPermissions(permissionType.ACCESSIBILITY);
           }}
         />
         <PermissionRow
-          color={Gradients.Red}
+          gradient="bg-gradient-red"
           icon={<Disc size={ICON_SIZE} />}
           status={permissions.screen}
           title="Screen Recording"
           onClick={() => {
-            requestPermissions(PermissionType.Screen);
+            requestPermissions(permissionType.SCREEN);
           }}
         />
         <PermissionRow
-          color={Gradients.Gray}
+          gradient="bg-gradient-gray"
           icon={<Video size={ICON_SIZE} />}
           status={permissions.camera}
           title="Camera"
           onClick={() => {
-            requestPermissions(PermissionType.Camera);
+            requestPermissions(permissionType.CAMERA);
           }}
         />
         <PermissionRow
-          color={Gradients.Gray}
+          gradient="bg-gradient-gray"
           icon={<Mic size={ICON_SIZE} />}
           status={permissions.microphone}
           title="Microphone"
           onClick={() => {
-            requestPermissions(PermissionType.Microphone);
+            requestPermissions(permissionType.MICROPHONE);
           }}
         />
       </div>

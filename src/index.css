@@ -81,6 +81,18 @@
   }
 }
 
+@layer utilities {
+  .bg-gradient-gray {
+    @apply bg-linear-0 from-[#98989D] from-20% to-[#C0C0C4];
+  }
+  .bg-gradient-blue {
+    @apply bg-linear-0 from-[#3B83F7] from-20% to-[#5DA3F8];
+  }
+  .bg-gradient-red {
+    @apply bg-linear-0 from-[#EB5545] from-20% to-[#EE8176];
+  }
+}
+
 /* #region Orbit Cursor */
 
 html,

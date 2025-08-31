@@ -14,7 +14,7 @@ import {
   useStandaloneListBoxStore,
 } from "../../../stores/standalone-listbox.store";
 import {
-  AppWindow,
+  appWindow,
   useWindowReopenStore,
 } from "../../../stores/window-open-state.store";
 import { ListBoxItem } from "../../base/listbox-item/listbox-item";
@@ -41,7 +41,7 @@ export const InputSelect = ({
   placeholder,
 }: InputSelectProps) => {
   const recordingInputOptionsOpened = useWindowReopenStore(
-    useShallow((state) => state.windows[AppWindow.RecordingInputOptions])
+    useShallow((state) => state.windows[appWindow.RECORDING_INPUT_OPTIONS])
   );
 
   const [openListBoxId, openListBox, addListBox, setSelectedItems, setItems] =

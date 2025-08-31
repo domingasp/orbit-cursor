@@ -11,7 +11,7 @@ import { cn } from "../../../lib/styling";
 import { formatTime } from "../../../lib/time";
 import { usePlaybackStore } from "../../../stores/editor/playback.store";
 import {
-  AvailableActions,
+  availableActions,
   useHotkeyStore,
 } from "../../../stores/hotkeys.store";
 
@@ -66,20 +66,22 @@ export const Toolbar = ({
     seek(0);
   };
 
-  useHotkeys(getHotkey(AvailableActions.EditorBackToStart), backToStart, {
+  useHotkeys(getHotkey(availableActions.EDITOR_BACK_TO_START), backToStart, {
     enabled: hotkeysEnabled,
   });
-  useHotkeys(getHotkey(AvailableActions.EditorTogglePlay), togglePlay, {
+  useHotkeys(getHotkey(availableActions.EDITOR_TOGGLE_PLAY), togglePlay, {
     enabled: hotkeysEnabled,
   });
-  useHotkeys(getHotkey(AvailableActions.EditorExport), openExportOptions, {
+  useHotkeys(getHotkey(availableActions.EDITOR_EXPORT), openExportOptions, {
     enabled: hotkeysEnabled,
   });
 
   return (
     <div className="flex flex-row justify-center py-0.5 relative">
       <Group className="flex flex-row items-center">
-        <HotkeyTooltip hotkey={getHotkey(AvailableActions.EditorBackToStart)}>
+        <HotkeyTooltip
+          hotkey={getHotkey(availableActions.EDITOR_BACK_TO_START)}
+        >
           <Button onPress={backToStart} size="sm" variant="ghost" icon>
             {/* Scaling to match height of play icon, inconsistent Lucide icon design */}
             <SkipBack
@@ -89,7 +91,7 @@ export const Toolbar = ({
           </Button>
         </HotkeyTooltip>
 
-        <HotkeyTooltip hotkey={getHotkey(AvailableActions.EditorTogglePlay)}>
+        <HotkeyTooltip hotkey={getHotkey(availableActions.EDITOR_TOGGLE_PLAY)}>
           <ToggleButton
             className="w-6 h-6"
             isSelected={playing}
@@ -116,7 +118,7 @@ export const Toolbar = ({
       </Group>
 
       <Group className="flex flex-row items-center absolute right-2 top-0 bottom-0">
-        <HotkeyTooltip hotkey={getHotkey(AvailableActions.EditorExport)}>
+        <HotkeyTooltip hotkey={getHotkey(availableActions.EDITOR_EXPORT)}>
           <Button
             onPress={openExportOptions}
             variant="ghost"

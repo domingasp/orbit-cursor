@@ -7,10 +7,10 @@ import { MicrophoneSelect } from "../../features/audio-inputs/components/microph
 import { CameraSelect } from "../../features/camera-select/components/camera-select";
 import { clearInteractionAttributes } from "../../lib/styling";
 import {
-  AppWindow,
+  appWindow,
   useWindowReopenStore,
 } from "../../stores/window-open-state.store";
-import { Events } from "../../types/events";
+import { events } from "../../types/events";
 
 export const RecordingInputOptions = () => {
   const [addWindow, setWindowOpenState] = useWindowReopenStore(
@@ -20,18 +20,18 @@ export const RecordingInputOptions = () => {
   useEffect(() => {
     const addWindowToStore = async () => {
       addWindow(
-        AppWindow.RecordingInputOptions,
+        appWindow.RECORDING_INPUT_OPTIONS,
         await isRecordingInputOptionsOpen()
       );
     };
     void addWindowToStore();
 
-    const unlisten = listen(Events.RecordingInputOptionsOpened, () => {
+    const unlisten = listen(events.RECORDING_INPUT_OPTIONS_OPENED, () => {
       clearInteractionAttributes();
-      setWindowOpenState(AppWindow.RecordingInputOptions, true);
+      setWindowOpenState(appWindow.RECORDING_INPUT_OPTIONS, true);
     });
-    const unlistenClose = listen(Events.ClosedRecordingInputOptions, () => {
-      setWindowOpenState(AppWindow.RecordingInputOptions, false);
+    const unlistenClose = listen(events.CLOSED_RECORDING_INPUT_OPTIONS, () => {
+      setWindowOpenState(appWindow.RECORDING_INPUT_OPTIONS, false);
     });
 
     return () => {

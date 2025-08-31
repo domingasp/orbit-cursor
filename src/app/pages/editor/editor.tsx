@@ -20,7 +20,7 @@ import { Titlebar } from "../../../features/titlebar/components/titlebar";
 import { Toolbar } from "../../../features/toolbar/components/toolbar";
 import { usePlaybackStore } from "../../../stores/editor/playback.store";
 import { useRecordingStateStore } from "../../../stores/recording-state.store";
-import { Events } from "../../../types/events";
+import { events } from "../../../types/events";
 
 import { RecordingListModal } from "./recording-list-modal";
 
@@ -66,7 +66,7 @@ export const Editor = () => {
   };
 
   useEffect(() => {
-    const unlisten = listen(Events.RecordingComplete, (data) => {
+    const unlisten = listen(events.RECORDING_COMPLETE, (data) => {
       setCurrenRecordingId(data.payload as number);
 
       // Recording dock clean up
@@ -81,7 +81,7 @@ export const Editor = () => {
   }, []);
 
   useEffect(() => {
-    const unlisten = listen(Events.ClosedEditor, () => {
+    const unlisten = listen(events.CLOSED_EDITOR, () => {
       resetPreview();
     });
 

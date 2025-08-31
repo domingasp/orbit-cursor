@@ -1,11 +1,13 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 
-import { Commands } from "../../../types/api";
+import { commands } from "../../../types/api";
 
-export enum AudioStream {
-  System = "system",
-  Microphone = "microphone",
-}
+export const audioStream = {
+  MICROPHONE: "microphone",
+  SYSTEM: "system",
+} as const;
+
+export type AudioStream = (typeof audioStream)[keyof typeof audioStream];
 
 export type AudioStreamChannel = {
   data: {
@@ -19,7 +21,7 @@ export const startAudioListener = (
   onEvent: Channel<AudioStreamChannel>,
   deviceName?: string
 ) => {
-  void invoke(Commands.StartAudioListener, {
+  void invoke(commands.START_AUDIO_LISTENER, {
     deviceName,
     onEvent,
     streamToStart,
@@ -27,8 +29,8 @@ export const startAudioListener = (
 };
 
 export const stopAudioListener = async (streamName: AudioStream) => {
-  await invoke(Commands.StopAudioListener, { streamName });
+  await invoke(commands.STOP_AUDIO_LISTENER, { streamName });
 };
 
 export const listAudioInputs = async (): Promise<string[]> =>
-  await invoke(Commands.ListAudioInputs);
+  await invoke(commands.LIST_AUDIO_INPUTS);

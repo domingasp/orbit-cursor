@@ -8,7 +8,7 @@ import { rehydrateRecordingStateStore } from "../stores/recording-state.store";
 import { rehydrateRegionSelectorState } from "../stores/region-selector.store";
 import { updateStandaloneListBoxStore } from "../stores/standalone-listbox.store";
 import { rehydrateWindowReopenState } from "../stores/window-open-state.store";
-import { Events } from "../types/events";
+import { events } from "../types/events";
 
 import { AppProvider } from "./provider";
 import { AppRouter } from "./router";
@@ -26,7 +26,7 @@ export const App = () => {
     setCanUnlock(prefetch);
 
     const unlistenFn = await listen<Permissions>(
-      Events.MonitorPermissions,
+      events.MONITOR_PERMISSIONS,
       (event) => {
         setPermissions(event.payload);
       }

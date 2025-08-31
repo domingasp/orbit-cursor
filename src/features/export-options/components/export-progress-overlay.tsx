@@ -8,7 +8,7 @@ import { CircularProgressBar } from "../../../components/base/circular-progress-
 import { Overlay } from "../../../components/base/overlay/overlay";
 import { useToast } from "../../../components/base/toast/toast-provider";
 import { usePlaybackStore } from "../../../stores/editor/playback.store";
-import { Events } from "../../../types/events";
+import { events } from "../../../types/events";
 import { openPathInFileBrowser } from "../api/export";
 
 type ExportProgressOverlayProps = {
@@ -48,14 +48,14 @@ export const ExportProgressOverlay = ({
   };
 
   useEffect(() => {
-    const unlistenProgress = listen(Events.ExportProgress, (data) => {
+    const unlistenProgress = listen(events.EXPORT_PROGRESS, (data) => {
       const millisecondsProcessed = data.payload as number;
       if (duration) {
         setProgress((millisecondsProcessed / 1000 / duration) * 100);
       }
     });
 
-    const unlistenExportComplete = listen(Events.ExportComplete, (data) => {
+    const unlistenExportComplete = listen(events.EXPORT_COMPLETE, (data) => {
       const toastKey = toast.add({
         description: "Click the folder to open export location.",
         leftSection: (

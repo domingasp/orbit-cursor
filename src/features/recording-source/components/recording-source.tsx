@@ -7,7 +7,7 @@ import { useShallow } from "zustand/react/shallow";
 import { Button } from "../../../components/base/button/button";
 import { ContentRotate } from "../../../components/base/content-rotate/content-rotate";
 import {
-  RecordingType,
+  recordingType as recordingTypeOptions,
   useRecordingStateStore,
 } from "../../../stores/recording-state.store";
 import { useRegionSelectorStore } from "../../../stores/region-selector.store";
@@ -30,7 +30,7 @@ export const RecordingSource = ({ onPress }: RecordingSourceProps) => {
   );
 
   const isWindowSelector = useMemo(
-    () => recordingType === RecordingType.Window,
+    () => recordingType === recordingTypeOptions.WINDOW,
     [recordingType]
   );
 
@@ -40,10 +40,10 @@ export const RecordingSource = ({ onPress }: RecordingSourceProps) => {
         className="flex gap-2 items-center text-xxs justify-center text-muted font-semibold"
         containerClassName="min-w-16"
         contentKey={
-          recordingType === RecordingType.Window ? "window" : "monitor"
+          recordingType === recordingTypeOptions.WINDOW ? "window" : "monitor"
         }
       >
-        {recordingType === RecordingType.Window ? (
+        {recordingType === recordingTypeOptions.WINDOW ? (
           <>
             <AppWindowMac size={12} />
             Window
@@ -101,7 +101,7 @@ export const RecordingSource = ({ onPress }: RecordingSourceProps) => {
         </motion.div>
 
         <AnimatePresence mode="popLayout">
-          {recordingType === RecordingType.Region && (
+          {recordingType === recordingTypeOptions.REGION && (
             <Button
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0 }}

@@ -5,21 +5,21 @@ import {
   PermissionType,
   Permissions,
 } from "../stores/permissions.store";
-import { Commands } from "../types/api";
+import { commands } from "../types/api";
 
 export const requestPermissions = (type: PermissionType) => {
-  void invoke(Commands.RequestPermission, { permission: type });
+  void invoke(commands.REQUEST_PERMISSION, { permission: type });
 };
 
 export const checkPermissions = async (): Promise<Permissions> => {
-  const permissions = await invoke(Commands.CheckPermissions);
+  const permissions = await invoke(commands.CHECK_PERMISSIONS);
   return PermissionsSchema.parse(permissions);
 };
 
 export const openSystemSettings = () => {
-  void invoke(Commands.OpenSystemSettings);
+  void invoke(commands.OPEN_SYSTEM_SETTINGS);
 };
 
 export const quitApp = () => {
-  void invoke(Commands.QuitApp);
+  void invoke(commands.QUIT_APP);
 };

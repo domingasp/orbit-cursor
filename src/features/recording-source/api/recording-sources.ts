@@ -5,7 +5,7 @@ import {
   PhysicalSize,
 } from "@tauri-apps/api/dpi";
 
-import { Commands } from "../../../types/api";
+import { commands } from "../../../types/api";
 
 export type MonitorDetails = {
   id: string;
@@ -28,12 +28,12 @@ export type WindowDetails = {
 };
 
 export const listMonitors = async () => {
-  const monitors = await invoke(Commands.ListMonitors);
+  const monitors = await invoke(commands.LIST_MONITORS);
   return monitors as MonitorDetails[];
 };
 
 export const listWindows = (generateThumbnails: boolean) => {
-  void invoke(Commands.ListWindows, { generateThumbnails });
+  void invoke(commands.LIST_WINDOWS, { generateThumbnails });
 };
 
 export const resizeWindow = (
@@ -41,17 +41,17 @@ export const resizeWindow = (
   title: string,
   size: PhysicalSize
 ) => {
-  void invoke(Commands.ResizeWindow, { pid, size, title });
+  void invoke(commands.RESIZE_WINDOW, { pid, size, title });
 };
 
 export const makeBorderless = (pid: number, title: string) => {
-  void invoke(Commands.MakeBorderless, { pid, title });
+  void invoke(commands.MAKE_BORDERLESS, { pid, title });
 };
 
 export const restoreBorder = (pid: number, title: string) => {
-  void invoke(Commands.RestoreBorder, { pid, title });
+  void invoke(commands.RESTORE_BORDER, { pid, title });
 };
 
 export const centerWindow = (pid: number, title: string) => {
-  void invoke(Commands.CenterWindow, { pid, title });
+  void invoke(commands.CENTER_WINDOW, { pid, title });
 };
