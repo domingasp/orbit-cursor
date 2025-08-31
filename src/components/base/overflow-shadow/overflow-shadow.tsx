@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react";
 import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../../tailwind-merge.config";
-import { availableVariants, cn } from "../../../lib/styling";
+import { cn } from "../../../lib/styling";
 
 const overflowShadowVariants = tv({
   compoundSlots: [

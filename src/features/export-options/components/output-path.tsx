@@ -113,7 +113,7 @@ export const OutputPath = ({
           <OverflowShadow
             className="px-2 py-1"
             orientation="horizontal"
-            noScrollbar
+            hideScrollbar
             startAtEnd
           >
             {filePath}
