@@ -5,7 +5,7 @@ import { tv } from "../../../../tailwind-merge.config";
 import { availableVariants } from "../../../lib/styling";
 
 const separatorVariants = tv({
-  base: "bg-content-fg/20 rounded-xs m-auto",
+  base: "relative bg-content-fg/20 rounded-xs m-auto",
   compoundVariants: [
     {
       class: "my-1",
@@ -34,9 +34,13 @@ const separatorVariants = tv({
 });
 
 type SeparatorProps = AriaSeparatorProps &
-  VariantProps<typeof separatorVariants> & { className?: string };
+  VariantProps<typeof separatorVariants> & {
+    children?: React.ReactNode;
+    className?: string;
+  };
 
 export const Separator = ({
+  children,
   className,
   orientation,
   spacing,
@@ -48,6 +52,12 @@ export const Separator = ({
     <div
       {...separatorProps}
       className={separatorVariants({ className, orientation, spacing })}
-    />
+    >
+      {children && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          {children}
+        </div>
+      )}
+    </div>
   );
 };

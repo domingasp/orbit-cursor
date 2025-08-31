@@ -1349,6 +1349,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "croner"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c344b0690c1ad1c7176fe18eb173e0c927008fdaaa256e40dfd43ddd149c0843"
+dependencies = [
+ "chrono",
+]
+
+[[package]]
 name = "crossbeam-channel"
 version = "0.5.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4485,7 +4494,9 @@ dependencies = [
  "tauri-plugin-shell",
  "tauri-plugin-sql",
  "tauri-plugin-store",
+ "time",
  "tokio",
+ "tokio-cron-scheduler",
  "uuid",
  "windows 0.58.0",
  "winreg 0.10.1",
@@ -7169,6 +7180,21 @@ dependencies = [
  "tokio-macros",
  "tracing",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "tokio-cron-scheduler"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c71ce8f810abc9fabebccc30302a952f9e89c6cf246fafaf170fef164063141"
+dependencies = [
+ "chrono",
+ "croner",
+ "num-derive",
+ "num-traits",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

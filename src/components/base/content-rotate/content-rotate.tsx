@@ -31,7 +31,7 @@ export const ContentRotate = ({
           className={className}
           exit={{ opacity: 0, y: 25 }}
           initial={isFirstMount ? false : { opacity: 0, y: -25 }}
-          transition={{ duration: 0.25, ease: "easeOut" }}
+          transition={{ duration: 0.175, ease: "easeOut" }}
           {...props}
         >
           {children}

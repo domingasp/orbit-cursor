@@ -31,6 +31,7 @@ use tauri::{App, AppHandle, Manager, Wry};
 use tauri_plugin_sql::{Migration, MigrationKind};
 use tauri_plugin_store::{Store, StoreExt};
 use tokio::sync::broadcast;
+use tokio_cron_scheduler::{Job, JobScheduler};
 use windows::commands::{
   collapse_recording_source_selector, expand_recording_source_selector, get_dock_bounds,
   hide_region_selector, hide_start_recording_dock, init_recording_input_options,
@@ -60,7 +61,11 @@ use crate::windows::commands::init_editor;
 use crate::{
   export::commands::{cancel_export, export_recording, open_path_in_file_browser, path_exists},
   models::{EditingState, GlobalState, PreviewState, RecordingState},
-  recording_management::commands::{get_recording_details, update_recording_name},
+  recording_management::commands::{
+    automated_hard_delete_recordings, get_recording_details, hard_delete_recordings,
+    list_recordings, recording_opened, restore_recordings, soft_delete_recordings,
+    update_recording_name,
+  },
   recording_sources::commands::{center_window, resize_window},
   windows::{
     commands::{
@@ -192,7 +197,12 @@ pub fn run() {
     restore_border,
     center_window,
     get_recording_details,
-    update_recording_name
+    update_recording_name,
+    list_recordings,
+    soft_delete_recordings,
+    restore_recordings,
+    hard_delete_recordings,
+    recording_opened
   ]);
 
   // State
@@ -239,6 +249,18 @@ pub fn run() {
       version: 3,
       description: "add_recording_name",
       sql: include_str!("../migrations/3_add_recording_name.down.sql"),
+      kind: MigrationKind::Down,
+    },
+    Migration {
+      version: 4,
+      description: "recording_metadata",
+      sql: include_str!("../migrations/4_recording_metadata.up.sql"),
+      kind: MigrationKind::Up,
+    },
+    Migration {
+      version: 4,
+      description: "recording_metadata",
+      sql: include_str!("../migrations/4_recording_metadata.down.sql"),
       kind: MigrationKind::Down,
     },
   ];
@@ -301,7 +323,7 @@ pub fn run() {
             open_permissions(app.handle()).await;
           } else if matches!(store.get(FIRST_RUN), Some(Value::Bool(true))) {
             store.set(FIRST_RUN, json!(false));
-            show_start_recording_dock(app.handle().clone(), app.state(), app.state(), app.state());
+            show_start_recording_dock(app.handle().clone(), app.state(), app.state());
           }
 
           if has_required {
@@ -336,6 +358,28 @@ pub fn run() {
           global_inputs::service::global_input_event_handler(e, input_event_tx.clone());
         }) {
           eprintln!("Failed to listen: {error:?}")
+        }
+      });
+
+      tauri::async_runtime::spawn(async move {
+        let mut scheduler = JobScheduler::new().await;
+
+        if let Ok(scheduler) = &mut scheduler {
+          // Daily job at 5am to hard delete old recordings
+          scheduler
+            .add(
+              Job::new_async("0 0 5 * * *", |_uuid, _l| {
+                Box::pin(async move {
+                  let app_handle = APP_HANDLE.get().unwrap();
+                  automated_hard_delete_recordings(app_handle.state()).await;
+                })
+              })
+              .unwrap(),
+            )
+            .await
+            .ok();
+        } else if let Err(e) = scheduler {
+          eprintln!("Failed to start scheduler: {e}");
         }
       });
 

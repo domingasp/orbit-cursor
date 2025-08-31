@@ -1,6 +1,6 @@
 import { createBrowserRouter, RouterProvider } from "react-router";
 
-import { Editor } from "./pages/editor";
+import { Editor } from "./pages/editor/editor";
 import { StandaloneListBox } from "./pages/listbox-standalone";
 import { RecordingInputOptions } from "./pages/recording-input-options";
 import { RecordingSourceSelector } from "./pages/recording-source-selector";

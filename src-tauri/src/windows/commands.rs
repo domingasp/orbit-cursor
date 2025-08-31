@@ -11,7 +11,7 @@ use windows::Win32::Foundation::HWND;
 use crate::windows::service::convert_to_stationary_panel;
 use crate::{
   constants::{Events, WindowLabel},
-  models::{EditingState, GlobalState, RecordingState},
+  models::{GlobalState, RecordingState},
   screen_capture::commands::capture_display_screenshot,
   windows::service::{calculate_position_above_dock, handle_dock_positioning},
 };
@@ -254,10 +254,9 @@ pub fn show_start_recording_dock(
   app_handle: AppHandle,
   global_state: State<'_, GlobalState>,
   recording_state: State<'_, Mutex<RecordingState>>,
-  editing_state: State<'_, Mutex<EditingState>>,
 ) {
   {
-    if recording_state.lock().is_recording || editing_state.lock().is_editing {
+    if recording_state.lock().is_recording {
       return;
     }
   }
@@ -336,10 +335,9 @@ pub fn show_region_selector(
 pub fn show_and_focus_editor(
   app_handle: AppHandle,
   recording_state: State<'_, Mutex<RecordingState>>,
-  editing_state: State<'_, Mutex<EditingState>>,
 ) {
   {
-    if !recording_state.lock().is_recording() || !editing_state.lock().is_editing() {
+    if recording_state.lock().is_recording() {
       return;
     }
   }
@@ -349,6 +347,7 @@ pub fn show_and_focus_editor(
     .unwrap();
 
   let _ = editor.unminimize();
+  let _ = editor.show();
   let _ = editor.set_focus();
 }
 

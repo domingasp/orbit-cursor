@@ -29,11 +29,16 @@ pub struct Region {
   pub size: LogicalSize<f64>,
 }
 
-#[derive(EnumString, AsRefStr, Display, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(
+  EnumString, AsRefStr, Display, Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum RecordingType {
+  #[strum(serialize = "region")]
   Region,
+  #[strum(serialize = "window")]
   Window,
+  #[strum(serialize = "screen")]
   Screen,
 }
 

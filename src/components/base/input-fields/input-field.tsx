@@ -28,7 +28,10 @@ export const inputFieldVariants = tv({
   slots: {
     base: "flex flex-col gap-1 w-full",
     field: "group relative flex flex-row items-center",
-    input: "text-content-fg outline-none w-full",
+    input: [
+      "text-content-fg outline-none w-full",
+      "placeholder:font-extralight placeholder:italic",
+    ],
     inputWrapper:
       "outline-none text-muted/75 flex flex-row items-center justify-between w-full gap-2",
     label: "text-muted font-medium tabular-nums",
@@ -42,12 +45,12 @@ export const inputFieldVariants = tv({
     isInvalid: { true: "" },
     size: {
       md: {
-        input: "text-sm py-2",
+        input: "text-sm py-2 placeholder:text-xs",
         inputWrapper: "px-3 gap-3",
         label: "text-sm",
       },
       sm: {
-        input: "text-xs py-2",
+        input: "text-xs py-2 placeholder:text-xxs",
         inputWrapper: "px-2 gap-2",
         label: "text-xs",
       },

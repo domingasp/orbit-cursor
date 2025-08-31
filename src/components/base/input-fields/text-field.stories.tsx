@@ -106,3 +106,16 @@ export const Invalid: Story = {
     controls: { include: ["variant"] },
   },
 };
+
+export const WithPlaceholder: Story = {
+  args: {
+    defaultValue: undefined,
+    label: "Full Name",
+    placeholder: "Enter your full name",
+    size: "md",
+    variant: "solid",
+  },
+  parameters: {
+    controls: { exclude: ["className"] },
+  },
+};

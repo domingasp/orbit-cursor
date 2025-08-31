@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import { Commands } from "../types/api";
+
 export type RecordingDetails = {
   camera: string | null;
   id: number;
@@ -13,3 +15,7 @@ export const getRecordingDetails = async (
   recordingId: number
 ): Promise<RecordingDetails> =>
   invoke("get_recording_details", { recordingId });
+
+export const recordingOpened = (recordingId: number) => {
+  void invoke(Commands.RecordingOpened, { recordingId });
+};

@@ -13,7 +13,11 @@ import {
 import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../../tailwind-merge.config";
-import { elementFocusVisible, focusStyles } from "../../../lib/styling";
+import {
+  availableVariants,
+  elementFocusVisible,
+  focusStyles,
+} from "../../../lib/styling";
 import { ListBox } from "../listbox/listbox";
 
 import { ClearButton } from "./components/clear-button";
@@ -24,34 +28,57 @@ const ICON_SIZES = {
 };
 
 const selectVariants = tv({
+  compoundVariants: [
+    {
+      class: { trigger: "py-0.5" },
+      compact: true,
+      size: "md",
+      variant: "line",
+    },
+    {
+      class: { trigger: "py-0.5" },
+      compact: true,
+      size: "sm",
+      variant: "line",
+    },
+  ],
   defaultVariants: {
     showFocus: true,
     size: "md",
     variant: "solid",
   },
   slots: {
-    base: "flex flex-col gap-1 w-full",
+    base: "flex flex-col gap-1",
     controls: "text-muted/75",
     label: "text-muted font-medium",
+    line: [
+      "absolute bottom-0 inset-x-0 bg-transparent h-[2px] pointer-events-none transition-shadow shadow-[0_1px_0_0] shadow-muted/30",
+      "group-data-[hovered]:shadow-[0_2px_0_0] group-data-[hovered]:shadow-content-fg/75",
+      "group-data-[pressed]:shadow-[0_2px_0_0] group-data-[pressed]:shadow-content-fg/75",
+    ],
     trigger: [
-      "outline-none shrink inline-flex flex-row items-center justify-between text-content-fg gap-4 rounded-md transition-colors",
+      "group relative outline-none shrink inline-flex flex-row items-center justify-between text-content-fg gap-4 rounded-md transition-colors",
       "data-[hovered]:bg-neutral/50",
       focusStyles,
     ],
   },
   variants: {
+    compact: availableVariants("true"),
     showFocus: {
       true: {
         trigger: elementFocusVisible,
       },
     },
     size: {
-      md: { label: "text-sm", trigger: "text-sm pl-3 pr-2 py-2" },
-      sm: { label: "text-xs", trigger: "text-xs pl-3 pr-2 py-2" },
+      md: { label: "text-sm", trigger: "text-sm px-2 py-2" },
+      sm: { label: "text-xs", trigger: "text-xs px-2 py-2" },
     },
     variant: {
       ghost: {
         trigger: "px-2 py-1",
+      },
+      line: {
+        trigger: "data-[hovered]:bg-transparent",
       },
       solid: {
         trigger: "bg-content border-1 border-muted/30",
@@ -85,6 +112,7 @@ export const Select = <T extends object>({
   children,
   className,
   clearable = true,
+  compact,
   items,
   label,
   leftSection,
@@ -102,8 +130,9 @@ export const Select = <T extends object>({
     base,
     controls,
     label: _label,
+    line,
     trigger,
-  } = selectVariants({ size, variant });
+  } = selectVariants({ compact, size, variant });
 
   return (
     <AriaSelect {...props} className={base()}>
@@ -140,6 +169,8 @@ export const Select = <T extends object>({
               >
                 <ChevronDown size={size ? ICON_SIZES[size] : 16} />
               </motion.div>
+
+              {variant === "line" && <div className={line()} />}
             </Button>
 
             <AnimatePresence>

@@ -7,6 +7,7 @@ const sizes: React.ComponentProps<typeof Button>["size"][] = [
   "lg",
   "md",
   "sm",
+  "xs",
 ] as const;
 const variants: React.ComponentProps<typeof Button>["variant"][] = [
   "solid",
@@ -26,6 +27,7 @@ const iconSizes: Record<
   lg: 30,
   md: 24,
   sm: 16,
+  xs: 12,
 };
 
 const meta = {
@@ -33,6 +35,9 @@ const meta = {
     color: {
       control: "inline-radio",
       options: colors,
+    },
+    isDisabled: {
+      control: "boolean",
     },
     size: {
       control: "inline-radio",
@@ -47,11 +52,12 @@ const meta = {
   },
   args: {
     children: "Default",
+    color: "neutral",
   },
   component: Button,
   parameters: {
     controls: {
-      exclude: ["ref", "className"],
+      exclude: ["ref", "className", "slot"],
     },
     layout: "centered",
   },
@@ -68,6 +74,7 @@ export const Default: Story = {
     size: "md",
     variant: "solid",
     shiny: false,
+    isDisabled: false,
     /* eslint-enable sort-keys */
   },
 };

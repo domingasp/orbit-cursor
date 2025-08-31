@@ -11,10 +11,10 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::broadcast;
 
 use crate::{
-  constants::{Events, WindowLabel},
+  constants::Events,
   db::{self, recordings::NewRecording},
   models::{
-    EditingState, GlobalState, RecordingState, StoppedRecording, ThreadHandle, VideoTrackDetails,
+    GlobalState, RecordingState, StoppedRecording, ThreadHandle, VideoTrackDetails,
     VideoTrackStartDetails,
   },
   recording::{
@@ -28,7 +28,7 @@ use crate::{
     video::resume_video_recording,
   },
   system_tray::service::update_system_tray_icon,
-  windows::commands::hide_region_selector,
+  windows::commands::{hide_region_selector, show_and_focus_editor},
 };
 
 #[derive(Debug, Clone, Deserialize)]
@@ -175,6 +175,7 @@ pub fn start_recording(app_handle: AppHandle, options: StartRecordingOptions) ->
           .unwrap()
           .to_string_lossy()
           .to_string(),
+        r#type: &options.recording_type,
       },
     ))
     .unwrap();
@@ -259,8 +260,27 @@ pub async fn stop_recording(app_handle: AppHandle) {
 
     if let (Some(camera_handle), Some(camera_files)) = (camera_handle, camera_files) {
       let _ = camera_handle.lock().take().unwrap().join();
-      concat_video_segments(camera_files, recording_directory, RecordingFile::Camera);
+      concat_video_segments(
+        camera_files,
+        recording_directory.clone(),
+        RecordingFile::Camera,
+      );
     }
+
+    let bytes = crate::recording::file::folder_size_bytes(&recording_directory);
+    let milliseconds = super::ffmpeg::shortest_video_length(vec![
+      recording_directory.join(RecordingFile::Screen.as_ref()),
+      recording_directory.join(RecordingFile::Camera.as_ref()),
+    ]);
+
+    db::recordings::set_recording_metadata(
+      &app_handle.state::<Pool<Sqlite>>(),
+      recording_id,
+      bytes,
+      milliseconds,
+    )
+    .await
+    .unwrap();
 
     let _ = app_handle.emit(Events::RecordingComplete.as_ref(), recording_id);
   };
@@ -270,16 +290,7 @@ pub async fn stop_recording(app_handle: AppHandle) {
     crate::system_tray::service::SystemTrayIcon::Default,
   );
 
-  {
-    let editing_state: State<'_, Mutex<EditingState>> = app_handle.state();
-    editing_state.lock().editing_started();
-  }
-
-  let editor = app_handle
-    .get_webview_window(WindowLabel::Editor.as_ref())
-    .unwrap();
-  let _ = editor.show();
-  let _ = editor.set_focus();
+  show_and_focus_editor(app_handle.clone(), app_handle.state());
 
   #[cfg(target_os = "macos")] // Shows dock icon, allows editor to go fullscreen
   let _ = app_handle.set_activation_policy(tauri::ActivationPolicy::Regular);

@@ -1,10 +1,8 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 
-import { RecordingDetails } from "../../../api/recording-management";
 import { TextField } from "../../../components/base/input-fields/text-field";
-import { updateRecordingName } from "../api/recording-name";
+import { useUpdateRecordingName } from "../hooks/use-update-recording-name";
 
 const recordingNameRegex = new RegExp(
   String.raw`^(?!\s)(?!^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$)[^<>:"/\\|?*\u0000-\u001F]{1,255}(?<!\s)$`,
@@ -16,11 +14,14 @@ const nameSchema = z.string().regex(recordingNameRegex, "Invalid file name");
 type RecordingNameProps = {
   name: string;
   recordingId: number;
+  className?: string;
 };
 
-export const RecordingName = ({ name, recordingId }: RecordingNameProps) => {
-  const queryClient = useQueryClient();
-
+export const RecordingName = ({
+  className,
+  name,
+  recordingId,
+}: RecordingNameProps) => {
   const [value, setValue] = useState(name);
   const [isInvalid, setIsInvalid] = useState(false);
   const validateTimer = useRef<number | null>(null);
@@ -31,32 +32,7 @@ export const RecordingName = ({ name, recordingId }: RecordingNameProps) => {
     return result.success;
   }, []);
 
-  const { mutate } = useMutation({
-    mutationFn: ({ id, newName }: { id: number; newName: string }) =>
-      updateRecordingName(id, newName),
-    onError: (_err, { id }, ctx: { prev?: RecordingDetails } | undefined) => {
-      if (ctx?.prev) {
-        queryClient.setQueryData(["recordingDetails", id], ctx.prev);
-      }
-    },
-    onMutate: ({ id, newName }: { id: number; newName: string }) => {
-      const key = ["recordingDetails", id];
-      const prev = queryClient.getQueryData<RecordingDetails>(key);
-      if (prev) {
-        queryClient.setQueryData<RecordingDetails>(key, {
-          ...prev,
-          name: newName,
-        });
-      }
-      return { prev };
-    },
-    onSuccess: (_data, { id, newName }) => {
-      const key = ["recordingDetails", id];
-      queryClient.setQueryData<RecordingDetails | undefined>(key, (old) =>
-        old ? { ...old, name: newName } : old
-      );
-    },
-  });
+  const { mutate: updateNameMutate } = useUpdateRecordingName();
 
   const scheduleValidation = (next: string) => {
     if (validateTimer.current) {
@@ -93,7 +69,7 @@ export const RecordingName = ({ name, recordingId }: RecordingNameProps) => {
     }
 
     if (trimmed !== name) {
-      mutate({ id: recordingId, newName: trimmed });
+      updateNameMutate({ id: recordingId, newName: trimmed });
     }
   };
 
@@ -110,6 +86,7 @@ export const RecordingName = ({ name, recordingId }: RecordingNameProps) => {
   return (
     <TextField
       aria-label="Recording name"
+      className={className}
       isInvalid={isInvalid}
       lineClassName="-bottom-0.5 shadow-content-fg/50"
       onBlur={handleBlur}
