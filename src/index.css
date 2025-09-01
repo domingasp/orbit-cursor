@@ -82,6 +82,38 @@
 }
 
 @layer utilities {
+  /* #region Focus handling */
+  .focus {
+    /* Can not use `transition-all` as it interferes with Motion */
+    @apply outline-none ring-content-fg/75 ring-offset-content;
+    transition-property: box-shadow, background-color, color, border-color;
+    transition-timing-function: var(--default-transition-timing-function);
+    transition-duration: var(--default-transition-duration);
+  }
+
+  .focus-visible {
+    /* Focus only for keyboard navigation, e.g., buttons */
+    @apply data-[focus-visible]:ring-offset-1 data-[focus-visible]:ring-1;
+  }
+
+  .focused {
+    /* Focus required on usage, e.g., text fields */
+    @apply data-[focused]:ring-offset-1 data-[focused]:ring-1;
+  }
+
+  .focus-within {
+    /* Focus is within the container, focus applied to parent. Think wrapper around input field */
+    @apply data-[focus-within]:ring-offset-1 data-[focus-within]:ring-1;
+  }
+
+  .group-focus-visible {
+    /* Focus determined from a group, rather than an individual element */
+    @apply group-data-[focus-visible]:ring-offset-1 group-data-[focus-visible]:ring-1;
+  }
+
+  /* #endregion */
+
+  /* #region Background Gradients */
   .bg-gradient-gray {
     @apply bg-linear-0 from-[#98989D] from-20% to-[#C0C0C4];
   }
@@ -91,6 +123,7 @@
   .bg-gradient-red {
     @apply bg-linear-0 from-[#EB5545] from-20% to-[#EE8176];
   }
+  /* #endregion */
 }
 
 /* #region Orbit Cursor */

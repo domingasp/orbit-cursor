@@ -1,7 +1,6 @@
 import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../../tailwind-merge.config";
-import { focusStyles, focusWithin } from "../../../lib/styling";
 
 export const inputFieldVariants = tv({
   compoundVariants: [
@@ -58,7 +57,7 @@ export const inputFieldVariants = tv({
     variant: {
       line: {},
       solid: {
-        field: ["border border-muted/30 rounded-md", focusStyles, focusWithin],
+        field: "border border-muted/30 rounded-md focus focus-within",
       },
     },
   },

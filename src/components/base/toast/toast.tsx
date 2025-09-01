@@ -12,16 +12,13 @@ import { AriaToastProps, useFocusRing, useToast } from "react-aria";
 import { ToastState } from "react-stately";
 
 import { tv } from "../../../../tailwind-merge.config";
-import { elementFocusVisible, focusStyles } from "../../../lib/styling";
 import { Button } from "../button/button";
 
 const toastVariants = tv({
   slots: {
     base: [
       "bg-content text-content-fg rounded-md p-2 pl-2 pr-3 outline-none border-1 border-neutral shadow-md",
-      "flex grow gap-6 items-center transition-shadow max-w-85",
-      elementFocusVisible,
-      focusStyles,
+      "focus focus-visible flex grow gap-6 items-center transition-shadow max-w-85",
     ],
     closeButton: "p-0.5 self-stretch",
     content: "flex flex-col grow transition-opacity duration 350",

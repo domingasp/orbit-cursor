@@ -5,13 +5,9 @@ import { Button as AriaButton } from "react-aria-components";
 import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../../tailwind-merge.config";
-import { elementFocusVisible, focusStyles } from "../../../lib/styling";
 
 const buttonVariants = tv({
-  base: [
-    "inline-flex items-center gap-2 rounded-md font-semibold transition select-none",
-    focusStyles,
-  ],
+  base: "inline-flex items-center gap-2 rounded-md font-semibold transition select-none focus",
   compoundVariants: [
     {
       class: [
@@ -95,7 +91,7 @@ const buttonVariants = tv({
         "mask-[linear-gradient(-75deg,var(--color-content)_calc(var(--x)_+_20%),transparent_calc(var(--x)_+_30%),var(--color-content)_calc(var(--x)_+_100%))]",
       ],
     },
-    showFocus: { true: elementFocusVisible },
+    showFocus: { true: "focus-visible" },
     size: {
       lg: "text-md px-4 py-2",
       md: "text-sm px-3 py-2",

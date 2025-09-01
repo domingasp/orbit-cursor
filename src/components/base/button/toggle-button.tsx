@@ -4,11 +4,7 @@ import { ToggleButton as AriaToggleButton } from "react-aria-components";
 import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../../tailwind-merge.config";
-import {
-  availableVariants,
-  elementFocusVisible,
-  focusStyles,
-} from "../../../lib/styling";
+import { availableVariants } from "../../../lib/styling";
 
 const toggleButtonVariants = tv({
   base: [
@@ -27,7 +23,7 @@ const toggleButtonVariants = tv({
       variant: "solid",
     },
     {
-      class: elementFocusVisible,
+      class: "focus-visible",
       showFocus: true,
       variant: "solid",
     },
@@ -61,7 +57,7 @@ const toggleButtonVariants = tv({
     variant: {
       ghost:
         "p-1 transition-transform transform data-[hovered]:scale-110 data-[pressed]:scale-105",
-      solid: ["border-1 rounded-md", focusStyles],
+      solid: "border-1 rounded-md focus",
     },
   },
 });

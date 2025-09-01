@@ -12,12 +12,7 @@ import {
 import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../../tailwind-merge.config";
-import {
-  availableVariants,
-  cn,
-  elementFocusVisible,
-  focusStyles,
-} from "../../../lib/styling";
+import { availableVariants, cn } from "../../../lib/styling";
 import { ListBox } from "../listbox/listbox";
 
 import { ClearButton } from "./components/clear-button";
@@ -57,16 +52,16 @@ const selectVariants = tv({
       "group-data-[pressed]:shadow-[0_2px_0_0] group-data-[pressed]:shadow-content-fg/75",
     ],
     trigger: [
-      "group relative outline-none shrink inline-flex flex-row items-center justify-between text-content-fg gap-4 rounded-md transition-colors",
+      "group focus relative outline-none shrink inline-flex flex-row items-center justify-between text-content-fg gap-4 rounded-md transition-colors",
       "data-[hovered]:bg-neutral/50",
-      focusStyles,
+      "focus-visible",
     ],
   },
   variants: {
     compact: availableVariants("true"),
     showFocus: {
       true: {
-        trigger: elementFocusVisible,
+        trigger: "focus-visible",
       },
     },
     size: {

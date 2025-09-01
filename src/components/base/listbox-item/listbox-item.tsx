@@ -7,16 +7,13 @@ import {
 import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../../tailwind-merge.config";
-import { elementFocusVisible, focusStyles } from "../../../lib/styling";
 
 const listBoxItemVariants = tv({
   base: [
     "rounded-md cursor-default transition-colors inline-flex gap-2 items-center justify-between bg-content text-content-fg",
-    "truncate",
+    "focus focus-visible truncate",
     "data-[hovered]:bg-neutral",
     "data-[selected]:[&_svg]:text-success",
-    focusStyles,
-    elementFocusVisible,
   ],
   compoundVariants: [
     {

@@ -8,17 +8,14 @@ import {
 import { VariantProps } from "tailwind-variants";
 
 import { tv } from "../../../../../tailwind-merge.config";
-import { elementFocusVisible, focusStyles } from "../../../../lib/styling";
 
 const clearButtonVariants = tv({
   slots: {
     base: "flex items-center absolute inset-y-0 flex right-7",
     button: [
-      "transition-colors rounded-sm p-0.5 mb-0.5 flex",
+      "focus focus-visible transition-colors rounded-sm p-0.5 mb-0.5 flex",
       "data-[hovered]:bg-error/10 data-[hovered]:text-error",
       "data-[pressed]:bg-error/5",
-      focusStyles,
-      elementFocusVisible,
     ],
   },
 });
