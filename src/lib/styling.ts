@@ -15,7 +15,7 @@ export function availableVariants<T extends readonly string[]>(
 }
 
 /**
- * Remove `data-hovered`, `data-focused`, and `data-focus-visible` attributes on element with data-focused.
+ * Remove `data-hovered`, `data-focused`, and `data-focus-visible` attributes on element with data-focused
  */
 export const clearInteractionAttributes = () => {
   const activeElement = document.querySelector('[data-focused="true"]');
@@ -25,4 +25,17 @@ export const clearInteractionAttributes = () => {
     activeElement.removeAttribute("data-focused");
     activeElement.removeAttribute("data-focus-visible");
   }
+};
+
+/**
+ * Extract variant options from a Tailwind Variants object
+ */
+export const extractAvailableVariantOptions = <
+  T extends Record<string, Record<string, unknown>>,
+  K extends keyof T
+>(
+  obj: T,
+  property: K
+): Array<keyof T[K]> => {
+  return Object.keys(obj[property]) as Array<keyof T[K]>;
 };
