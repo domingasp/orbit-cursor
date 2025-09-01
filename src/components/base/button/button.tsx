@@ -7,7 +7,7 @@ import { VariantProps } from "tailwind-variants";
 import { tv } from "../../../../tailwind-merge.config";
 
 const buttonVariants = tv({
-  base: "inline-flex items-center gap-2 rounded-md font-semibold transition select-none focus",
+  base: "focus inline-flex select-none items-center gap-2 rounded-md font-semibold transition",
   compoundVariants: [
     {
       class: [
@@ -50,10 +50,10 @@ const buttonVariants = tv({
       color: "neutral",
       variant: "soft",
     },
-    { class: "justify-center h-10 w-10 p-1.5", icon: true, size: "lg" },
-    { class: "justify-center h-9 w-9 p-1.5", icon: true, size: "md" },
-    { class: "justify-center h-6 w-6 p-1", icon: true, size: "sm" },
-    { class: "justify-center h-4 w-4 p-0.5", icon: true, size: "xs" },
+    { class: "h-10 w-10 justify-center p-1.5", icon: true, size: "lg" },
+    { class: "h-9 w-9 justify-center p-1.5", icon: true, size: "md" },
+    { class: "h-6 w-6 justify-center p-1", icon: true, size: "sm" },
+    { class: "h-4 w-4 justify-center p-0.5", icon: true, size: "xs" },
     { class: "text-muted bg-neutral/33", isDisabled: true, variant: "soft" },
     { class: "text-muted", isDisabled: true, variant: "ghost" },
   ],
@@ -67,7 +67,7 @@ const buttonVariants = tv({
     color: {
       error: [],
       info: [
-        "text-white bg-info",
+        "bg-info text-white",
         "data-[hovered]:bg-info/90",
         "data-[pressed]:bg-info/80",
       ],
@@ -78,7 +78,7 @@ const buttonVariants = tv({
         "data-[pressed]:bg-neutral/80",
       ],
       success: [
-        "text-white bg-success",
+        "bg-success text-white",
         "data-[hovered]:bg-success/90",
         "data-[pressed]:bg-success/80",
       ],
@@ -94,17 +94,17 @@ const buttonVariants = tv({
     showFocus: { true: "focus-visible" },
     size: {
       lg: "text-md px-4 py-2",
-      md: "text-sm px-3 py-2",
-      sm: "text-xs px-2 py-1",
+      md: "px-3 py-2 text-sm",
+      sm: "px-2 py-1 text-xs",
       xs: "text-xxs px-1 py-0.5",
     },
     variant: {
       ghost: [
-        "bg-transparent cursor-pointer",
+        "cursor-pointer bg-transparent",
         "data-[hovered]:bg-transparent",
         "data-[pressed]:bg-transparent",
       ],
-      soft: "bg-opacity-20 border-none",
+      soft: "border-none bg-opacity-20",
       solid: "border-none",
     },
   },
@@ -123,7 +123,7 @@ const shinyAnimationProps = () =>
       stiffness: 20,
       type: "spring",
     },
-  } as MotionProps);
+  }) as MotionProps;
 
 type ButtonProps = AriaButtonProps &
   VariantProps<typeof buttonVariants> &

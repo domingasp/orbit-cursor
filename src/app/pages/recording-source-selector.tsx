@@ -42,7 +42,7 @@ import { events } from "../../types/events";
 
 export const RecordingSourceSelector = () => {
   const startRecordingDockOpened = useWindowReopenStore(
-    useShallow((state) => state.windows[appWindow.START_RECORDING_DOCK])
+    useShallow((state) => state.windows[appWindow.START_RECORDING_DOCK]),
   );
   const [
     selectedMonitor,
@@ -57,7 +57,7 @@ export const RecordingSourceSelector = () => {
       state.selectedWindow,
       state.setSelectedWindow,
       state.recordingType,
-    ])
+    ]),
   );
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -78,7 +78,7 @@ export const RecordingSourceSelector = () => {
       expandRecordingSourceSelector(
         recordingType === recordingTypeOptions.WINDOW
           ? new LogicalSize(750, 500)
-          : undefined
+          : undefined,
       );
     setIsExpanded((prev) => !prev);
   };
@@ -141,8 +141,8 @@ export const RecordingSourceSelector = () => {
   return (
     <div
       className={cn(
-        "flex flex-col p-2 h-[100vh] w-full items-center justify-end",
-        isExpanded && "gap-2"
+        "flex h-[100vh] w-full flex-col items-center justify-end p-2",
+        isExpanded && "gap-2",
       )}
     >
       {isExpanded &&
@@ -161,18 +161,18 @@ export const RecordingSourceSelector = () => {
         ))}
 
       {isExpanded && recordingType === recordingTypeOptions.WINDOW && (
-        <div className="relative w-full flex flex-col items-center gap-2">
+        <div className="relative flex w-full flex-col items-center gap-2">
           <AspectRatio
             onApply={(width, height) => {
               if (selectedWindow === null) return;
               resizeWindow(
                 selectedWindow.pid,
                 selectedWindow.title,
-                new PhysicalSize(width, height)
+                new PhysicalSize(width, height),
               );
             }}
           />
-          <span className="flex flex-row items-center text-xxs text-muted gap-1 font-extralight">
+          <span className="text-xxs text-muted flex flex-row items-center gap-1 font-extralight">
             <Info size={10} /> Apps may impose own sizing restrictions.
           </span>
 

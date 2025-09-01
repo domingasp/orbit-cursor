@@ -47,12 +47,12 @@ const selectVariants = tv({
     controls: "text-muted/75",
     label: "text-muted font-medium",
     line: [
-      "absolute bottom-0 inset-x-0 bg-transparent h-[2px] pointer-events-none transition-shadow shadow-[0_1px_0_0] shadow-muted/30",
-      "group-data-[hovered]:shadow-[0_2px_0_0] group-data-[hovered]:shadow-content-fg/75",
-      "group-data-[pressed]:shadow-[0_2px_0_0] group-data-[pressed]:shadow-content-fg/75",
+      "shadow-muted/30 pointer-events-none absolute inset-x-0 bottom-0 h-[2px] bg-transparent shadow-[0_1px_0_0] transition-shadow",
+      "group-data-[hovered]:shadow-content-fg/75 group-data-[hovered]:shadow-[0_2px_0_0]",
+      "group-data-[pressed]:shadow-content-fg/75 group-data-[pressed]:shadow-[0_2px_0_0]",
     ],
     trigger: [
-      "group focus relative outline-none shrink inline-flex flex-row items-center justify-between text-content-fg gap-4 rounded-md transition-colors",
+      "focus text-content-fg group relative inline-flex shrink flex-row items-center justify-between gap-4 rounded-md outline-none transition-colors",
       "data-[hovered]:bg-neutral/50",
       "focus-visible",
     ],
@@ -65,8 +65,8 @@ const selectVariants = tv({
       },
     },
     size: {
-      md: { label: "text-sm", trigger: "text-sm px-2 py-2" },
-      sm: { label: "text-xs", trigger: "text-xs px-2 py-2" },
+      md: { label: "text-sm", trigger: "px-2 py-2 text-sm" },
+      sm: { label: "text-xs", trigger: "px-2 py-2 text-xs" },
     },
     variant: {
       ghost: {
@@ -141,7 +141,7 @@ export const Select = <T extends object>({
               className={trigger({ className, showFocus })}
               onPress={onPress}
             >
-              <div className="inline-flex flex-row items-center gap-2 flex-1 min-w-0">
+              <div className="inline-flex min-w-0 flex-1 flex-row items-center gap-2">
                 {leftSection && <div>{leftSection}</div>}
 
                 <SelectValue className="data-[placeholder]:text-muted/75 truncate">
@@ -196,8 +196,8 @@ export const Select = <T extends object>({
                     ? "slide-in-from-top-5"
                     : "slide-in-from-bottom-5"
                   : placement === "bottom"
-                  ? "slide-out-to-top-5"
-                  : "slide-out-to-bottom-5"
+                    ? "slide-out-to-top-5"
+                    : "slide-out-to-bottom-5",
               )
             }
           >
