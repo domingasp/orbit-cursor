@@ -1,4 +1,4 @@
-import { Meta, StoryObj } from "@storybook/react";
+import { Meta, StoryObj } from "@storybook/react-vite";
 import { Rabbit, Snail } from "lucide-react";
 
 import { Keyboard } from "../../../components/base/keyboard/keyboard";

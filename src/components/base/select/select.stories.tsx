@@ -1,4 +1,4 @@
-import { Meta, StoryObj } from "@storybook/react";
+import { Meta, StoryObj } from "@storybook/react-vite";
 import { Volume2 } from "lucide-react";
 
 import { ListBoxItem } from "../listbox-item/listbox-item";

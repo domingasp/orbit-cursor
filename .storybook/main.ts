@@ -2,10 +2,11 @@ import type { StorybookConfig } from "@storybook/react-vite";
 
 const config: StorybookConfig = {
   addons: [
-    "@storybook/addon-essentials",
     "@chromatic-com/storybook",
-    "@storybook/experimental-addon-test",
+    "@storybook/addon-vitest",
     "@storybook/addon-themes",
+    "@storybook/addon-docs",
+    "@storybook/addon-a11y"
   ],
   framework: {
     name: "@storybook/react-vite",

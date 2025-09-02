@@ -1,4 +1,4 @@
-import { Meta, StoryObj } from "@storybook/react";
+import { Meta, StoryObj } from "@storybook/react-vite";
 import { Cog } from "lucide-react";
 
 import { CircularProgressBar } from "./circular-progress-bar";

@@ -1,7 +1,8 @@
-import { Meta, StoryObj } from "@storybook/react";
 import { DoorOpen, HandMetal } from "lucide-react";
 
 import { Button } from "./button";
+
+import type { Meta, StoryObj } from "@storybook/react-vite";
 
 const sizes: React.ComponentProps<typeof Button>["size"][] = [
   "lg",
@@ -84,7 +85,7 @@ export const Sizes: Story = {
     controls: { disable: true },
   },
   render: (args) => (
-    <div className="flex gap-2 items-center">
+    <div className="flex items-center gap-2">
       {sizes.map((size) => (
         <Button key={size} size={size} {...args} />
       ))}
@@ -95,7 +96,7 @@ export const Sizes: Story = {
 export const Variants: Story = {
   parameters: { controls: { disable: true } },
   render: (args) => (
-    <div className="flex gap-2 items-center">
+    <div className="flex items-center gap-2">
       {variants.map((variant) => (
         <Button key={variant} color="info" variant={variant} {...args} />
       ))}
@@ -106,7 +107,7 @@ export const Variants: Story = {
 export const Colors: Story = {
   parameters: { controls: { disable: true } },
   render: (args) => (
-    <div className="flex gap-2 items-center">
+    <div className="flex items-center gap-2">
       {colors.map((color) => (
         <Button key={color} color={color} {...args} />
       ))}
@@ -135,7 +136,7 @@ export const Icon: Story = {
   },
   parameters: { controls: { disable: true } },
   render: (args) => (
-    <div className="flex gap-2 items-center">
+    <div className="flex items-center gap-2">
       {sizes.map((size) => (
         <Button key={size} color="info" size={size} {...args}>
           <DoorOpen size={iconSizes[size as keyof typeof iconSizes]} />

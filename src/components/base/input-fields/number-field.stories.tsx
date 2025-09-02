@@ -1,4 +1,4 @@
-import { Meta, StoryObj } from "@storybook/react";
+import { Meta, StoryObj } from "@storybook/react-vite";
 import { Ruler } from "lucide-react";
 
 import { NumberField } from "./number-field";
