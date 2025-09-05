@@ -70,6 +70,7 @@
     "eslint": "^9.24.0",
     "eslint-import-resolver-typescript": "^4.3.2",
     "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-perfectionist": "^4.15.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-sort-destructure-keys": "^2.0.0",
     "eslint-plugin-storybook": "9.1.3",

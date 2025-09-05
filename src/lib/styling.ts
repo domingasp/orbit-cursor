@@ -28,14 +28,18 @@ export const clearInteractionAttributes = () => {
 };
 
 /**
- * Extract variant options from a Tailwind Variants object
+ * Extract single variant options from a Tailwind Variants object
  */
-export const extractAvailableVariantOptions = <
-  T extends Record<string, Record<string, unknown>>,
-  K extends keyof T,
->(
-  obj: T,
-  property: K,
-): Array<keyof T[K]> => {
-  return Object.keys(obj[property]) as Array<keyof T[K]>;
-};
+export const getVariantOptions =
+  <C extends React.ElementType>(tvVariants: { variants?: unknown }) =>
+  <V extends keyof React.ComponentProps<C>>(
+    variant: V,
+  ): React.ComponentProps<C>[V][] => {
+    if (tvVariants.variants && typeof tvVariants.variants === "object") {
+      const variantOptions = tvVariants.variants[variant as string] as unknown;
+      if (variantOptions && typeof variantOptions === "object") {
+        return Object.keys(variantOptions) as React.ComponentProps<C>[V][];
+      }
+    }
+    return [];
+  };

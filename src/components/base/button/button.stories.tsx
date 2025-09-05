@@ -1,8 +1,12 @@
 import { DoorOpen, HandMetal } from "lucide-react";
 
+import { RenderVariants } from "../../../../.storybook/components/render-variants";
+
 import { Button } from "./button";
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
+
+const ButtonVariants = RenderVariants.for(Button);
 
 const sizes: React.ComponentProps<typeof Button>["size"][] = [
   "lg",
@@ -85,22 +89,14 @@ export const Sizes: Story = {
     controls: { disable: true },
   },
   render: (args) => (
-    <div className="flex items-center gap-2">
-      {sizes.map((size) => (
-        <Button key={size} size={size} {...args} />
-      ))}
-    </div>
+    <ButtonVariants prop="size" restProps={args} variants={sizes} />
   ),
 };
 
 export const Variants: Story = {
   parameters: { controls: { disable: true } },
   render: (args) => (
-    <div className="flex items-center gap-2">
-      {variants.map((variant) => (
-        <Button key={variant} color="info" variant={variant} {...args} />
-      ))}
-    </div>
+    <ButtonVariants prop="variant" restProps={args} variants={variants} />
   ),
 };
 

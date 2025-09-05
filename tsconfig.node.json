@@ -5,13 +5,16 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "jsx": "react-jsx"
   },
   "include": [
+    "src",
     "vite.config.ts",
     "vitest.workspace.ts",
     "tailwind.config.ts",
     "eslint.config.ts",
-    ".storybook/**/*.ts"
+    ".storybook/**/*.ts",
+    ".storybook/**/*.tsx"
   ]
 }

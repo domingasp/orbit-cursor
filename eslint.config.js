@@ -8,6 +8,7 @@ import pluginReact from "eslint-plugin-react";
 import pluginSortDestructureKeys from "eslint-plugin-sort-destructure-keys";
 import globals from "globals";
 import tseslint from "typescript-eslint";
+import perfectionist from "eslint-plugin-perfectionist";
 
 export default defineConfig([
   // #region Global
@@ -161,6 +162,33 @@ export default defineConfig([
     ],
     rules: {
       "no-restricted-exports": "off",
+      "sort-keys": "off",
+    },
+  },
+  // #endregion
+
+  // #region Storybook
+  {
+    plugins: { perfectionist },
+    files: ["**/*.stories.tsx"],
+    rules: {
+      "perfectionist/sort-objects": [
+        "error",
+        {
+          groups: ["component", "title", "parameters", "argTypes", "args"],
+          customGroups: {
+            component: "^component$",
+            title: "^title$",
+            parameters: "^parameters$",
+            argTypes: "^argTypes$",
+            args: "^args$",
+          },
+          ignorePattern: "args|argTypes",
+        },
+        {
+          type: "alphabetical",
+        },
+      ],
     },
   },
   // #endregion

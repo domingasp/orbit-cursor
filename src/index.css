@@ -23,6 +23,18 @@
 @theme {
   --font-sans: "Inter", sans-serif;
 
+  --gap-xs: var(--spacing);
+  --gap-sm: calc(var(--spacing) * 2);
+  --gap-md: calc(var(--spacing) * 4);
+  --gap-lg: calc(var(--spacing) * 6);
+
+  --blur-xs: 2px;
+  --blur-sm: 3px;
+  --blur-md: 4px;
+  --blur-lg: 5px;
+
+  --inset-shadow-full: inset 0 0 8px rgb(0 0 0/0.25);
+
   --text-xxs: 0.6125rem;
   --text-xxs--line-height: calc(1 / 0.6125);
 
@@ -40,14 +52,6 @@
     }
   }
 
-  --blur-xs: 2px;
-  --blur-sm: 3px;
-  --blur-md: 4px;
-  --blur-lg: 5px;
-
-  --inset-shadow-full: inset 0 0 8px rgb(0 0 0/0.25);
-
-  /* ----------------------------- Theme Dependent ---------------------------- */
   --color-content: white;
   --color-content-fg: var(--color-neutral-800);
 
@@ -61,6 +65,11 @@
   --color-error: var(--color-red-500);
 
   --color-muted: var(--color-neutral-700);
+
+  /* ------------------------------- New Colors ------------------------------- */
+  --color-text: var(--color-neutral-800);
+
+  --color-text-secondary: var(--color-neutral-500);
 }
 
 @layer themes {
@@ -78,6 +87,11 @@
     --color-error: var(--color-red-500);
 
     --color-muted: var(--color-neutral-400);
+
+    /* ------------------------------- New Colors ------------------------------- */
+    --color-text: var(--color-white);
+
+    --color-text-secondary: var(--color-neutral-400);
   }
 }
 
@@ -85,7 +99,7 @@
   /* #region Focus handling */
   .focus {
     /* Can not use `transition-all` as it interferes with Motion */
-    @apply outline-none ring-content-fg/75 ring-offset-content;
+    @apply ring-content-fg/75 ring-offset-content outline-none;
     transition-property: box-shadow, background-color, color, border-color;
     transition-timing-function: var(--default-transition-timing-function);
     transition-duration: var(--default-transition-duration);
@@ -93,22 +107,22 @@
 
   .focus-visible {
     /* Focus only for keyboard navigation, e.g., buttons */
-    @apply data-[focus-visible]:ring-offset-1 data-[focus-visible]:ring-1;
+    @apply data-[focus-visible]:ring-1 data-[focus-visible]:ring-offset-1;
   }
 
   .focused {
     /* Focus required on usage, e.g., text fields */
-    @apply data-[focused]:ring-offset-1 data-[focused]:ring-1;
+    @apply data-[focused]:ring-1 data-[focused]:ring-offset-1;
   }
 
   .focus-within {
     /* Focus is within the container, focus applied to parent. Think wrapper around input field */
-    @apply data-[focus-within]:ring-offset-1 data-[focus-within]:ring-1;
+    @apply data-[focus-within]:ring-1 data-[focus-within]:ring-offset-1;
   }
 
   .group-focus-visible {
     /* Focus determined from a group, rather than an individual element */
-    @apply group-data-[focus-visible]:ring-offset-1 group-data-[focus-visible]:ring-1;
+    @apply group-data-[focus-visible]:ring-1 group-data-[focus-visible]:ring-offset-1;
   }
 
   /* #endregion */
